@@ -2,10 +2,10 @@
   "Title": "CataTweaks",
   "Author": "alex",
   "ModURL": "",
-  "Description": "QoL tweaks: habs named Slug-Body-N on template apply, with save-as-template round-tripping the name back to the slug and overwriting in place; priority presets overwrite and track too. (Code mod; requires Unity Mod Manager. Toggle applies on restart.)",
+  "Description": "QoL tweaks: habs named 'Name (Template, Orbit, Body)' on template apply, with save-as-template round-tripping the template name and overwriting in place; priority presets overwrite and track too. (Code mod; requires Unity Mod Manager. Toggle applies on restart.)",
   "Id": "CataTweaks",
   "DisplayName": "CataTweaks",
-  "Version": "1.3.0",
+  "Version": "2.0.0",
   "ManagerVersion": "0.24.0",
   "AssemblyName": "CataTweaks.dll",
   "EntryMethod": "CataTweaks.Main.Load"

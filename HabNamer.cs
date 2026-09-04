@@ -1,39 +1,39 @@
-using System.Collections.Generic;
-using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace CataTweaks;
 
-// Naming scheme: habs created from a template are "Slug-Body-N" (slug = template name,
-// body = celestial body, N unique per slug+body within a faction). Saving a hab as a
-// template strips "-Body-N" so the template name round-trips to the bare slug.
+// Naming scheme: habs created from a template are "Custom Name (Template, Location)" where
+// location is "Orbit|Site, Body" (just "Body" for single-orbit bodies like Lagrange points).
+// Saving a hab as a template pulls the template name back out of the parentheses.
 public static class HabNamer
 {
-    public static Regex SlugBodyPattern(string slug, string body)
+    private static readonly Regex Suffix = new Regex(@"^(.*?)\s*\(([^(),]+),[^()]*\)$");
+
+    public static string Name(string habName, string slug, string location)
     {
-        return new Regex("^" + Regex.Escape(slug) + "-" + Regex.Escape(body) + @"-(\d+)$");
+        return $"{BaseOf(habName)} ({slug}, {location})";
     }
 
-    public static string NextName(string slug, string body, IEnumerable<string> existingNames)
+    // The custom name: everything before a trailing "(Template, Location)".
+    public static string BaseOf(string habName)
     {
-        Regex rx = SlugBodyPattern(slug, body);
-        int max = existingNames
-            .Select(n => rx.Match(n))
-            .Where(m => m.Success)
-            .Select(m => int.Parse(m.Groups[1].Value))
-            .DefaultIfEmpty(0)
-            .Max();
-        return $"{slug}-{body}-{max + 1}";
+        Match m = Suffix.Match(habName);
+        return m.Success ? m.Groups[1].Value : habName;
     }
 
     public static string SlugOf(string habName, string body)
     {
-        Match m = new Regex("^(.+)-" + Regex.Escape(body) + @"-\d+$").Match(habName);
+        Match m = Suffix.Match(habName);
+        if (m.Success)
+        {
+            return m.Groups[2].Value.Trim();
+        }
+        // Legacy formats from earlier mod versions / vanilla: "Name-Body-3", "Name 3", "Name-3".
+        m = new Regex("^(.+)-" + Regex.Escape(body) + @"-\d+$").Match(habName);
         if (m.Success)
         {
             return m.Groups[1].Value;
         }
-        // Legacy formats from earlier mod versions / vanilla: "Name 3" or "Name-3".
         m = new Regex(@"^(.+?)[ -]\d+$").Match(habName);
         return m.Success ? m.Groups[1].Value : habName;
     }

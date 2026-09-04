@@ -18,16 +18,32 @@ public static class Main
     }
 }
 
-internal static class HabBody
+internal static class HabLocation
 {
+    internal static string Body(TIHabState hab)
+    {
+        return hab.ref_naturalSpaceObject?.displayName ?? "Space";
+    }
+
+    // "Orbit, Body" / "Site, Body"; just "Body" where the body has a single orbit/site
+    // (Lagrange points), since the orbit name would only repeat it.
     internal static string Of(TIHabState hab)
     {
-        return hab.ref_spaceBody?.displayName ?? hab.barycenter?.displayName ?? "Space";
+        TINaturalSpaceObjectState body = hab.ref_naturalSpaceObject;
+        if (body == null)
+        {
+            return "Space";
+        }
+        bool single = hab.IsBase
+            ? (body as TISpaceBodyState)?.habSites.Length <= 1
+            : body.orbits.Count(o => !o.isAdHocOrbit) <= 1;
+        string place = hab.IsBase ? hab.ref_habSite?.displayName : hab.ref_orbit?.displayName;
+        return single || place == null ? body.displayName : place + ", " + body.displayName;
     }
 }
 
-// Tweak 1: habs renamed to "Slug-Body-N" when a saved hab template is applied
-// (slug = template name, body = the hab's celestial body, N unique per slug+body).
+// Tweak 1: habs renamed to "Custom Name (Template, Location)" when a saved hab template is
+// applied; the custom name is whatever the hab was called before (minus an older suffix).
 [HarmonyPatch(typeof(ApplyHabTemplateAction), nameof(ApplyHabTemplateAction.Execute))]
 internal static class RenameOnTemplateApply
 {
@@ -39,19 +55,13 @@ internal static class RenameOnTemplateApply
         {
             return;
         }
-        string body = HabBody.Of(hab);
-        // Re-applying the same template (e.g. topping up modules) keeps the existing number.
-        if (HabNamer.SlugBodyPattern(design.displayName, body).IsMatch(hab.displayName))
-        {
-            return;
-        }
-        hab.SetDisplayName(HabNamer.NextName(design.displayName, body, hab.faction.habs.Select(h => h.displayName)));
+        hab.SetDisplayName(HabNamer.Name(hab.displayName, design.displayName, HabLocation.Of(hab)));
     }
 }
 
 // Tweak 1b: the Apply button stays enabled when the hab already has the template's modules
-// but its name doesn't follow the "Slug-Body-N" scheme (built by hand, renamed, or from a
-// pre-mod save). Vanilla disables it because nothing would be built; applying then just
+// but its name doesn't carry the "(Template, Location)" suffix (built by hand, renamed, or
+// from a pre-mod save). Vanilla disables it because nothing would be built; applying then just
 // renames the hab via Tweak 1 (ApplySavedTemplate is a no-op with nothing to build).
 [HarmonyPatch(typeof(HabitatsScreenController), nameof(HabitatsScreenController.OnHabTemplateSelected))]
 internal static class ApplyTemplateForRename
@@ -70,9 +80,12 @@ internal static class ApplyTemplateForRename
             return;
         }
         TIHabTemplate design = TemplateManager.Find<TIHabTemplate>(dataName);
-        string body = HabBody.Of(hab);
-        if (design == null || !hab.CanApplySavedTemplate(design)
-            || HabNamer.SlugBodyPattern(design.displayName, body).IsMatch(hab.displayName))
+        if (design == null || !hab.CanApplySavedTemplate(design))
+        {
+            return;
+        }
+        string newName = HabNamer.Name(hab.displayName, design.displayName, HabLocation.Of(hab));
+        if (newName == hab.displayName)
         {
             return;
         }
@@ -80,23 +93,22 @@ internal static class ApplyTemplateForRename
             __instance.managementQueryToggle.isOn, out _, out _, out _);
         if (toBuild.Count == 0)
         {
-            string newName = HabNamer.NextName(design.displayName, body, hab.faction.habs.Select(h => h.displayName));
             __instance.managementQueryText.SetText(__instance.managementQueryText.text + "\nRename to " + newName);
             __instance.managementQueryConfirmButton.interactable = true;
         }
     }
 }
 
-// Tweak 2a: saving a hab as a template names the template with the bare slug — the hab's
-// name minus its "-Body-N" suffix — instead of vanilla's "name-description" plus a
-// timestamp on collision. Round-trips with Tweak 1: update hab "Mining-Luna-2", save,
-// and the "Mining" template is overwritten in place.
+// Tweak 2a: saving a hab as a template names the template after the template name inside
+// the hab's "(Template, Location)" suffix instead of vanilla's "name-description" plus a
+// timestamp on collision. Round-trips with Tweak 1: update hab "Freeport (Mining, ...)",
+// save, and the "Mining" template is overwritten in place.
 [HarmonyPatch(typeof(TIHabState), nameof(TIHabState.ConvertToTemplate))]
 internal static class HabTemplateCleanName
 {
     private static void Postfix(TIHabState __instance, TIHabTemplate __result)
     {
-        __result?.SetDisplayName(HabNamer.SlugOf(__instance.displayName, HabBody.Of(__instance)));
+        __result?.SetDisplayName(HabNamer.SlugOf(__instance.displayName, HabLocation.Body(__instance)));
     }
 }
 

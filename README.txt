@@ -15,16 +15,20 @@ place) is a complete install. The in-game Mods list toggle works too
 
 What it does:
 - Hab naming workflow: applying a saved hab template names the hab
-  "Slug-Body-N" (template name, celestial body, unique number per
-  slug+body: "Mining-Luna-1", "Mining-Luna-2", "Mining-Ceres-1").
-  Re-applying a template to an already-named hab keeps its number.
-  A hab that already has the template's modules but not the name
+  "Name (Template, Orbit, Body)" - the hab's existing name, then the
+  template and where it is: "Freeport (Mining, Low Earth Orbit 2,
+  Earth)", "Peary Crater Base (Mining, Peary Crater, Luna)". Bodies
+  with a single orbit, like Lagrange points, drop the orbit part:
+  "Outpost (Mining, Earth-Luna L1)". Re-applying a template only
+  replaces the part in parentheses; your custom name is kept.
+  A hab that already has the template's modules but not the suffix
   (built by hand, renamed, pre-mod save) can still Apply - it just
   gets renamed.
-  Saving a hab as a template strips the "-Body-N" back off, so the
-  template is named just "Mining" and overwrites the previous version
-  (vanilla appends description and timestamp). Update a hab, save,
-  re-apply elsewhere - no manual renaming.
+  Saving a hab as a template names the template after the one in the
+  parentheses, so "Freeport (Mining, ...)" saves as "Mining" and
+  overwrites the previous version (vanilla appends description and
+  timestamp). Update a hab, save, re-apply elsewhere - no manual
+  renaming.
 - Saving a priority preset under an existing custom preset's name
   overwrites it (vanilla disables the save button). If it was your
   default preset, the new version becomes the default, and every control
