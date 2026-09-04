@@ -1,0 +1,30 @@
+[h1]CataTweaks — small QoL fixes for templates and presets[/h1]
+
+[list]
+[*][b]Hab naming workflow:[/b] applying a saved hab template names the hab [i]Slug-Body-N[/i] (template name, celestial body, unique number per slug+body): [i]Mining-Luna-1[/i], [i]Mining-Ceres-1[/i]. Saving a hab as a template strips the -Body-N back off, so the template is named just [i]Mining[/i] and overwrites the previous version (vanilla appends description + timestamp). Update a hab, save it, re-apply to your other habs - no manual renaming, and re-applying keeps existing numbers.
+[*][b]Priority preset overwrite:[/b] saving a priority preset under an existing custom preset's name replaces it instead of the save button going dead. Overwriting your default preset cleanly re-points the default to the new version, and every country/control point using the old version updates to the new one automatically instead of flipping to 'Custom'. Built-in presets are never overwritten.
+[*][b]Preset tracking on nation changes:[/b] when a country's valid priorities change (gains a spaceflight program, founds a military, unlocks navy/STO/space defenses/nukes...), control points on a preset re-apply it within a day, picking up the preset's weights for the newly available priorities instead of the profile flipping to 'Custom'.
+[/list]
+
+[h1]Requires Unity Mod Manager (one-time setup)[/h1]
+
+This is a [b]code / Harmony mod[/b], like PrecisionInfo. It requires Unity Mod Manager:
+
+[olist]
+[*]Download Unity Mod Manager 0.25.0 or later from [url=https://www.nexusmods.com/site/mods/21]Nexus Mods[/url].
+[*]Run UnityModManager.exe, select "Terra Invicta" as the game, set your game folder, choose the "DoorstopProxy" installation method, and click Install.
+[/olist]
+
+With UMM installed, subscribing here is a complete install — the mod loads from the game's Mods folder like any other, shows in the in-game Mods list, and the enable/disable toggle works (on restart). Workshop updates apply automatically.
+
+[h1]Compatibility[/h1]
+
+[list]
+[*]No save data schema is touched — only display names and your saved designs/presets. Safe to add or remove mid-campaign.
+[*]Multiplayer: all players need the mod installed.
+[*]As a code mod, a game patch can break it; if that happens, report it here and it will be rebuilt.
+[/list]
+
+
+
+
