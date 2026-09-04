@@ -49,6 +49,44 @@ internal static class RenameOnTemplateApply
     }
 }
 
+// Tweak 1b: the Apply button stays enabled when the hab already has the template's modules
+// but its name doesn't follow the "Slug-Body-N" scheme (built by hand, renamed, or from a
+// pre-mod save). Vanilla disables it because nothing would be built; applying then just
+// renames the hab via Tweak 1 (ApplySavedTemplate is a no-op with nothing to build).
+[HarmonyPatch(typeof(HabitatsScreenController), nameof(HabitatsScreenController.OnHabTemplateSelected))]
+internal static class ApplyTemplateForRename
+{
+    private static readonly FieldInfo dropdownField =
+        AccessTools.Field(typeof(HabitatsScreenController), "habTemplateDropdown");
+
+    private static void Postfix(HabitatsScreenController __instance)
+    {
+        TIHabState hab = __instance.habToDisplay;
+        var dropdown = (Dictionary<int, string>)dropdownField.GetValue(__instance);
+        if (__instance.managementQueryConfirmButton.interactable || hab == null
+            || !dropdown.TryGetValue(__instance.managementQueryTemplateDropdown.value, out string dataName)
+            || string.IsNullOrEmpty(dataName))
+        {
+            return;
+        }
+        TIHabTemplate design = TemplateManager.Find<TIHabTemplate>(dataName);
+        string body = HabBody.Of(hab);
+        if (design == null || !hab.CanApplySavedTemplate(design)
+            || HabNamer.SlugBodyPattern(design.displayName, body).IsMatch(hab.displayName))
+        {
+            return;
+        }
+        List<TIHabModuleTemplate> toBuild = hab.ApplySavedTemplate(design, prospectiveOnly: true,
+            __instance.managementQueryToggle.isOn, out _, out _, out _);
+        if (toBuild.Count == 0)
+        {
+            string newName = HabNamer.NextName(design.displayName, body, hab.faction.habs.Select(h => h.displayName));
+            __instance.managementQueryText.SetText(__instance.managementQueryText.text + "\nRename to " + newName);
+            __instance.managementQueryConfirmButton.interactable = true;
+        }
+    }
+}
+
 // Tweak 2a: saving a hab as a template names the template with the bare slug — the hab's
 // name minus its "-Body-N" suffix — instead of vanilla's "name-description" plus a
 // timestamp on collision. Round-trips with Tweak 1: update hab "Mining-Luna-2", save,

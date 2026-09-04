@@ -18,6 +18,9 @@ What it does:
   "Slug-Body-N" (template name, celestial body, unique number per
   slug+body: "Mining-Luna-1", "Mining-Luna-2", "Mining-Ceres-1").
   Re-applying a template to an already-named hab keeps its number.
+  A hab that already has the template's modules but not the name
+  (built by hand, renamed, pre-mod save) can still Apply - it just
+  gets renamed.
   Saving a hab as a template strips the "-Body-N" back off, so the
   template is named just "Mining" and overwrites the previous version
   (vanilla appends description and timestamp). Update a hab, save,
