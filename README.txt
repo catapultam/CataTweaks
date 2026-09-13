@@ -44,11 +44,32 @@ What it does:
   change (gaining a spaceflight program, founding a military, unlocking
   navy/STO/space-defense/nuke options...): the preset is re-applied with
   its weights for the newly valid priorities, within a day of the change.
-- Ship construction screen: a second dropdown next to the vanilla
-  location filter narrows the shipyard list to individual stations.
-  Vanilla only filters by body, so every yard in Earth orbit shares one
-  entry; this lists the stations themselves, and the two combine - pick
-  a body, a station, or several of each. Selecting nothing shows
-  everything, as before. It appears only once you have two or more
-  shipyards, and not on the Refit tab.
+- Ship construction screen: a dividing rule between stations in the
+  shipyard list. One station can host several shipyards, and the list
+  already sorts them together, so the rule just marks where one
+  station's yards end and the next begin. It follows the vanilla
+  location filter, dividing whichever yards are currently shown.
+
+These two change game balance rather than just the interface:
+
+- Solar mirrors boost orbital stations, not only surface bases. Vanilla
+  builds the whole mechanism - station-mounted mirrors, per-body
+  accumulation, mirror mass scaling with distance from the Sun squared,
+  an 8x output ceiling - but only ever spends it on bases. Now a
+  station's solar modules also benefit, with a direction rule: a mirror
+  only lights targets inward of itself, so a mirror in high Mars orbit
+  boosts medium and low, and one in medium boosts low but never high. A
+  mirror level with its target does nothing for it. Lagrange points sit
+  outside the orbit ladder, so they light everything they already credit
+  in vanilla - a Sun-Earth L1 mirror covers every Earth and Luna orbit,
+  while an Earth-Luna L1 mirror covers Luna only. Surface bases are
+  unchanged.
+
+- Review Failed Projects favours the expensive missed project. Vanilla
+  weights each candidate by availability chance divided by research
+  cost, so a 200-research throwaway outdraws a 5000-research drive by
+  25 to 1 and the review is least useful exactly when it matters most.
+  That divide becomes a multiply, so cost raises a project's odds
+  instead of sinking them. Availability chance still scales it, so
+  genuinely rare projects stay rare.
 

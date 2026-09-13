@@ -13,9 +13,4 @@ Debug.Assert(HabNamer.SlugOf("Outpost (Mining, Earth-Luna L1)", "Earth-Luna L1")
 Debug.Assert(HabNamer.SlugOf("Mining-Luna-3", "Luna") == "Mining", "legacy Slug-Body-N still parses");
 Debug.Assert(HabNamer.SlugOf("Mining Base 3", "Luna") == "Mining Base", "legacy 'Name N' strips number");
 Debug.Assert(HabNamer.SlugOf("Freeport", "Luna") == "Freeport", "custom names pass through whole");
-
-Debug.Assert(BitFilter.SelectedIndices(0, 5).Count == 0, "no bits set selects nothing");
-Debug.Assert(string.Join(",", BitFilter.SelectedIndices(0b101, 5)) == "0,2", "set bits map to option indices");
-Debug.Assert(string.Join(",", BitFilter.SelectedIndices(0b1001, 2)) == "0", "stale bits past the list are dropped");
-Debug.Assert(BitFilter.SelectedIndices(1 << 31, 5).Count == 0, "the overflow entry selects nothing");
 System.Console.WriteLine("all checks passed");

@@ -1,12 +1,11 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using HarmonyLib;
 using PavonisInteractive.TerraInvicta;
 using PavonisInteractive.TerraInvicta.Actions;
-using TMPro;
 using UnityEngine;
-using UnityEngine.Events;
 using UnityEngine.UI;
 using UnityModManagerNet;
 
@@ -261,155 +260,399 @@ internal static class ReapplyPresetsOnValidityChange
     }
 }
 
-// Tweak 5: a second location dropdown on the ship construction screen, filtering the shipyard
-// grid by station. Vanilla's constructionFilterDropdown only filters by space body, so every
-// yard in Earth orbit shares one entry. It is a stock TMP_Dropdown with MultiSelect set on the
-// prefab (TI reads its value as a bitmask), so cloning the GameObject inherits the styling, the
-// option template and the multi-select behaviour - no new UI is built. The station filter ANDs
-// on top of the vanilla body filter rather than replacing it.
-internal static class StationFilter
+// Tweak 5: full-width rules between stations in the ship construction screen's shipyard grid.
+// One station can host several shipyards and the grid already sorts them together (body, then
+// hab name, then tier); this fills out each station's last row with blanks so the next station
+// starts on a fresh row, and draws a rule across the boundary. The grid is a GridLayoutGroup, so
+// every cell is the same size and a full-width rule cannot be a cell - it opts out of the layout
+// and is positioned at the row boundary instead.
+internal static class StationDivider
 {
-    // TMP packs the multi-select value into an int, so 31 options plus an overflow entry.
-    private const int EntryLimit = 31;
+    private const string SpacerName = "CataTweaksSpacer";
+    private const string RuleName = "CataTweaksRule";
 
-    private static TMP_Dropdown dropdown;
-    private static FleetsScreenController owner;
-    private static readonly List<TIHabState> stations = new List<TIHabState>();
-
-    private static IEnumerable<ShipyardGridItemController> Grid(FleetsScreenController screen)
+    private static GridLayoutGroup Grid(FleetsScreenController screen)
     {
-        // ListManagerBase has no element type of its own; iterate it as object.
-        foreach (object entry in screen.shipyardGridList)
+        return screen.shipyardGridList != null
+            ? screen.shipyardGridList.GetComponent<GridLayoutGroup>()
+            : null;
+    }
+
+    // ListManagerBase sizes the card list from transform.childCount and destroys anything past
+    // the new size, so our extra children have to be gone before it rebuilds - and gone now,
+    // not at end of frame, or it would delete real cards in their place.
+    internal static void Clear(FleetsScreenController screen)
+    {
+        GridLayoutGroup grid = Grid(screen);
+        if (grid == null)
         {
-            if (entry is ShipyardGridItemController item && item.shipyardIdx?.ref_hab != null)
+            return;
+        }
+        for (int i = grid.transform.childCount - 1; i >= 0; i--)
+        {
+            Transform child = grid.transform.GetChild(i);
+            if (child.name == SpacerName || child.name == RuleName)
             {
-                yield return item;
+                UnityEngine.Object.DestroyImmediate(child.gameObject);
             }
         }
     }
 
-    private static void Build(FleetsScreenController screen)
+    private static int Columns(GridLayoutGroup grid)
     {
-        if (dropdown != null && owner == screen)
+        if (grid.constraint == GridLayoutGroup.Constraint.FixedColumnCount)
         {
-            return;
+            return Mathf.Max(1, grid.constraintCount);
         }
-        TMP_Dropdown source = screen.constructionFilterDropdown;
-        if (source == null)
-        {
-            return;
-        }
-        dropdown = Object.Instantiate(source.gameObject, source.transform.parent)
-            .GetComponent<TMP_Dropdown>();
-        dropdown.name = "CataTweaksStationFilter";
-        dropdown.transform.SetSiblingIndex(source.transform.GetSiblingIndex() + 1);
-        // The prefab wires onValueChanged to the body filter; the clone inherits that, so mute
-        // the serialised listeners and re-run the whole filter pass ourselves instead.
-        for (int i = 0; i < dropdown.onValueChanged.GetPersistentEventCount(); i++)
-        {
-            dropdown.onValueChanged.SetPersistentListenerState(i, UnityEventCallState.Off);
-        }
-        dropdown.onValueChanged.RemoveAllListeners();
-        dropdown.onValueChanged.AddListener(_ => screen.FilterShipLists());
-        if (source.transform.parent.GetComponent<LayoutGroup>() == null)
-        {
-            // Nothing is laying the row out, so place it a width to the right by hand.
-            var clone = (RectTransform)dropdown.transform;
-            var original = (RectTransform)source.transform;
-            clone.anchoredPosition = original.anchoredPosition + new Vector2(original.rect.width + 8f, 0f);
-        }
-        owner = screen;
+        float width = ((RectTransform)grid.transform).rect.width - grid.padding.horizontal;
+        float step = grid.cellSize.x + grid.spacing.x;
+        return step > 0f ? Mathf.Max(1, Mathf.FloorToInt((width + grid.spacing.x) / step)) : 1;
     }
 
-    internal static void Populate(FleetsScreenController screen)
+    private static void AddSpacer(GridLayoutGroup grid, int siblingIndex)
     {
-        Build(screen);
-        if (dropdown == null)
-        {
-            return;
-        }
-        stations.Clear();
-        dropdown.options.Clear();
-        foreach (ShipyardGridItemController item in Grid(screen))
-        {
-            TIHabState hab = item.shipyardIdx.ref_hab;
-            if (stations.Contains(hab))
-            {
-                continue;
-            }
-            if (stations.Count == EntryLimit)
-            {
-                dropdown.options.Add(new TMP_Dropdown.OptionData(Loc.T("UI.Habs.TooManyLocations")));
-                break;
-            }
-            stations.Add(hab);
-            dropdown.options.Add(new TMP_Dropdown.OptionData(hab.displayName));
-        }
-        // Same rule as the body filter: pointless with fewer than two things to choose between.
-        dropdown.gameObject.SetActive(stations.Count >= 2);
-        dropdown.SetValueWithoutNotify(0);
-        dropdown.captionText.SetText(Loc.T("UI.Habs.NoLocations"));
+        var go = new GameObject(SpacerName, typeof(RectTransform));
+        go.transform.SetParent(grid.transform, worldPositionStays: false);
+        go.transform.SetSiblingIndex(siblingIndex);
     }
 
-    internal static void Hide()
+    private static void AddRule(GridLayoutGroup grid, int row)
     {
-        if (dropdown != null)
-        {
-            dropdown.gameObject.SetActive(false);
-        }
+        var go = new GameObject(RuleName, typeof(RectTransform), typeof(Image));
+        var rect = (RectTransform)go.transform;
+        rect.SetParent(grid.transform, worldPositionStays: false);
+        rect.anchorMin = new Vector2(0f, 1f);
+        rect.anchorMax = new Vector2(1f, 1f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.sizeDelta = new Vector2(0f, 3f);
+        // Centred in the gap above the given row. With no spacing to sit in it lands on the top
+        // edge of that row's cards, and draws over them as the last sibling, so it stays visible.
+        float y = grid.padding.top + row * (grid.cellSize.y + grid.spacing.y) - grid.spacing.y / 2f;
+        rect.anchoredPosition = new Vector2(0f, -y);
+        go.AddComponent<LayoutElement>().ignoreLayout = true;
+        Image rule = go.GetComponent<Image>();
+        rule.color = new Color(1f, 1f, 1f, 0.5f);
+        rule.raycastTarget = false;
+        rect.SetAsLastSibling();
     }
 
     internal static void Apply(FleetsScreenController screen)
     {
-        if (dropdown == null || owner != screen || !dropdown.gameObject.activeSelf)
+        Clear(screen);
+        GridLayoutGroup grid = Grid(screen);
+        if (grid == null)
         {
             return;
         }
-        if (screen.refitScrollviews.activeSelf)
+        int cols = Columns(grid);
+        int cells = 0;
+        TIHabState previous = null;
+        // Iterating the list manager walks its own snapshot, not the transform, so inserting
+        // children as we go is safe. Inactive cards are skipped by the layout and by us.
+        foreach (object entry in screen.shipyardGridList)
         {
-            return;
-        }
-        List<int> selected = BitFilter.SelectedIndices(dropdown.value, stations.Count);
-        if (selected.Count == 0)
-        {
-            return;
-        }
-        foreach (ShipyardGridItemController item in Grid(screen))
-        {
-            // Vanilla has already hidden anything the body filter excludes; only ever subtract.
-            if (item.gameObject.activeSelf && !selected.Any(i => stations[i] == item.shipyardIdx.ref_hab))
+            if (!(entry is ShipyardGridItemController card) || card.shipyardIdx?.ref_hab == null
+                || !card.gameObject.activeSelf)
             {
-                item.gameObject.SetActive(false);
+                continue;
+            }
+            TIHabState hab = card.shipyardIdx.ref_hab;
+            if (previous != null && hab != previous)
+            {
+                int pad = (cols - cells % cols) % cols;
+                for (int i = 0; i < pad; i++)
+                {
+                    // Re-read the index each time: each insert pushes the card down one.
+                    AddSpacer(grid, card.transform.GetSiblingIndex());
+                    cells++;
+                }
+                AddRule(grid, cells / cols);
+            }
+            cells++;
+            previous = hab;
+        }
+    }
+}
+
+[HarmonyPatch(typeof(FleetsScreenController), nameof(FleetsScreenController.FilterShipLists))]
+internal static class StationDividerApply
+{
+    private static void Postfix(FleetsScreenController __instance)
+    {
+        StationDivider.Apply(__instance);
+    }
+}
+
+// Strip the spacers before the grid is rebuilt; RefreshConstructionManager calls FilterShipLists
+// on its way out, which puts them back.
+[HarmonyPatch(typeof(FleetsScreenController), nameof(FleetsScreenController.RefreshConstructionManager))]
+internal static class StationDividerClear
+{
+    private static void Prefix(FleetsScreenController __instance)
+    {
+        StationDivider.Clear(__instance);
+    }
+}
+
+// Tweak 6: solar mirrors boost orbital stations, not just surface bases. Vanilla builds the
+// whole mechanism - station-mounted mirrors, per-body per-faction accumulation, mirror mass
+// scaling with semiMajorAxis^2, placement bans at L2/L3 and solar L4/L5, and an 8x output cap -
+// but only ever spends it on bases: SolarPowerOutput adds the bonus when the location is a
+// space body, a hab site, or a hab that IsBase. Stations are excluded by that condition.
+//
+// Stations can't use the body-wide solarMirrorBonus total, because it cannot say which orbit a
+// mirror sat in. So they get their own sum with a direction rule: a mirror only lights targets
+// inward of itself. A mirror in high Mars orbit boosts medium and low; one in medium boosts low
+// only, never high. Lagrange points sit outside the orbit ladder entirely, so they light
+// everything they credit under vanilla's rules - Sun-Earth L1 covers every Earth and Luna orbit.
+internal static class StationSolarMirrors
+{
+    // Frame-scoped, matching how the game caches its own hot per-hab queries (see
+    // TIHabState.OkayModules). SolarPowerOutput is called from power management, the hab screen
+    // and the AI planner, so the walk below can repeat many times within one recalculation;
+    // expiring on frame change keeps it correct without event plumbing.
+    private static int cachedFrame = -1;
+    private static readonly Dictionary<TIOrbitState, Dictionary<TIFactionState, int>> cache =
+        new Dictionary<TIOrbitState, Dictionary<TIFactionState, int>>();
+
+    internal static void Invalidate()
+    {
+        cache.Clear();
+        cachedFrame = Time.frameCount;
+    }
+
+    private static int PoweredMirrorValue(TIHabState station)
+    {
+        int total = 0;
+        foreach (TIHabModuleState module in station.CompletedModules())
+        {
+            if (module.powered && !module.destroyed
+                && module.moduleTemplate.SpecialRules.Contains(HabModuleSpecialRule.SolarMirror))
+            {
+                total += (int)module.moduleTemplate.specialRulesValue;
+            }
+        }
+        return total;
+    }
+
+    // Mirrors owned by this faction that light the given orbit. Mirrors are few (one module slot
+    // on a station), so iterating the faction's habs is cheaper than walking every orbit of the
+    // body and its Lagrange points.
+    private static int Compute(TIOrbitState targetOrbit, TIFactionState faction)
+    {
+        TISpaceBodyState targetBody = targetOrbit.barycenter?.ref_spaceBody;
+        if (targetBody == null)
+        {
+            return 0;
+        }
+        int total = 0;
+        foreach (TIHabState mirrorHab in faction.habs)
+        {
+            if (mirrorHab == null || !mirrorHab.IsStation)
+            {
+                continue;
+            }
+            TIOrbitState mirrorOrbit = mirrorHab.orbitState;
+            if (mirrorOrbit?.barycenter == null)
+            {
+                continue;
+            }
+            int value = PoweredMirrorValue(mirrorHab);
+            if (value == 0)
+            {
+                continue;
+            }
+            if (mirrorOrbit.barycenter.isSpaceBodyState)
+            {
+                // Same barycenter object, so the two semi-major axes are measured against the
+                // same centre and are comparable. Strictly outward only: a mirror level with or
+                // inside its target does nothing for it.
+                if (mirrorOrbit.barycenter == targetOrbit.barycenter
+                    && mirrorOrbit.semiMajorAxis_m > targetOrbit.semiMajorAxis_m)
+                {
+                    total += value;
+                }
+            }
+            else if (mirrorOrbit.barycenter.isLagrangePointState)
+            {
+                // Outside the orbit ladder: reaches every orbit of whatever vanilla credits.
+                TILagrangePointState point = mirrorOrbit.ref_lagrangePoint;
+                if (point.secondaryObject.isaMoon)
+                {
+                    if (point.secondaryObject == targetBody)
+                    {
+                        total += value;
+                    }
+                }
+                else if (point.lagrangeValue == LagrangeValue.L1
+                         && (point.secondaryObject == targetBody
+                             || point.secondaryObject.naturalSatellites.Contains(targetBody)))
+                {
+                    total += value;
+                }
+            }
+        }
+        return total;
+    }
+
+    internal static int BonusFor(TIHabState station, TIFactionState faction)
+    {
+        TIOrbitState orbit = station?.orbitState;
+        if (orbit == null || faction == null)
+        {
+            return 0;
+        }
+        if (cachedFrame != Time.frameCount)
+        {
+            Invalidate();
+        }
+        if (!cache.TryGetValue(orbit, out Dictionary<TIFactionState, int> byFaction))
+        {
+            byFaction = new Dictionary<TIFactionState, int>();
+            cache[orbit] = byFaction;
+        }
+        if (!byFaction.TryGetValue(faction, out int bonus))
+        {
+            bonus = Compute(orbit, faction);
+            byFaction[faction] = bonus;
+        }
+        return bonus;
+    }
+}
+
+[HarmonyPatch(typeof(TIHabModuleState), nameof(TIHabModuleState.SolarPowerOutput))]
+internal static class StationSolarMirrorOutput
+{
+    private static void Postfix(TIGameState location, float powerValue, TIFactionState faction,
+        int tier, bool skipMirrors, ref int __result)
+    {
+        if (skipMirrors || faction == null || !location.isHabState)
+        {
+            return;
+        }
+        TIHabState station = location.ref_hab;
+        if (station == null || !station.IsStation)
+        {
+            return;
+        }
+        int bonus = StationSolarMirrors.BonusFor(station, faction) * tier;
+        if (bonus > 0)
+        {
+            // Re-apply vanilla's ceiling rather than letting the bonus run past it.
+            __result = Mathf.Min(__result + bonus, (int)(8f * powerValue));
+        }
+    }
+}
+
+// Vanilla only refreshes surfaceBases when a mirror toggles, so station power grids would show
+// stale output until something else forced a recalculation.
+[HarmonyPatch(typeof(TISpaceBodyState), nameof(TISpaceBodyState.ChangeSolarMirrorBonus))]
+internal static class StationSolarMirrorRefresh
+{
+    private static void Postfix(TISpaceBodyState __instance, int changeBy, TIFactionState faction)
+    {
+        if (changeBy == 0 || faction == null)
+        {
+            return;
+        }
+        StationSolarMirrors.Invalidate();
+        foreach (TIOrbitState orbit in StationOrbits(__instance))
+        {
+            foreach (TIHabState station in orbit.stationsInOrbit)
+            {
+                if (station.faction == faction)
+                {
+                    station.UpdatePowerManagement(changeBy > 0, null, faction.player.isAI);
+                }
+            }
+        }
+    }
+
+    // The body's own orbits plus those around its Lagrange points, since a station at L1 orbits
+    // the point rather than the body and would otherwise never be refreshed.
+    private static IEnumerable<TIOrbitState> StationOrbits(TISpaceBodyState body)
+    {
+        foreach (TIOrbitState orbit in body.orbits)
+        {
+            yield return orbit;
+        }
+        foreach (TILagrangePointState point in body.lagrangePoints)
+        {
+            foreach (TIOrbitState orbit in point.orbits)
+            {
+                yield return orbit;
             }
         }
     }
 }
 
-[HarmonyPatch(typeof(FleetsScreenController), nameof(FleetsScreenController.SetConstructionFilterList))]
-internal static class StationFilterPopulate
+// Tweak 7: Review Failed Projects favours the EXPENSIVE missed project instead of the cheapest.
+// Vanilla weights each candidate by factionAvailableChance / researchCost, so a 200-research
+// throwaway outdraws a 5000-research drive by 25:1 and the review is worst exactly when it
+// matters most. This inverts the divide to a multiply, so cost raises a project's odds instead
+// of sinking them; availability chance still scales it, keeping genuinely rare projects rare.
+//
+// The picker is a local function inside TIEffectsState.ProcessInstantEffect, so it compiles to a
+// mangled name and its parameter is compiler-generated - hence the runtime name search and the
+// positional __0 argument.
+[HarmonyPatch]
+internal static class ReviewFavoursExpensiveProjects
 {
-    private static void Postfix(FleetsScreenController __instance)
+    private static MethodBase TargetMethod()
     {
-        StationFilter.Populate(__instance);
+        MethodBase target = AccessTools.GetDeclaredMethods(typeof(TIEffectsState))
+            .FirstOrDefault(m => m.Name.Contains("GrantMissedProjectToFaction"));
+        if (target == null)
+        {
+            // Loud rather than silent: a rename upstream would otherwise no-op the whole tweak.
+            throw new InvalidOperationException(
+                "CataTweaks: could not find GrantMissedProjectToFaction on TIEffectsState.");
+        }
+        return target;
     }
-}
 
-// The refit tab reuses the body dropdown for docked ships; the station filter doesn't apply.
-[HarmonyPatch(typeof(FleetsScreenController), nameof(FleetsScreenController.SetRefitFilterList))]
-internal static class StationFilterHideOnRefit
-{
-    private static void Postfix()
+    private static bool Prefix(TIFactionState __0)
     {
-        StationFilter.Hide();
-    }
-}
-
-[HarmonyPatch(typeof(FleetsScreenController), nameof(FleetsScreenController.FilterShipLists))]
-internal static class StationFilterApply
-{
-    private static void Postfix(FleetsScreenController __instance)
-    {
-        StationFilter.Apply(__instance);
+        if (__0?.missedProjects == null || __0.missedProjects.Count == 0)
+        {
+            return false;
+        }
+        var candidates = new List<TIProjectTemplate>();
+        var weights = new List<float>();
+        float total = 0f;
+        foreach (string name in __0.missedProjects)
+        {
+            TIProjectTemplate project = TemplateManager.Find<TIProjectTemplate>(name);
+            if (project == null)
+            {
+                continue;
+            }
+            // Reversed from vanilla's chance / cost. Floor keeps a zero-cost or zero-chance
+            // project selectable rather than silently unreachable.
+            float weight = Mathf.Max(project.factionAvailableChance * project.researchCost, 0.0001f);
+            candidates.Add(project);
+            weights.Add(weight);
+            total += weight;
+        }
+        if (candidates.Count == 0)
+        {
+            return false;
+        }
+        float roll = TIUtilities.RandomFloatValue() * total;
+        TIProjectTemplate picked = candidates[candidates.Count - 1];
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            roll -= weights[i];
+            if (roll <= 0f)
+            {
+                picked = candidates[i];
+                break;
+            }
+        }
+        // AddAvailableProject also runs RemoveMissedProjectFromList, so the winner leaves the queue.
+        __0.AddAvailableProject(picked);
+        TINotificationQueueState.LogProjectTriggered(__0, picked, special: true);
+        return false;
     }
 }
 

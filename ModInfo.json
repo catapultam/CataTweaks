@@ -2,10 +2,10 @@
   "Title": "CataTweaks",
   "Author": "alex",
   "ModURL": "",
-  "Description": "QoL tweaks: habs named 'Name (Template, Orbit, Body)' on template apply, with save-as-template round-tripping the template name and map icon and overwriting in place; priority presets overwrite and track too; a station filter on the ship construction screen alongside vanilla's body filter. (Code mod; requires Unity Mod Manager. Toggle applies on restart.)",
+  "Description": "QoL tweaks: habs named 'Name (Template, Orbit, Body)' on template apply, with save-as-template round-tripping the template name and map icon and overwriting in place; priority presets overwrite and track too; dividing rules between stations on the ship construction screen. Balance: solar mirrors boost orbital stations inward of them, and Review Failed Projects favours the expensive missed project instead of the cheapest. (Code mod; requires Unity Mod Manager. Toggle applies on restart.)",
   "Id": "CataTweaks",
   "DisplayName": "CataTweaks",
-  "Version": "2.2.0",
+  "Version": "2.3.0",
   "ManagerVersion": "0.24.0",
   "AssemblyName": "CataTweaks.dll",
   "EntryMethod": "CataTweaks.Main.Load"
