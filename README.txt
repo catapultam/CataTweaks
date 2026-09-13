@@ -29,6 +29,11 @@ What it does:
   overwrites the previous version (vanilla appends description and
   timestamp). Update a hab, save, re-apply elsewhere - no manual
   renaming.
+  The template also remembers the hab's custom map icon, and applying
+  it sets that icon on the target hab - so a "Mining" template carries
+  its mining icon to every hab you apply it to, no re-picking from the
+  dropdown. Templates saved before this version have no icon stored
+  and leave the target hab's icon alone; re-save one to record it.
 - Saving a priority preset under an existing custom preset's name
   overwrites it (vanilla disables the save button). If it was your
   default preset, the new version becomes the default, and every control
@@ -39,4 +44,11 @@ What it does:
   change (gaining a spaceflight program, founding a military, unlocking
   navy/STO/space-defense/nuke options...): the preset is re-applied with
   its weights for the newly valid priorities, within a day of the change.
+- Ship construction screen: a second dropdown next to the vanilla
+  location filter narrows the shipyard list to individual stations.
+  Vanilla only filters by body, so every yard in Earth orbit shares one
+  entry; this lists the stations themselves, and the two combine - pick
+  a body, a station, or several of each. Selecting nothing shows
+  everything, as before. It appears only once you have two or more
+  shipyards, and not on the Refit tab.
 

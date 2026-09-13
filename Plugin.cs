@@ -4,6 +4,10 @@ using System.Reflection;
 using HarmonyLib;
 using PavonisInteractive.TerraInvicta;
 using PavonisInteractive.TerraInvicta.Actions;
+using TMPro;
+using UnityEngine;
+using UnityEngine.Events;
+using UnityEngine.UI;
 using UnityModManagerNet;
 
 namespace CataTweaks;
@@ -56,6 +60,12 @@ internal static class RenameOnTemplateApply
             return;
         }
         hab.SetDisplayName(HabNamer.Name(hab.displayName, design.displayName, HabLocation.Of(hab)));
+        // Tweak 1c: restore the icon the template remembers (see Tweak 2c). Set directly rather
+        // than via ChangeHabBio, which also renames and clears the icon when given an empty one.
+        if (!string.IsNullOrEmpty(design.symbolTexture))
+        {
+            hab.SetCustomIconString(design.symbolTexture);
+        }
     }
 }
 
@@ -108,7 +118,16 @@ internal static class HabTemplateCleanName
 {
     private static void Postfix(TIHabState __instance, TIHabTemplate __result)
     {
-        __result?.SetDisplayName(HabNamer.SlugOf(__instance.displayName, HabLocation.Body(__instance)));
+        if (__result == null)
+        {
+            return;
+        }
+        __result.SetDisplayName(HabNamer.SlugOf(__instance.displayName, HabLocation.Body(__instance)));
+        // Tweak 2c: remember the hab's custom map icon on the template, so applying it restores
+        // the icon alongside the modules and name. symbolTexture is inert for hab designs
+        // (TIHabState.iconResource overrides it with the faction station/base icon) and already
+        // serialises with saved designs, so this needs no new save data.
+        __result.symbolTexture = __instance.customHabIconResource;
     }
 }
 
@@ -239,6 +258,158 @@ internal static class ReapplyPresetsOnValidityChange
             }
         }
         lastInvalid[nation.ID] = current;
+    }
+}
+
+// Tweak 5: a second location dropdown on the ship construction screen, filtering the shipyard
+// grid by station. Vanilla's constructionFilterDropdown only filters by space body, so every
+// yard in Earth orbit shares one entry. It is a stock TMP_Dropdown with MultiSelect set on the
+// prefab (TI reads its value as a bitmask), so cloning the GameObject inherits the styling, the
+// option template and the multi-select behaviour - no new UI is built. The station filter ANDs
+// on top of the vanilla body filter rather than replacing it.
+internal static class StationFilter
+{
+    // TMP packs the multi-select value into an int, so 31 options plus an overflow entry.
+    private const int EntryLimit = 31;
+
+    private static TMP_Dropdown dropdown;
+    private static FleetsScreenController owner;
+    private static readonly List<TIHabState> stations = new List<TIHabState>();
+
+    private static IEnumerable<ShipyardGridItemController> Grid(FleetsScreenController screen)
+    {
+        // ListManagerBase has no element type of its own; iterate it as object.
+        foreach (object entry in screen.shipyardGridList)
+        {
+            if (entry is ShipyardGridItemController item && item.shipyardIdx?.ref_hab != null)
+            {
+                yield return item;
+            }
+        }
+    }
+
+    private static void Build(FleetsScreenController screen)
+    {
+        if (dropdown != null && owner == screen)
+        {
+            return;
+        }
+        TMP_Dropdown source = screen.constructionFilterDropdown;
+        if (source == null)
+        {
+            return;
+        }
+        dropdown = Object.Instantiate(source.gameObject, source.transform.parent)
+            .GetComponent<TMP_Dropdown>();
+        dropdown.name = "CataTweaksStationFilter";
+        dropdown.transform.SetSiblingIndex(source.transform.GetSiblingIndex() + 1);
+        // The prefab wires onValueChanged to the body filter; the clone inherits that, so mute
+        // the serialised listeners and re-run the whole filter pass ourselves instead.
+        for (int i = 0; i < dropdown.onValueChanged.GetPersistentEventCount(); i++)
+        {
+            dropdown.onValueChanged.SetPersistentListenerState(i, UnityEventCallState.Off);
+        }
+        dropdown.onValueChanged.RemoveAllListeners();
+        dropdown.onValueChanged.AddListener(_ => screen.FilterShipLists());
+        if (source.transform.parent.GetComponent<LayoutGroup>() == null)
+        {
+            // Nothing is laying the row out, so place it a width to the right by hand.
+            var clone = (RectTransform)dropdown.transform;
+            var original = (RectTransform)source.transform;
+            clone.anchoredPosition = original.anchoredPosition + new Vector2(original.rect.width + 8f, 0f);
+        }
+        owner = screen;
+    }
+
+    internal static void Populate(FleetsScreenController screen)
+    {
+        Build(screen);
+        if (dropdown == null)
+        {
+            return;
+        }
+        stations.Clear();
+        dropdown.options.Clear();
+        foreach (ShipyardGridItemController item in Grid(screen))
+        {
+            TIHabState hab = item.shipyardIdx.ref_hab;
+            if (stations.Contains(hab))
+            {
+                continue;
+            }
+            if (stations.Count == EntryLimit)
+            {
+                dropdown.options.Add(new TMP_Dropdown.OptionData(Loc.T("UI.Habs.TooManyLocations")));
+                break;
+            }
+            stations.Add(hab);
+            dropdown.options.Add(new TMP_Dropdown.OptionData(hab.displayName));
+        }
+        // Same rule as the body filter: pointless with fewer than two things to choose between.
+        dropdown.gameObject.SetActive(stations.Count >= 2);
+        dropdown.SetValueWithoutNotify(0);
+        dropdown.captionText.SetText(Loc.T("UI.Habs.NoLocations"));
+    }
+
+    internal static void Hide()
+    {
+        if (dropdown != null)
+        {
+            dropdown.gameObject.SetActive(false);
+        }
+    }
+
+    internal static void Apply(FleetsScreenController screen)
+    {
+        if (dropdown == null || owner != screen || !dropdown.gameObject.activeSelf)
+        {
+            return;
+        }
+        if (screen.refitScrollviews.activeSelf)
+        {
+            return;
+        }
+        List<int> selected = BitFilter.SelectedIndices(dropdown.value, stations.Count);
+        if (selected.Count == 0)
+        {
+            return;
+        }
+        foreach (ShipyardGridItemController item in Grid(screen))
+        {
+            // Vanilla has already hidden anything the body filter excludes; only ever subtract.
+            if (item.gameObject.activeSelf && !selected.Any(i => stations[i] == item.shipyardIdx.ref_hab))
+            {
+                item.gameObject.SetActive(false);
+            }
+        }
+    }
+}
+
+[HarmonyPatch(typeof(FleetsScreenController), nameof(FleetsScreenController.SetConstructionFilterList))]
+internal static class StationFilterPopulate
+{
+    private static void Postfix(FleetsScreenController __instance)
+    {
+        StationFilter.Populate(__instance);
+    }
+}
+
+// The refit tab reuses the body dropdown for docked ships; the station filter doesn't apply.
+[HarmonyPatch(typeof(FleetsScreenController), nameof(FleetsScreenController.SetRefitFilterList))]
+internal static class StationFilterHideOnRefit
+{
+    private static void Postfix()
+    {
+        StationFilter.Hide();
+    }
+}
+
+[HarmonyPatch(typeof(FleetsScreenController), nameof(FleetsScreenController.FilterShipLists))]
+internal static class StationFilterApply
+{
+    private static void Postfix(FleetsScreenController __instance)
+    {
+        StationFilter.Apply(__instance);
     }
 }
 
