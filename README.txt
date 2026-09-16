@@ -95,17 +95,18 @@ These two change game balance rather than just the interface:
   one-off projects) is hard-bounded, while maintenance cost scales with
   national GDP forever, so the repeatable is the only source that can
   keep up and vanilla prices it out of reach. Now the Nth repeat grants
-  the base effect times (1 + rate x (N-1)), so the cost per point
-  converges instead of diverging. At the default 0.03 it settles around
-  4,000 research per point: roughly ten times the median one-off
-  capacity project and twice the worst one in the game, so the grind
-  stays a deliberately poor last resort rather than a shortcut. The
-  capacity bonus is derived from the number of repeats, so it applies to
-  ones already completed. Audience, Commercial and Operations Research
-  get the same scaling on their Influence, Money and Operations grants,
-  from the next completion on (resources already granted are not topped
-  up). Each of the four gains a description line with the true payoff of
-  the next repeat, e.g. "Repeat 27: x1.78 -> 534 Money".
+  the base effect times (1 + rate x (N-1)), rounded to whole units, so
+  the cost per point converges instead of diverging. At the default 0.03
+  it settles around 4,000 research per point: roughly ten times the
+  median one-off capacity project and twice the worst one in the game,
+  so the grind stays a deliberately poor last resort rather than a
+  shortcut. The capacity bonus is derived from the number of repeats,
+  so it applies to ones already completed. Audience, Commercial and
+  Operations Research get the same scaling on their Influence, Money
+  and Operations grants, from the next completion on (resources
+  already granted are not topped up). The project descriptions show
+  the scaled figure in place of the base one, and the "This is a
+  repeatable project" note also says what the next attempt will grant.
 
 Configuration:
 

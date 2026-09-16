@@ -869,8 +869,7 @@ internal static class DemandClaimDespiteOtherWars
     }
 }
 
-// Tweak 9: repeatable projects that grant control point capacity scale their effect alongside
-// their cost.
+// Tweak 9: repeatable income projects scale their payoff alongside their cost.
 //
 // TIProjectTemplate.GetResearchCost multiplies a repeatable's cost by (1 + times completed), so
 // the Nth repeat of Management Research costs N x 600 - but always grants the same flat
@@ -879,22 +878,58 @@ internal static class DemandClaimDespiteOtherWars
 // ~12N^2. Meanwhile the rest of the cap - global freebies, councilor attributes, one admin module
 // per station, a fixed list of one-off projects - is hard-bounded, while maintenance cost scales
 // with national GDP forever. The repeatable is the only unbounded source and vanilla prices it
-// out of reach, so the cap stops rising long before GDP does.
+// out of reach, so the cap stops rising long before GDP does. Audience, Commercial and
+// Operations Research have the same shape with Influence, Money and Operations.
 //
-// With scaling r the Nth repeat grants base x (1 + r(N-1)), so research per point converges on
-// 120/r instead of diverging. At the default 0.03 that is ~4,000: about ten times the median
-// one-off CP-cap project (417 across those a faction can actually take) and twice the worst one
-// in the game, so grinding this remains strictly worse than every alternative while ceasing to
-// be pointless. Set the scaling to 0 for stock behaviour.
+// With scaling r the Nth repeat pays base x (1 + r(N-1)), rounded to whole units, so research per
+// point converges on cost/r instead of diverging. At the default 0.03 Management Research settles
+// around 4,000: about ten times the median one-off CP-cap project (417 across those a faction can
+// actually take) and twice the worst one in the game, so grinding this remains strictly worse
+// than every alternative while ceasing to be pointless. Set the scaling to 0 for stock behaviour.
 //
-// Vanilla already grants base x N via N stacked effect instances, so only the difference is
-// added here: base x r x N(N-1)/2. Keyed on "repeatable, with a negative ControlPointMaintenance
-// effect" rather than on Project_ManagementResearch by name, so another project of the same shape
-// is covered without a code change.
+// Keyed on payload shape - repeatable, with positive resourcesGranted or a negative
+// ControlPointMaintenance effect - rather than on project names, so another project of the same
+// shape is covered without a code change.
+internal static class RepeatableScaling
+{
+    internal static float Rate => Main.settings.repeatableProjectScaling;
+
+    // What the Nth completion pays, rounded - the one figure both applied and displayed. The
+    // first completion is left exactly as vanilla has it.
+    internal static float Scaled(float baseValue, int repeat) =>
+        repeat <= 1
+            ? baseValue
+            : (float)Math.Round(baseValue * (1f + Rate * (repeat - 1)), MidpointRounding.AwayFromZero);
+
+    internal static int Completions(TIFactionState faction, TIProjectTemplate project) =>
+        faction.completedProjects.Count(x => x == project);
+
+    // ControlPointMaintenance effects are stored negative: they reduce maintenance.
+    internal static IEnumerable<TIEffectTemplate> CapEffects(TIProjectTemplate project) =>
+        project.Effects.Where(e => e != null && e.value < 0f
+            && e.GetContexts().Contains(Context.ControlPointMaintenance));
+
+    private static bool IsGrant(ResourceValue x) => x.resource != FactionResource.None && x.value > 0f;
+
+    internal static bool Applies(TIProjectTemplate project) =>
+        project.repeatable && (project.resourcesGranted.Any(IsGrant) || CapEffects(project).Any());
+
+    internal static ResourceValue[] ScaledGrants(TIProjectTemplate project, int repeat) =>
+        project.resourcesGranted
+            .Select(x => IsGrant(x) ? new ResourceValue(x.resource, Scaled(x.value, repeat)) : x)
+            .ToArray();
+
+    internal static bool Visible(TIFactionState faction) =>
+        faction?.completedProjects != null && !faction.IsAlienFaction;
+}
+
+// The cap side is retroactive: recomputed from the repeat count, so it covers repeats finished
+// before the mod was installed. Vanilla already counts base once per completion via stacked
+// effect instances, so only the rounded uplift of each repeat is added.
 [HarmonyPatch(typeof(TIFactionState), nameof(TIFactionState.GetControlPointMaintenanceFreebieCap))]
 internal static class RepeatableCapScalesWithCost
 {
-    private static bool Prepare() => Main.settings.repeatableProjectScaling > 0f;
+    private static bool Prepare() => RepeatableScaling.Rate > 0f;
 
     private struct Cached
     {
@@ -909,22 +944,6 @@ internal static class RepeatableCapScalesWithCost
     private static readonly Dictionary<TIFactionState, Cached> cache =
         new Dictionary<TIFactionState, Cached>();
 
-    // Capacity one completion grants, as a positive number. ControlPointMaintenance effects are
-    // stored negative because they reduce maintenance rather than raising a cap.
-    internal static float CapPerCompletion(TIProjectTemplate project)
-    {
-        float total = 0f;
-        foreach (TIEffectTemplate effect in project.Effects)
-        {
-            if (effect != null && effect.value < 0f
-                && effect.GetContexts().Contains(Context.ControlPointMaintenance))
-            {
-                total -= effect.value;
-            }
-        }
-        return total;
-    }
-
     private static float Compute(TIFactionState faction)
     {
         var counts = new Dictionary<TIProjectTemplate, int>();
@@ -937,15 +956,16 @@ internal static class RepeatableCapScalesWithCost
             counts.TryGetValue(project, out int seen);
             counts[project] = seen + 1;
         }
-        float rate = Main.settings.repeatableProjectScaling;
         float extra = 0f;
         foreach (KeyValuePair<TIProjectTemplate, int> pair in counts)
         {
-            float perCompletion = CapPerCompletion(pair.Key);
-            if (perCompletion > 0f)
+            foreach (TIEffectTemplate effect in RepeatableScaling.CapEffects(pair.Key))
             {
-                // The uplift only, summed over repeats: base x r x (0 + 1 + ... + (N-1)).
-                extra += perCompletion * rate * pair.Value * (pair.Value - 1) / 2f;
+                float baseCap = -effect.value;
+                for (int repeat = 2; repeat <= pair.Value; repeat++)
+                {
+                    extra += RepeatableScaling.Scaled(baseCap, repeat) - baseCap;
+                }
             }
         }
         return extra;
@@ -953,7 +973,7 @@ internal static class RepeatableCapScalesWithCost
 
     private static void Postfix(TIFactionState __instance, ref float __result)
     {
-        if (__instance == null || __instance.IsAlienFaction || __instance.completedProjects == null)
+        if (!RepeatableScaling.Visible(__instance))
         {
             return;
         }
@@ -967,14 +987,12 @@ internal static class RepeatableCapScalesWithCost
     }
 }
 
-// Tweak 9, continued: the resource-granting repeatables (Audience, Commercial and Operations
-// Research) get the same base x (1 + r(N-1)) payoff. Vanilla already paid base inside
-// OnProjectComplete, so only the uplift is added. Unlike the cap this is forward-only: resources
-// granted by earlier repeats are already spent and are not topped up.
+// Resource grants are forward-only: what earlier repeats granted is already spent. Vanilla pays
+// base inside OnProjectComplete, so only the rounded uplift is added.
 [HarmonyPatch(typeof(TIFactionState), nameof(TIFactionState.OnProjectComplete))]
 internal static class RepeatableGrantsScaleWithCost
 {
-    private static bool Prepare() => Main.settings.repeatableProjectScaling > 0f;
+    private static bool Prepare() => RepeatableScaling.Rate > 0f;
 
     // A postfix runs even when vanilla returns early (slot project already completed), so only
     // pay out if this call actually recorded a completion.
@@ -983,26 +1001,21 @@ internal static class RepeatableGrantsScaleWithCost
 
     private static void Postfix(TIFactionState __instance, TIProjectTemplate project, bool startup, int __state)
     {
-        if (startup || project == null || !project.repeatable || __instance.IsAlienFaction
-            || __instance.completedProjects == null || __instance.completedProjects.Count <= __state)
+        if (startup || project == null || !project.repeatable || !RepeatableScaling.Visible(__instance)
+            || __instance.completedProjects.Count <= __state)
         {
             return;
         }
         // completedProjects already includes this completion (AddCompletedProject runs first).
-        int n = __instance.completedProjects.Count(x => x == project);
-        float uplift = Main.settings.repeatableProjectScaling * (n - 1);
-        if (uplift <= 0f)
-        {
-            return;
-        }
+        int repeat = RepeatableScaling.Completions(__instance, project);
         // Routing mirrors vanilla's grant loop.
         foreach (ResourceValue item in project.resourcesGranted)
         {
-            if (item.value <= 0f)
+            float value = item.value > 0f ? RepeatableScaling.Scaled(item.value, repeat) - item.value : 0f;
+            if (value <= 0f)
             {
                 continue;
             }
-            float value = item.value * uplift;
             switch (item.resource)
             {
                 case FactionResource.Projects:
@@ -1020,44 +1033,83 @@ internal static class RepeatableGrantsScaleWithCost
     }
 }
 
-// Tweak 9, UI: vanilla's benefit lines render from shared templates and can't be made
-// per-faction, so append one line with the true scaled payoff for this repeat. Shown for all four
-// projects so the cap (retroactive) and resources (forward-only) read the same way.
+// UI: the benefit lines show the scaled payoff in place of vanilla's base figure. Vanilla renders
+// them from the shared effect and resource templates, so the exact vanilla line is rebuilt and
+// swapped for one rendered from scaled values - an effect clone keeps the template's wording.
+// The completion notice is built after the project is recorded, so it describes the repeat just
+// finished; the research screen describes the next one. The archive keeps vanilla's text.
 [HarmonyPatch(typeof(TIProjectTemplate), nameof(TIProjectTemplate.BenefitsDescription))]
-internal static class RepeatableScalingDescription
+internal static class RepeatableBenefitsDescription
 {
-    private static bool Prepare() => Main.settings.repeatableProjectScaling > 0f;
+    private static bool Prepare() => RepeatableScaling.Rate > 0f;
+
+    private static readonly MethodInfo memberwiseClone = AccessTools.Method(typeof(object), "MemberwiseClone");
+
+    private static string GrantsLine(ResourceValue[] values) =>
+        Loc.T("UI.Science.GrantsResources", TIUtilities.BuildResourceValueString(values));
 
     private static void Postfix(TIProjectTemplate __instance, TIFactionState faction,
         TechBenefitsContext benefitsContext, ref string __result)
     {
-        if (benefitsContext == TechBenefitsContext.Archive || !__instance.repeatable
-            || faction == null || faction.IsAlienFaction || faction.completedProjects == null)
+        if (benefitsContext == TechBenefitsContext.Archive || !RepeatableScaling.Visible(faction)
+            || !RepeatableScaling.Applies(__instance))
         {
             return;
         }
-        ResourceValue[] granted = __instance.resourcesGranted
-            .Where(x => x.resource != FactionResource.None && x.value > 0f).ToArray();
-        float cap = RepeatableCapScalesWithCost.CapPerCompletion(__instance);
-        if (granted.Length == 0 && cap <= 0f)
-        {
-            return;
-        }
-        // The completion notice is built after the project is recorded, so it describes the
-        // repeat just finished; the research screen describes the next one.
-        int repeat = faction.completedProjects.Count(x => x == __instance)
+        int repeat = RepeatableScaling.Completions(faction, __instance)
             + (benefitsContext == TechBenefitsContext.JustCompleted ? 0 : 1);
-        float mult = 1f + Main.settings.repeatableProjectScaling * (repeat - 1);
-        var parts = new List<string>();
-        if (granted.Length > 0)
+        if (repeat <= 1)
         {
-            parts.Add(TIUtilities.BuildResourceValueString(
-                granted.Select(x => new ResourceValue(x.resource, x.value * mult)).ToArray()));
+            return;
         }
+        foreach (TIEffectTemplate effect in RepeatableScaling.CapEffects(__instance))
+        {
+            var scaled = (TIEffectTemplate)memberwiseClone.Invoke(effect, null);
+            scaled.value = -RepeatableScaling.Scaled(-effect.value, repeat);
+            __result = __result.Replace(effect.description(faction, null), scaled.description(faction, null));
+        }
+        __result = __result.Replace(GrantsLine(__instance.resourcesGranted.ToArray()),
+            GrantsLine(RepeatableScaling.ScaledGrants(__instance, repeat)));
+    }
+}
+
+// UI: the "This is a repeatable project..." line also says the payoff grows, and what the next
+// attempt will pay. The vanilla line is rebuilt exactly and extended in place.
+[HarmonyPatch(typeof(TIProjectTemplate), nameof(TIProjectTemplate.WarningsDescription))]
+internal static class RepeatableWarningsDescription
+{
+    private static bool Prepare() => RepeatableScaling.Rate > 0f;
+
+    private static void Postfix(TIProjectTemplate __instance, TIFactionState faction, ref string __result)
+    {
+        if (!RepeatableScaling.Visible(faction) || !RepeatableScaling.Applies(__instance))
+        {
+            return;
+        }
+        int done = RepeatableScaling.Completions(faction, __instance);
+        int next = done + 1;
+        float modifier = TIGlobalValuesState.GetResearchSpeedModifier();
+        string repeating = Loc.T("UI.Science.Repeating",
+            (__instance.researchCost / modifier).ToString("N0"),
+            (__instance.researchCost * (float)(1 + done) / modifier).ToString("N0"),
+            TemplateManager.global.researchInlineSpritePath);
+
+        var payoff = new List<string>();
+        ResourceValue[] grants = RepeatableScaling.ScaledGrants(__instance, next)
+            .Where(x => x.resource != FactionResource.None && x.value > 0f).ToArray();
+        if (grants.Length > 0)
+        {
+            payoff.Add(TIUtilities.BuildResourceValueString(grants));
+        }
+        float cap = RepeatableScaling.CapEffects(__instance)
+            .Sum(e => RepeatableScaling.Scaled(-e.value, next));
         if (cap > 0f)
         {
-            parts.Add($"+{cap * mult:0.#} control point capacity");
+            payoff.Add(TIUtilities.FormatBigOrSmallNumber(cap) + " control point management capacity");
         }
-        __result += $"Repeat {repeat}: x{mult:0.00} -> {string.Join(", ", parts)}\n";
+        string extended = repeating
+            + $" Its payoff also grows by {RepeatableScaling.Rate:P0} of the base each time it is repeated."
+            + $" Our next attempt will grant {string.Join(", ", payoff)}.";
+        __result = __result.Replace(TIUtilities.GreenLine(repeating), TIUtilities.GreenLine(extended));
     }
 }
