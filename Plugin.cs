@@ -1074,7 +1074,7 @@ internal static class RepeatableBenefitsDescription
 }
 
 // UI: the "This is a repeatable project..." line also says the payoff grows, and what the next
-// attempt will pay. The vanilla line is rebuilt exactly and extended in place.
+// attempt will pay. The vanilla line is rebuilt exactly and replaced with the longer wording.
 [HarmonyPatch(typeof(TIProjectTemplate), nameof(TIProjectTemplate.WarningsDescription))]
 internal static class RepeatableWarningsDescription
 {
@@ -1092,11 +1092,12 @@ internal static class RepeatableWarningsDescription
         int done = RepeatableScaling.Completions(faction, __instance);
         int next = done + (context == TechBenefitsContext.JustCompleted ? 1 : 2);
         float modifier = TIGlobalValuesState.GetResearchSpeedModifier();
-        string RepeatingLine(float cost) => Loc.T("UI.Science.Repeating",
+        string sprite = TemplateManager.global.researchInlineSpritePath;
+        // Rebuilt exactly as vanilla renders it, to find the line to replace.
+        string repeating = Loc.T("UI.Science.Repeating",
             (__instance.researchCost / modifier).ToString("N0"),
-            (cost / modifier).ToString("N0"),
-            TemplateManager.global.researchInlineSpritePath);
-        string repeating = RepeatingLine(__instance.researchCost * (float)(1 + done));
+            (__instance.researchCost * (float)(1 + done) / modifier).ToString("N0"),
+            sprite);
 
         var payoff = new List<string>();
         ResourceValue[] grants = RepeatableScaling.ScaledGrants(__instance, next)
@@ -1111,9 +1112,12 @@ internal static class RepeatableWarningsDescription
         {
             payoff.Add(TIUtilities.FormatBigOrSmallNumber(cap) + " control point management capacity");
         }
-        string extended = RepeatingLine(__instance.researchCost * next)
-            + $" It will grant {string.Join(", ", payoff)}."
-            + $" Its payoff grows by {RepeatableScaling.Rate:P0} of the base each time it is repeated.";
+        string extended = "This is a repeatable project. The required research to finish it increases by "
+            + $"{(__instance.researchCost / modifier).ToString("N0")}{sprite} each time it is repeated. "
+            + $"Additionally, the reward for this project will increase by {RepeatableScaling.Rate:P0} "
+            + "each time it is repeated. Our next attempt at this project will cost "
+            + $"{(__instance.researchCost * next / modifier).ToString("N0")}{sprite} "
+            + $"and will grant {string.Join(", ", payoff)}.";
         __result = __result.Replace(TIUtilities.GreenLine(repeating), TIUtilities.GreenLine(extended));
     }
 }
