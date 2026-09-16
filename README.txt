@@ -73,3 +73,70 @@ These two change game balance rather than just the interface:
   instead of sinking them. Availability chance still scales it, so
   genuinely rare projects stay rare.
 
+- Demand Claim works while the target is fighting someone else.
+  Vanilla checks "is this nation at war at all", not "at war with the
+  nation asking", so any nation in any war can never cede a region to
+  anyone. An alien war that never ends therefore freezes every
+  peaceful border change on the map permanently - including transfers
+  between two nations the same faction already controls, which the
+  game would otherwise approve without even asking. Now only a war
+  between those two nations blocks it. Every other vanilla condition
+  is unchanged: still no capitals, no hostile claims, both sides need
+  consolidated executive control, and the improve-relations cooldown
+  still applies.
+
+- Repeatable income projects (Management, Audience, Commercial and
+  Operations Research) scale their payoff with their cost. A repeatable's Nth completion already costs N times the
+  base, but Management Research grants the same flat +5 every time, so
+  research per point of capacity is 120N and grows without limit - by
+  the 27th repeat it is over 3,000 and the cumulative cost of N points
+  is quadratic. Every other source of cap (global freebies, councilor
+  attributes, one administration module per station, a fixed list of
+  one-off projects) is hard-bounded, while maintenance cost scales with
+  national GDP forever, so the repeatable is the only source that can
+  keep up and vanilla prices it out of reach. Now the Nth repeat grants
+  the base effect times (1 + rate x (N-1)), so the cost per point
+  converges instead of diverging. At the default 0.03 it settles around
+  4,000 research per point: roughly ten times the median one-off
+  capacity project and twice the worst one in the game, so the grind
+  stays a deliberately poor last resort rather than a shortcut. The
+  capacity bonus is derived from the number of repeats, so it applies to
+  ones already completed. Audience, Commercial and Operations Research
+  get the same scaling on their Influence, Money and Operations grants,
+  from the next completion on (resources already granted are not topped
+  up). Each of the four gains a description line with the true payoff of
+  the next repeat, e.g. "Repeat 27: x1.78 -> 534 Money".
+
+Configuration:
+
+Every feature above can be switched on or off on its own. The mod writes
+Settings.txt into its own folder the first time it runs. The contents are
+JSON; the file is named .txt because Terra Invicta's own template loader
+tries to parse every .json file in an enabled mod folder as a template
+array, and gives up on the whole batch when one doesn't fit:
+
+    {
+        "habTemplateNaming": true,
+        "priorityPresetOverwrite": true,
+        "presetTrackingOnNationChanges": true,
+        "stationDividers": true,
+        "solarMirrorsBoostStations": false,
+        "expensiveFirstProjectReview": true,
+        "demandClaimDespiteOtherWars": true,
+        "managementResearchEffectScaling": 0.03
+    }
+
+managementResearchEffectScaling is a number, not a switch: it is the
+fraction of the base effect that each repeat adds. 0 turns the patch
+off and restores stock behaviour; 0.03 is the default; larger values
+make the grind cheaper. See the last entry above for what it does.
+
+The solar mirror change is the one that ships off, since it alters power
+output across every station you own; the rest are on. Edit the file and
+restart the game. A setting that is off is not merely inert - the patch
+is never applied at all, so that part of the game runs exactly as stock.
+
+Your own edits are never overwritten: the file is only written when it
+is missing. If it cannot be parsed the mod logs the error, falls back to
+the defaults for that run, and leaves your file alone to be fixed.
+

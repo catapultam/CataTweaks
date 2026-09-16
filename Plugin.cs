@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using HarmonyLib;
@@ -11,10 +12,83 @@ using UnityModManagerNet;
 
 namespace CataTweaks;
 
+// Settings.txt in the mod folder, written with defaults on first run. Edit it and restart the
+// game: values are read once at load, because Harmony decides at patch time whether a patch
+// applies at all. UMM's own settings are XML, so this uses Unity's JsonUtility instead.
+//
+// The contents are JSON but the file must NOT be named .json. Terra Invicta's own template
+// loader (ModTemplateManager.LoadJsonMods) globs every enabled mod file whose path contains
+// ".json" except ModInfo.json, parses it as List<JObject>, and on failure logs a warning and
+// BREAKS out of the loop - so one unparsable file stops template loading for every mod after
+// it, and CataTweaks sorts early alphabetically. A settings object is not a template array, so
+// .txt keeps us out of that glob entirely.
+[Serializable]
+public class Settings
+{
+    // Habs renamed "Name (Template, Location)" when a saved template is applied, and saving a hab
+    // as a template round-trips that name plus its map icon, overwriting the old one in place.
+    public bool habTemplateNaming = true;
+
+    // Saving a priority preset under an existing custom preset's name overwrites it, instead of
+    // the save button going dead.
+    public bool priorityPresetOverwrite = true;
+
+    // Control points re-apply their preset when a nation's valid priorities change, instead of
+    // the profile flipping to 'Custom'.
+    public bool presetTrackingOnNationChanges = true;
+
+    // Full-width dividing rules between stations on the ship construction screen.
+    public bool stationDividers = true;
+
+    // Solar mirrors boost orbital stations inward of them, not just surface bases.
+    public bool solarMirrorsBoostStations = false;
+
+    // Review Failed Projects favours the expensive missed project instead of the cheapest.
+    public bool expensiveFirstProjectReview = true;
+
+    // "Demand Claim" only blocks when the two nations are at war with each other, instead of
+    // when the target is at war with anyone at all.
+    public bool demandClaimDespiteOtherWars = true;
+
+    // Repeatable projects granting control point capacity or resources (Management, Audience,
+    // Commercial, Operations Research) scale their payoff by this fraction of the base value per
+    // repeat, matching the way their cost already scales. 0 disables the patches entirely and
+    // restores vanilla. 0.03 puts the grind at roughly ten times the cost per point of the
+    // median one-off project, so it stays a deliberately poor last resort.
+    public float managementResearchEffectScaling = 0.03f;
+
+    internal static Settings Load(UnityModManager.ModEntry modEntry)
+    {
+        string path = Path.Combine(modEntry.Path, "Settings.txt");
+        try
+        {
+            if (File.Exists(path))
+            {
+                // Never rewritten once it exists, so hand edits and comments-by-absence survive.
+                return JsonUtility.FromJson<Settings>(File.ReadAllText(path)) ?? new Settings();
+            }
+        }
+        catch (Exception e)
+        {
+            // A typo in the file shouldn't take the whole mod down with it.
+            modEntry.Logger.Error("Settings.txt unreadable, using defaults - " + e.Message);
+            return new Settings();
+        }
+        Settings fresh = new Settings();
+        File.WriteAllText(path, JsonUtility.ToJson(fresh, true));
+        return fresh;
+    }
+}
+
 public static class Main
 {
+    internal static Settings settings = new Settings();
+
     public static bool Load(UnityModManager.ModEntry modEntry)
     {
+        // Must precede PatchAll: Harmony calls each patch class's Prepare() while patching, and
+        // those read the settings to decide whether that patch is applied at all.
+        settings = Settings.Load(modEntry);
         new Harmony(modEntry.Info.Id).PatchAll(Assembly.GetExecutingAssembly());
         modEntry.Logger.Log("CataTweaks loaded.");
         return true;
@@ -50,6 +124,8 @@ internal static class HabLocation
 [HarmonyPatch(typeof(ApplyHabTemplateAction), nameof(ApplyHabTemplateAction.Execute))]
 internal static class RenameOnTemplateApply
 {
+    private static bool Prepare() => Main.settings.habTemplateNaming;
+
     private static void Postfix(ApplyHabTemplateAction __instance)
     {
         TIHabState hab = __instance.habID.GetState<TIHabState>();
@@ -75,6 +151,8 @@ internal static class RenameOnTemplateApply
 [HarmonyPatch(typeof(HabitatsScreenController), nameof(HabitatsScreenController.OnHabTemplateSelected))]
 internal static class ApplyTemplateForRename
 {
+    private static bool Prepare() => Main.settings.habTemplateNaming;
+
     private static readonly FieldInfo dropdownField =
         AccessTools.Field(typeof(HabitatsScreenController), "habTemplateDropdown");
 
@@ -115,6 +193,8 @@ internal static class ApplyTemplateForRename
 [HarmonyPatch(typeof(TIHabState), nameof(TIHabState.ConvertToTemplate))]
 internal static class HabTemplateCleanName
 {
+    private static bool Prepare() => Main.settings.habTemplateNaming;
+
     private static void Postfix(TIHabState __instance, TIHabTemplate __result)
     {
         if (__result == null)
@@ -134,6 +214,8 @@ internal static class HabTemplateCleanName
 [HarmonyPatch(typeof(TIFactionState), nameof(TIFactionState.SaveHabDesign))]
 internal static class HabTemplateOverwrite
 {
+    private static bool Prepare() => Main.settings.habTemplateNaming;
+
     private static void Prefix(TIFactionState __instance, TIHabTemplate habDesign)
     {
         foreach (TIHabTemplate old in __instance.habDesigns
@@ -151,6 +233,8 @@ internal static class HabTemplateOverwrite
 [HarmonyPatch(typeof(TIFactionState), nameof(TIFactionState.SaveCustomPresetDesign))]
 internal static class PriorityPresetOverwrite
 {
+    private static bool Prepare() => Main.settings.priorityPresetOverwrite;
+
     internal sealed class OverwriteState
     {
         public bool wasDefault;
@@ -193,6 +277,9 @@ internal static class PriorityPresetOverwrite
 [HarmonyPatch(typeof(NationInfoController), "UpdateDesignPresetPanel")]
 internal static class PriorityPresetSaveButton
 {
+    private static bool Prepare() => Main.settings.priorityPresetOverwrite;
+
+    // Read by the two patches below even when this one isn't applied, so it stays put.
     internal static readonly FieldInfo proposedField =
         AccessTools.Field(typeof(NationInfoController), "proposedPriorityPreset");
 
@@ -232,6 +319,8 @@ internal static class PriorityPresetSaveButton
 [HarmonyPatch(typeof(PavonisInteractive.TerraInvicta.Systems.PeriodicUpdates.NationPeriodicUpdate), "DailyNationUpdateTask")]
 internal static class ReapplyPresetsOnValidityChange
 {
+    private static bool Prepare() => Main.settings.presetTrackingOnNationChanges;
+
     private static readonly Dictionary<GameStateID, HashSet<PriorityType>> lastInvalid =
         new Dictionary<GameStateID, HashSet<PriorityType>>();
 
@@ -377,6 +466,8 @@ internal static class StationDivider
 [HarmonyPatch(typeof(FleetsScreenController), nameof(FleetsScreenController.FilterShipLists))]
 internal static class StationDividerApply
 {
+    private static bool Prepare() => Main.settings.stationDividers;
+
     private static void Postfix(FleetsScreenController __instance)
     {
         StationDivider.Apply(__instance);
@@ -388,6 +479,10 @@ internal static class StationDividerApply
 [HarmonyPatch(typeof(FleetsScreenController), nameof(FleetsScreenController.RefreshConstructionManager))]
 internal static class StationDividerClear
 {
+    // Must share stationDividers with the Apply patch: clearing without adding would be
+    // pointless, and adding without clearing would let ListManagerBase delete real cards.
+    private static bool Prepare() => Main.settings.stationDividers;
+
     private static void Prefix(FleetsScreenController __instance)
     {
         StationDivider.Clear(__instance);
@@ -407,6 +502,11 @@ internal static class StationDividerClear
 // everything they credit under vanilla's rules - Sun-Earth L1 covers every Earth and Luna orbit.
 internal static class StationSolarMirrors
 {
+    // Master switch, read from Settings.txt. Harmony calls Prepare() on each patch class below
+    // and skips patching when it returns false, so with this off the game runs entirely stock -
+    // the code stays here but never touches SolarPowerOutput or ChangeSolarMirrorBonus.
+    internal static bool Enabled => Main.settings.solarMirrorsBoostStations;
+
     // Frame-scoped, matching how the game caches its own hot per-hab queries (see
     // TIHabState.OkayModules). SolarPowerOutput is called from power management, the hab screen
     // and the AI planner, so the walk below can repeat many times within one recalculation;
@@ -523,6 +623,8 @@ internal static class StationSolarMirrors
 [HarmonyPatch(typeof(TIHabModuleState), nameof(TIHabModuleState.SolarPowerOutput))]
 internal static class StationSolarMirrorOutput
 {
+    private static bool Prepare() => StationSolarMirrors.Enabled;
+
     private static void Postfix(TIGameState location, float powerValue, TIFactionState faction,
         int tier, bool skipMirrors, ref int __result)
     {
@@ -549,6 +651,8 @@ internal static class StationSolarMirrorOutput
 [HarmonyPatch(typeof(TISpaceBodyState), nameof(TISpaceBodyState.ChangeSolarMirrorBonus))]
 internal static class StationSolarMirrorRefresh
 {
+    private static bool Prepare() => StationSolarMirrors.Enabled;
+
     private static void Postfix(TISpaceBodyState __instance, int changeBy, TIFactionState faction)
     {
         if (changeBy == 0 || faction == null)
@@ -598,6 +702,10 @@ internal static class StationSolarMirrorRefresh
 [HarmonyPatch]
 internal static class ReviewFavoursExpensiveProjects
 {
+    // Harmony calls Prepare() before TargetMethod(), so turning this off also silences the
+    // throw below rather than taking the mod down over a tweak that isn't wanted.
+    private static bool Prepare() => Main.settings.expensiveFirstProjectReview;
+
     private static MethodBase TargetMethod()
     {
         MethodBase target = AccessTools.GetDeclaredMethods(typeof(TIEffectsState))
@@ -661,6 +769,8 @@ internal static class ReviewFavoursExpensiveProjects
 [HarmonyPatch(typeof(NationInfoController), "DuplicateSelectedPreset")]
 internal static class PriorityPresetKeepName
 {
+    private static bool Prepare() => Main.settings.priorityPresetOverwrite;
+
     private static void Postfix(NationInfoController __instance, TIPriorityPresetTemplate presetToDuplicate)
     {
         if (presetToDuplicate != null && presetToDuplicate.customDesign
@@ -678,6 +788,8 @@ internal static class PriorityPresetKeepName
 [HarmonyPatch(typeof(NationInfoController), "OnNewPresetNameEntered")]
 internal static class PriorityPresetNameEntry
 {
+    private static bool Prepare() => Main.settings.priorityPresetOverwrite;
+
     private static bool Prefix(NationInfoController __instance)
     {
         string name = __instance.inputPresetName.text.Trim();
@@ -696,5 +808,256 @@ internal static class PriorityPresetNameEntry
         AccessTools.Method(typeof(NationInfoController), "UpdateDesignPresetPanel")
             .Invoke(__instance, new object[] { true, false });
         return false;
+    }
+}
+
+// Tweak 8: "Demand Claim" (TransferRegionsOption) stops requiring the target nation to be at
+// peace with EVERYONE. Vanilla filters candidate regions on item.nation.atWar, which is just
+// "wars.Count > 0" - not "at war with the nation asking". TINationState has IsAtWarWith(nation)
+// and the policy's own description says "a nation that's not at war", so the blanket test looks
+// like the intent was the narrower one. The consequence of the wide reading is severe: a nation
+// fighting anyone at all can never cede territory to anyone, and an alien war that never ends
+// freezes every peaceful border change on the map for the rest of the campaign - including
+// transfers between two nations the same faction already controls, where the game otherwise
+// skips the diplomatic response entirely (TransferRegionsOption.PromptPolicyResponse enacts
+// immediately when policyTarget.ref_faction == enactingNation.executiveFaction).
+//
+// Allowed() is just GetPossibleTargets().Count > 0, so postfixing this one method restores both
+// the menu entry and the target list. Every other vanilla condition is re-tested here unchanged,
+// so the only regions this can add are ones vanilla rejected for the war reason alone.
+[HarmonyPatch(typeof(TransferRegionsOption), nameof(TransferRegionsOption.GetPossibleTargets))]
+internal static class DemandClaimDespiteOtherWars
+{
+    private static bool Prepare() => Main.settings.demandClaimDespiteOtherWars;
+
+    private static void Postfix(TINationState actingNation, ref IList<TIGameState> __result)
+    {
+        if (actingNation == null || __result == null)
+        {
+            return;
+        }
+        foreach (TIRegionState region in actingNation.ExternalClaims())
+        {
+            TINationState owner = region.nation;
+            if (owner == null || __result.Contains(region))
+            {
+                continue;
+            }
+            // Vanilla's conditions, minus the blanket atWar test.
+            if (!actingNation.CanImproveRelationsYet(owner)
+                || !owner.ExecutivePowerConsolidated
+                || region == owner.capital
+                || actingNation.ClaimWillBeHostile(region)
+                || (actingNation.rivals.Contains(owner) && !actingNation.CanEndRivalry(owner)))
+            {
+                continue;
+            }
+            // The relaxed test: only a war between these two blocks the transfer.
+            if (owner.IsAtWarWith(actingNation))
+            {
+                continue;
+            }
+            // Vanilla's alien-nation gate, unchanged.
+            if (actingNation.alienNation
+                && !TIEffectsState.CheckForAnyEffectInContext(
+                    Context.CanTransferTerritoryToAliens, owner.executiveFaction))
+            {
+                continue;
+            }
+            __result.Add(region);
+        }
+    }
+}
+
+// Tweak 9: repeatable projects that grant control point capacity scale their effect alongside
+// their cost.
+//
+// TIProjectTemplate.GetResearchCost multiplies a repeatable's cost by (1 + times completed), so
+// the Nth repeat of Management Research costs N x 600 - but always grants the same flat
+// Effect_BSBE_CPMaintenanceBonus5. Research per point of capacity is therefore 120N and diverges:
+// 3,240 by the 27th repeat, 12,000 by the 100th, with the cumulative cost of N points growing as
+// ~12N^2. Meanwhile the rest of the cap - global freebies, councilor attributes, one admin module
+// per station, a fixed list of one-off projects - is hard-bounded, while maintenance cost scales
+// with national GDP forever. The repeatable is the only unbounded source and vanilla prices it
+// out of reach, so the cap stops rising long before GDP does.
+//
+// With scaling r the Nth repeat grants base x (1 + r(N-1)), so research per point converges on
+// 120/r instead of diverging. At the default 0.03 that is ~4,000: about ten times the median
+// one-off CP-cap project (417 across those a faction can actually take) and twice the worst one
+// in the game, so grinding this remains strictly worse than every alternative while ceasing to
+// be pointless. Set the scaling to 0 for stock behaviour.
+//
+// Vanilla already grants base x N via N stacked effect instances, so only the difference is
+// added here: base x r x N(N-1)/2. Keyed on "repeatable, with a negative ControlPointMaintenance
+// effect" rather than on Project_ManagementResearch by name, so another project of the same shape
+// is covered without a code change.
+[HarmonyPatch(typeof(TIFactionState), nameof(TIFactionState.GetControlPointMaintenanceFreebieCap))]
+internal static class RepeatableCapScalesWithCost
+{
+    private static bool Prepare() => Main.settings.managementResearchEffectScaling > 0f;
+
+    private struct Cached
+    {
+        public int completedCount;
+        public float extra;
+    }
+
+    // The cap is read by the ledger, the nations screen and the AI planner, several times per
+    // frame, and completedProjects runs to hundreds of entries. Recompute only when the list
+    // grows. ponytail: in-memory and keyed on the faction object, so a save reload just
+    // repopulates it; bounded by the faction count either way.
+    private static readonly Dictionary<TIFactionState, Cached> cache =
+        new Dictionary<TIFactionState, Cached>();
+
+    // Capacity one completion grants, as a positive number. ControlPointMaintenance effects are
+    // stored negative because they reduce maintenance rather than raising a cap.
+    internal static float CapPerCompletion(TIProjectTemplate project)
+    {
+        float total = 0f;
+        foreach (TIEffectTemplate effect in project.Effects)
+        {
+            if (effect != null && effect.value < 0f
+                && effect.GetContexts().Contains(Context.ControlPointMaintenance))
+            {
+                total -= effect.value;
+            }
+        }
+        return total;
+    }
+
+    private static float Compute(TIFactionState faction)
+    {
+        var counts = new Dictionary<TIProjectTemplate, int>();
+        foreach (TIProjectTemplate project in faction.completedProjects)
+        {
+            if (project == null || !project.repeatable)
+            {
+                continue;
+            }
+            counts.TryGetValue(project, out int seen);
+            counts[project] = seen + 1;
+        }
+        float rate = Main.settings.managementResearchEffectScaling;
+        float extra = 0f;
+        foreach (KeyValuePair<TIProjectTemplate, int> pair in counts)
+        {
+            float perCompletion = CapPerCompletion(pair.Key);
+            if (perCompletion > 0f)
+            {
+                // The uplift only, summed over repeats: base x r x (0 + 1 + ... + (N-1)).
+                extra += perCompletion * rate * pair.Value * (pair.Value - 1) / 2f;
+            }
+        }
+        return extra;
+    }
+
+    private static void Postfix(TIFactionState __instance, ref float __result)
+    {
+        if (__instance == null || __instance.IsAlienFaction || __instance.completedProjects == null)
+        {
+            return;
+        }
+        int completed = __instance.completedProjects.Count;
+        if (!cache.TryGetValue(__instance, out Cached entry) || entry.completedCount != completed)
+        {
+            entry = new Cached { completedCount = completed, extra = Compute(__instance) };
+            cache[__instance] = entry;
+        }
+        __result += entry.extra;
+    }
+}
+
+// Tweak 9, continued: the resource-granting repeatables (Audience, Commercial and Operations
+// Research) get the same base x (1 + r(N-1)) payoff. Vanilla already paid base inside
+// OnProjectComplete, so only the uplift is added. Unlike the cap this is forward-only: resources
+// granted by earlier repeats are already spent and are not topped up.
+[HarmonyPatch(typeof(TIFactionState), nameof(TIFactionState.OnProjectComplete))]
+internal static class RepeatableGrantsScaleWithCost
+{
+    private static bool Prepare() => Main.settings.managementResearchEffectScaling > 0f;
+
+    // A postfix runs even when vanilla returns early (slot project already completed), so only
+    // pay out if this call actually recorded a completion.
+    private static void Prefix(TIFactionState __instance, out int __state) =>
+        __state = __instance.completedProjects?.Count ?? 0;
+
+    private static void Postfix(TIFactionState __instance, TIProjectTemplate project, bool startup, int __state)
+    {
+        if (startup || project == null || !project.repeatable || __instance.IsAlienFaction
+            || __instance.completedProjects == null || __instance.completedProjects.Count <= __state)
+        {
+            return;
+        }
+        // completedProjects already includes this completion (AddCompletedProject runs first).
+        int n = __instance.completedProjects.Count(x => x == project);
+        float uplift = Main.settings.managementResearchEffectScaling * (n - 1);
+        if (uplift <= 0f)
+        {
+            return;
+        }
+        // Routing mirrors vanilla's grant loop.
+        foreach (ResourceValue item in project.resourcesGranted)
+        {
+            if (item.value <= 0f)
+            {
+                continue;
+            }
+            float value = item.value * uplift;
+            switch (item.resource)
+            {
+                case FactionResource.Projects:
+                case FactionResource.MissionControl:
+                    __instance.ChangeBaseResourceIncome(item.resource, value);
+                    break;
+                case FactionResource.None:
+                    break;
+                default:
+                    __instance.AddToCurrentResource(value, item.resource,
+                        suppressFactionResourcesUpdatedEvent: false, "Project Completion");
+                    break;
+            }
+        }
+    }
+}
+
+// Tweak 9, UI: vanilla's benefit lines render from shared templates and can't be made
+// per-faction, so append one line with the true scaled payoff for this repeat. Shown for all four
+// projects so the cap (retroactive) and resources (forward-only) read the same way.
+[HarmonyPatch(typeof(TIProjectTemplate), nameof(TIProjectTemplate.BenefitsDescription))]
+internal static class RepeatableScalingDescription
+{
+    private static bool Prepare() => Main.settings.managementResearchEffectScaling > 0f;
+
+    private static void Postfix(TIProjectTemplate __instance, TIFactionState faction,
+        TechBenefitsContext benefitsContext, ref string __result)
+    {
+        if (benefitsContext == TechBenefitsContext.Archive || !__instance.repeatable
+            || faction == null || faction.IsAlienFaction || faction.completedProjects == null)
+        {
+            return;
+        }
+        ResourceValue[] granted = __instance.resourcesGranted
+            .Where(x => x.resource != FactionResource.None && x.value > 0f).ToArray();
+        float cap = RepeatableCapScalesWithCost.CapPerCompletion(__instance);
+        if (granted.Length == 0 && cap <= 0f)
+        {
+            return;
+        }
+        // The completion notice is built after the project is recorded, so it describes the
+        // repeat just finished; the research screen describes the next one.
+        int repeat = faction.completedProjects.Count(x => x == __instance)
+            + (benefitsContext == TechBenefitsContext.JustCompleted ? 0 : 1);
+        float mult = 1f + Main.settings.managementResearchEffectScaling * (repeat - 1);
+        var parts = new List<string>();
+        if (granted.Length > 0)
+        {
+            parts.Add(TIUtilities.BuildResourceValueString(
+                granted.Select(x => new ResourceValue(x.resource, x.value * mult)).ToArray()));
+        }
+        if (cap > 0f)
+        {
+            parts.Add($"+{cap * mult:0.#} control point capacity");
+        }
+        __result += $"Repeat {repeat}: x{mult:0.00} -> {string.Join(", ", parts)}\n";
     }
 }
