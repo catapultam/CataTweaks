@@ -1080,19 +1080,23 @@ internal static class RepeatableWarningsDescription
 {
     private static bool Prepare() => RepeatableScaling.Rate > 0f;
 
-    private static void Postfix(TIProjectTemplate __instance, TIFactionState faction, ref string __result)
+    // Vanilla's "next attempt" cost is really the attempt in progress - the same repeat the
+    // benefit lines describe - so the prediction here is the one after it.
+    private static void Postfix(TIProjectTemplate __instance, TIFactionState faction,
+        TechBenefitsContext context, ref string __result)
     {
         if (!RepeatableScaling.Visible(faction) || !RepeatableScaling.Applies(__instance))
         {
             return;
         }
         int done = RepeatableScaling.Completions(faction, __instance);
-        int next = done + 1;
+        int next = done + (context == TechBenefitsContext.JustCompleted ? 1 : 2);
         float modifier = TIGlobalValuesState.GetResearchSpeedModifier();
-        string repeating = Loc.T("UI.Science.Repeating",
+        string RepeatingLine(float cost) => Loc.T("UI.Science.Repeating",
             (__instance.researchCost / modifier).ToString("N0"),
-            (__instance.researchCost * (float)(1 + done) / modifier).ToString("N0"),
+            (cost / modifier).ToString("N0"),
             TemplateManager.global.researchInlineSpritePath);
+        string repeating = RepeatingLine(__instance.researchCost * (float)(1 + done));
 
         var payoff = new List<string>();
         ResourceValue[] grants = RepeatableScaling.ScaledGrants(__instance, next)
@@ -1107,9 +1111,9 @@ internal static class RepeatableWarningsDescription
         {
             payoff.Add(TIUtilities.FormatBigOrSmallNumber(cap) + " control point management capacity");
         }
-        string extended = repeating
-            + $" Its payoff also grows by {RepeatableScaling.Rate:P0} of the base each time it is repeated."
-            + $" Our next attempt will grant {string.Join(", ", payoff)}.";
+        string extended = RepeatingLine(__instance.researchCost * next)
+            + $" It will grant {string.Join(", ", payoff)}."
+            + $" Its payoff grows by {RepeatableScaling.Rate:P0} of the base each time it is repeated.";
         __result = __result.Replace(TIUtilities.GreenLine(repeating), TIUtilities.GreenLine(extended));
     }
 }
