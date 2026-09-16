@@ -55,7 +55,7 @@ public class Settings
     // repeat, matching the way their cost already scales. 0 disables the patches entirely and
     // restores vanilla. 0.03 puts the grind at roughly ten times the cost per point of the
     // median one-off project, so it stays a deliberately poor last resort.
-    public float managementResearchEffectScaling = 0.03f;
+    public float repeatableProjectScaling = 0.03f;
 
     internal static Settings Load(UnityModManager.ModEntry modEntry)
     {
@@ -894,7 +894,7 @@ internal static class DemandClaimDespiteOtherWars
 [HarmonyPatch(typeof(TIFactionState), nameof(TIFactionState.GetControlPointMaintenanceFreebieCap))]
 internal static class RepeatableCapScalesWithCost
 {
-    private static bool Prepare() => Main.settings.managementResearchEffectScaling > 0f;
+    private static bool Prepare() => Main.settings.repeatableProjectScaling > 0f;
 
     private struct Cached
     {
@@ -937,7 +937,7 @@ internal static class RepeatableCapScalesWithCost
             counts.TryGetValue(project, out int seen);
             counts[project] = seen + 1;
         }
-        float rate = Main.settings.managementResearchEffectScaling;
+        float rate = Main.settings.repeatableProjectScaling;
         float extra = 0f;
         foreach (KeyValuePair<TIProjectTemplate, int> pair in counts)
         {
@@ -974,7 +974,7 @@ internal static class RepeatableCapScalesWithCost
 [HarmonyPatch(typeof(TIFactionState), nameof(TIFactionState.OnProjectComplete))]
 internal static class RepeatableGrantsScaleWithCost
 {
-    private static bool Prepare() => Main.settings.managementResearchEffectScaling > 0f;
+    private static bool Prepare() => Main.settings.repeatableProjectScaling > 0f;
 
     // A postfix runs even when vanilla returns early (slot project already completed), so only
     // pay out if this call actually recorded a completion.
@@ -990,7 +990,7 @@ internal static class RepeatableGrantsScaleWithCost
         }
         // completedProjects already includes this completion (AddCompletedProject runs first).
         int n = __instance.completedProjects.Count(x => x == project);
-        float uplift = Main.settings.managementResearchEffectScaling * (n - 1);
+        float uplift = Main.settings.repeatableProjectScaling * (n - 1);
         if (uplift <= 0f)
         {
             return;
@@ -1026,7 +1026,7 @@ internal static class RepeatableGrantsScaleWithCost
 [HarmonyPatch(typeof(TIProjectTemplate), nameof(TIProjectTemplate.BenefitsDescription))]
 internal static class RepeatableScalingDescription
 {
-    private static bool Prepare() => Main.settings.managementResearchEffectScaling > 0f;
+    private static bool Prepare() => Main.settings.repeatableProjectScaling > 0f;
 
     private static void Postfix(TIProjectTemplate __instance, TIFactionState faction,
         TechBenefitsContext benefitsContext, ref string __result)
@@ -1047,7 +1047,7 @@ internal static class RepeatableScalingDescription
         // repeat just finished; the research screen describes the next one.
         int repeat = faction.completedProjects.Count(x => x == __instance)
             + (benefitsContext == TechBenefitsContext.JustCompleted ? 0 : 1);
-        float mult = 1f + Main.settings.managementResearchEffectScaling * (repeat - 1);
+        float mult = 1f + Main.settings.repeatableProjectScaling * (repeat - 1);
         var parts = new List<string>();
         if (granted.Length > 0)
         {

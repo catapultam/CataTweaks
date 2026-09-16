@@ -20,9 +20,9 @@ These alter game balance rather than just the interface.
 
 [h1]Configuration[/h1]
 
-Every feature above can be switched on or off on its own. The mod writes [b]Settings.txt[/b] into its own folder the first time it runs, with one entry per feature: [i]habTemplateNaming, priorityPresetOverwrite, presetTrackingOnNationChanges, stationDividers, solarMirrorsBoostStations, expensiveFirstProjectReview, demandClaimDespiteOtherWars, managementResearchEffectScaling[/i]. Edit it and restart the game.
+Every feature above can be switched on or off on its own. The mod writes [b]Settings.txt[/b] into its own folder the first time it runs, with one entry per feature: [i]habTemplateNaming, priorityPresetOverwrite, presetTrackingOnNationChanges, stationDividers, solarMirrorsBoostStations, expensiveFirstProjectReview, demandClaimDespiteOtherWars, repeatableProjectScaling[/i]. Edit it and restart the game.
 
-[i]managementResearchEffectScaling[/i] is a number rather than a switch - the fraction of the base effect each repeat adds. Set it to 0 for stock behaviour, or raise it to make the grind cheaper; 0.03 is the default.
+[i]repeatableProjectScaling[/i] is a number rather than a switch - the fraction of the base effect each repeat adds. Set it to 0 for stock behaviour, or raise it to make the grind cheaper; 0.03 is the default.
 
 The solar mirror change is the one that ships [b]off[/b], since it alters power output across every station you own; everything else is on by default. A setting that is off is not merely inert - the patch is never applied at all, so that part of the game runs exactly as stock. Your own edits are never overwritten, as the file is only written when it is missing; and if it cannot be parsed the mod logs the error, uses defaults for that run, and leaves the file alone for you to fix.
 

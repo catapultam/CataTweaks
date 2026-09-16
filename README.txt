@@ -123,10 +123,10 @@ array, and gives up on the whole batch when one doesn't fit:
         "solarMirrorsBoostStations": false,
         "expensiveFirstProjectReview": true,
         "demandClaimDespiteOtherWars": true,
-        "managementResearchEffectScaling": 0.03
+        "repeatableProjectScaling": 0.03
     }
 
-managementResearchEffectScaling is a number, not a switch: it is the
+repeatableProjectScaling is a number, not a switch: it is the
 fraction of the base effect that each repeat adds. 0 turns the patch
 off and restores stock behaviour; 0.03 is the default; larger values
 make the grind cheaper. See the last entry above for what it does.
