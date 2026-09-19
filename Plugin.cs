@@ -50,6 +50,9 @@ public class Settings
     // when the target is at war with anyone at all.
     public bool demandClaimDespiteOtherWars = true;
 
+    // Fleet-detected notifications name the hab's orbit or body as well as the hab itself.
+    public bool fleetDetectionLocation = true;
+
     // Repeatable projects granting control point capacity or resources (Management, Audience,
     // Commercial, Operations Research) scale their payoff by this fraction of the base value per
     // repeat, matching the way their cost already scales. 0 disables the patches entirely and
@@ -1120,4 +1123,36 @@ internal static class RepeatableWarningsDescription
             + $"and will grant {string.Join(", ", payoff)}.";
         __result = __result.Replace(TIUtilities.GreenLine(repeating), TIUtilities.GreenLine(extended));
     }
+}
+
+// Tweak 10: "a new Protectorate fleet docked at Montezuma Base" also says where that base is.
+//
+// TISpaceFleetState.GetLocationDescription already builds the longer form - "docked at Montezuma
+// Base, Low Mars Orbit" - when its expand argument is true, and orbit names carry the body. The
+// fleet-detected notification just asks for the short form, which names a hab the player has no
+// reason to be able to place. So the argument is flipped for the duration of that one call
+// rather than reworded here: landed fleets name their body, docked and transferring ones their
+// orbit, and every other case is already self-describing.
+[HarmonyPatch(typeof(TINotificationQueueState), nameof(TINotificationQueueState.LogFleetDetected))]
+internal static class FleetDetectedLocation
+{
+    private static bool Prepare() => Main.settings.fleetDetectionLocation;
+
+    // ThreadStatic: the flag is only meant for the notification's own two calls, so a hab list
+    // rendering on another thread inside the same window keeps the short form.
+    [ThreadStatic]
+    internal static bool expanding;
+
+    private static void Prefix() => expanding = true;
+
+    // Finalizer rather than Postfix: it also runs if the notification throws.
+    private static void Finalizer() => expanding = false;
+}
+
+[HarmonyPatch(typeof(TISpaceFleetState), nameof(TISpaceFleetState.GetLocationDescription))]
+internal static class FleetDetectedLocationExpand
+{
+    private static bool Prepare() => Main.settings.fleetDetectionLocation;
+
+    private static void Prefix(ref bool expand) => expand |= FleetDetectedLocation.expanding;
 }

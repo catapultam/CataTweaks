@@ -108,6 +108,14 @@ These two change game balance rather than just the interface:
   the scaled figure in place of the base one, and the "This is a
   repeatable project" note also says what the next attempt will grant.
 
+- Fleet detection notices say where the hab is. "Surveillance
+  telescopes have detected a new Protectorate fleet docked at Montezuma
+  Base" only helps if you already know where Montezuma Base is. The
+  game can already write the longer form - the same line with ", Low
+  Mars Orbit" after the hab, and the body for a landed fleet - and uses
+  it elsewhere; the notification just asked for the short one. Now it
+  asks for the long one, so a detection tells you where to look.
+
 Configuration:
 
 Every feature above can be switched on or off on its own. The mod writes
@@ -124,6 +132,7 @@ array, and gives up on the whole batch when one doesn't fit:
         "solarMirrorsBoostStations": false,
         "expensiveFirstProjectReview": true,
         "demandClaimDespiteOtherWars": true,
+        "fleetDetectionLocation": true,
         "repeatableProjectScaling": 0.03
     }
 
