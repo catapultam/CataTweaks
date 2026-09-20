@@ -53,6 +53,10 @@ public class Settings
     // Fleet-detected notifications name the hab's orbit or body as well as the hab itself.
     public bool fleetDetectionLocation = true;
 
+    // A nation that absorbs another inherits the peaceful half of its claims, so unification no
+    // longer has to be worked strictly from the outside in.
+    public bool inheritClaimsOnMerge = true;
+
     // Repeatable projects granting control point capacity or resources (Management, Audience,
     // Commercial, Operations Research) scale their payoff by this fraction of the base value per
     // repeat, matching the way their cost already scales. 0 disables the patches entirely and
@@ -1155,4 +1159,46 @@ internal static class FleetDetectedLocationExpand
     private static bool Prepare() => Main.settings.fleetDetectionLocation;
 
     private static void Prefix(ref bool expand) => expand |= FleetDetectedLocation.expanding;
+}
+
+// Tweak 11: a nation that absorbs another inherits its peaceful claims.
+//
+// TINationState.AbsorbNation moves regions, control points, nuclear weapons, the space program and
+// half the accumulated investment - and not one claim. The absorbed nation keeps its own claim list
+// while it sits dormant, so the only way to reach anything it claimed is to release it again, let
+// it expand, and re-absorb it. That is what forces unification to run strictly outside in: merge
+// the far end of a chain first, because merging inward first strands every claim beyond it.
+//
+// Here the absorbing nation takes over the peaceful half of what the joining nation claimed. Claims
+// the joiner held hostilely are left behind: those represent a population that fought its way out,
+// and inheriting them would hand over a casus belli that was never yours. Inherited claims are set
+// non-hostile (SetClaim with fromSeizure false), so they merge diplomatically rather than arriving
+// as fresh grievances.
+//
+// This applies to annexation as well as unification, since both run through AbsorbNation, and to AI
+// nations as much as the player's.
+[HarmonyPatch(typeof(TINationState), nameof(TINationState.AbsorbNation))]
+internal static class InheritClaimsOnMerge
+{
+    private static bool Prepare() => Main.settings.inheritClaimsOnMerge;
+
+    private static void Postfix(TINationState __instance, TINationState joiningNationState)
+    {
+        if (__instance == null || joiningNationState == null || __instance == joiningNationState
+            || __instance.alienNation || joiningNationState.claims == null)
+        {
+            return;
+        }
+        // ToList: SetClaim writes to the region's own claim bookkeeping, and the joiner's list can
+        // be touched by that, so iterate a copy.
+        foreach (TIRegionState region in joiningNationState.claims.ToList())
+        {
+            if (region == null || joiningNationState.hostileClaims.Contains(region)
+                || __instance.claims.Contains(region))
+            {
+                continue;
+            }
+            __instance.SetClaim(region, fromSeizure: false, forceFromSeizure: false);
+        }
+    }
 }
