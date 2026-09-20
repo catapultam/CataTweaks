@@ -1169,12 +1169,15 @@ internal static class FleetDetectedLocationExpand
 // government, let it expand and take it back. That is what forces unification to run strictly
 // outside in: merge inward first and every claim past that point is stranded.
 //
-// So the claims are borrowed, not granted. While you hold a nation's original capital and your
-// claim on that capital is not hostile, its claims are yours; lose the capital, or have the claim
-// on it turn hostile, and they go again. Hostility carries across unchanged - a claim the other
+// So the claims are borrowed, not granted. While you hold a dormant nation's original capital and
+// your claim on that capital is not hostile, its claims are yours; lose the capital, or have the
+// claim on it turn hostile, and they go again. A nation still holding territory of its own is
+// excluded - it can still speak for itself, and its claims are not going spare. Hostility carries across unchanged - a claim the other
 // nation held hostilely stays hostile for you, because the point is to skip the merge dance, not
 // to launder a grievance into a peaceful merger.
 //
+// Recomputed when a nation is absorbed, when regions change hands, monthly as a backstop, and for
+// every nation on load - a load starts from vanilla claims, since borrowed ones are never written.
 // Borrowed claims never reach a save file: SaveAllGameStates is bracketed so they are handed back
 // before serialisation and lent again afterwards. A save written with this on is a vanilla save,
 // and turning the tweak off loses nothing.
@@ -1231,7 +1234,10 @@ internal static class InheritedCapitalClaims
                 continue;
             }
             TINationState source = CapitalHolder(capital);
-            if (source == null || source == nation || source.alienNation || source.claims == null)
+            // Dormant nations only. A living nation that moved its capital still speaks for itself,
+            // and borrowing from it would be leeching rather than skipping the merge dance.
+            if (source == null || source == nation || source.alienNation || source.claims == null
+                || source.extant)
             {
                 continue;
             }
@@ -1275,10 +1281,35 @@ internal static class InheritedCapitalClaims
     [HarmonyPostfix]
     private static void OnAbsorb(TINationState __instance) => Recompute(__instance);
 
-    [HarmonyPatch(typeof(PavonisInteractive.TerraInvicta.Systems.PeriodicUpdates.NationPeriodicUpdate),
-        "DailyNationUpdateTask")]
+    // Monthly, not daily: the event hooks catch every case where a capital changes hands, so this is
+    // only a backstop for claims that shift without one - research unlocking a claim on a capital we
+    // already hold, or a claim's hostility flipping. A month's lag on those is nothing.
+    [HarmonyPatch(typeof(TINationState), "MonthlyNationUpdate")]
     [HarmonyPostfix]
-    private static void Daily(TINationState nation) => Recompute(nation);
+    private static void Monthly(TINationState __instance) => Recompute(__instance);
+
+    // Regions changing hands outside a merger - a peace deal, a seizure - can hand over or take
+    // away a capital, so recompute both sides rather than waiting for the next day.
+    [HarmonyPatch(typeof(TINationState), nameof(TINationState.TransferRegionsControlTo))]
+    [HarmonyPostfix]
+    private static void OnTransfer(TINationState __instance, TINationState newNation)
+    {
+        Recompute(__instance);
+        Recompute(newNation);
+    }
+
+    // A load starts from vanilla claims - borrowed ones were never written - so lend them back.
+    [HarmonyPatch(typeof(GameStateManager), nameof(GameStateManager.LoadAllGameStates))]
+    [HarmonyPostfix]
+    private static void OnLoad()
+    {
+        lent.Clear();
+        capitalOf = null;
+        foreach (TINationState nation in GameStateManager.AllNations())
+        {
+            Recompute(nation);
+        }
+    }
 
     // Saves stay vanilla: hand every borrowed claim back, let the game serialise, then lend again.
     [HarmonyPatch(typeof(GameStateManager), nameof(GameStateManager.SaveAllGameStates))]

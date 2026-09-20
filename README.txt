@@ -123,16 +123,20 @@ These two change game balance rather than just the interface:
   it claimed is to release it, rebuild its government, let it expand and
   take it back. That is what forces unification to be worked strictly
   from the outside in: merge inward first and every claim past that
-  point is stranded. Now, while you hold a nation's original capital and
-  your claim on that capital is not hostile, its claims are yours to
-  use. Lose the capital, or have the claim on it turn hostile, and they
-  go again - they are borrowed, not granted. Hostility carries across
-  unchanged: a claim the other nation held hostilely stays hostile for
-  you, so this skips the merge dance without letting you do anything you
-  could not otherwise do. Borrowed claims are stripped before a save is
-  written and restored afterwards, so saves stay vanilla and turning the
-  setting off loses nothing. Applies to annexation as well, and to AI
-  nations as much as yours.
+  point is stranded. Now, while you hold a dormant nation's original
+  capital and your claim on that capital is not hostile, its claims are
+  yours to use. A nation that still holds territory of its own is
+  excluded, capital or no capital: it can still speak for itself. Lose
+  the capital, or have the claim on it turn hostile, and they go again -
+  they are borrowed, not granted. Hostility carries across unchanged: a
+  claim the other nation held hostilely stays hostile for you, so this
+  skips the merge dance without letting you do anything you could not
+  otherwise do. The borrowing is recalculated whenever a nation is
+  absorbed, whenever regions change hands, on every load, and monthly as
+  a backstop. Borrowed claims are stripped before a save is written and
+  restored afterwards, so saves stay vanilla and turning the setting off
+  loses nothing. Applies to annexation as well, and to AI nations as
+  much as yours.
 
 Configuration:
 
