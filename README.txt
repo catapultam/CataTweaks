@@ -172,8 +172,14 @@ effect immediately: no restart, and no reload of your save.
     Fleet detections name the orbit or body        on
     Holding a capital borrows that nation's        on
       claims
-    Unused spy slots become councilor slots        on
+    Unused spy slots become councilor slots        on *
     Repeatable payoff scaling per repeat           0.03
+
+* This one is fixed for the life of a campaign, so its box only moves
+in the main menu - inside a game it snaps back. It changes how many
+councilors a faction may hold, and turning it off with eight seated
+would leave every faction over its own cap with no way down but
+dismissals. Everything else applies the moment you click it.
 
 The last one is a number, not a switch: the fraction of the base effect
 that each repeat adds. 0 turns the patch off and restores stock

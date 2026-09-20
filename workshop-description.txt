@@ -23,7 +23,7 @@ These alter game balance rather than just the interface.
 
 [h1]Configuration[/h1]
 
-Every feature above can be switched on or off on its own, from the [b]Unity Mod Manager window[/b] - Ctrl+F10 in game, Mods tab, CataTweaks. Each has its own control and [b]changes take effect immediately[/b]: no restart, no save reload. Click Save to keep them; they are stored in Settings.xml in the mod folder. A Settings.txt from an earlier version is read once and carried over automatically.
+Every feature above can be switched on or off on its own, from the [b]Unity Mod Manager window[/b] - Ctrl+F10 in game, Mods tab, CataTweaks. Each has its own control and [b]changes take effect immediately[/b]: no restart, no save reload. The one exception is the council slot pool, which is fixed for the life of a campaign and only changes from the main menu. Click Save to keep them; they are stored in Settings.xml in the mod folder. A Settings.txt from an earlier version is read once and carried over automatically.
 
 [i]repeatableProjectScaling[/i] is a number rather than a switch - the fraction of the base effect each repeat adds. Set it to 0 for stock behaviour, or raise it to make the grind cheaper; 0.03 is the default.
 

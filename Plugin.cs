@@ -88,6 +88,7 @@ public class Settings : UnityModManager.ModSettings, IDrawable
     {
         try
         {
+            CouncilSlotPool.OnSettingChanged();
             StationSolarMirrors.Invalidate();
             InheritedCapitalClaims.OnSettingChanged();
         }
@@ -130,7 +131,13 @@ public static class Main
         mod = modEntry;
         settings = UnityModManager.ModSettings.Load<Settings>(modEntry);
         Settings.MigrateLegacyFile(settings, modEntry);
-        modEntry.OnGUI = entry => settings.Draw(entry);
+        CouncilSlotPool.Latch();
+        modEntry.OnGUI = entry =>
+        {
+            settings.Draw(entry);
+            GUILayout.Label("Council slot changes only take outside a campaign; everything else "
+                + "applies immediately.");
+        };
         modEntry.OnSaveGUI = entry => settings.Save(entry);
         Harmony harmony = new Harmony(modEntry.Info.Id);
         harmony.PatchAll(Assembly.GetExecutingAssembly());
@@ -1499,6 +1506,29 @@ internal static class CouncilSlotPool
 {
     // The council grid is built for eight. Not a setting: a larger pool would need a bigger grid.
     internal const int Pool = 8;
+
+    // Unlike every other tweak here, this one is fixed for the life of a campaign. It changes how
+    // many councilors a faction may hold, and turning it off with eight seated would leave every
+    // faction over its own cap with no route back down but dismissals. So the box only moves in
+    // the main menu; inside a campaign OnChange puts it back where it was.
+    private static bool locked = true;
+
+    internal static void Latch() => locked = Main.settings.spySlotsAsCouncilSlots;
+
+    internal static void OnSettingChanged()
+    {
+        if (!GameStateManager.HasGamestates)
+        {
+            Latch();
+            return;
+        }
+        if (Main.settings.spySlotsAsCouncilSlots != locked)
+        {
+            Main.settings.spySlotsAsCouncilSlots = locked;
+            Main.mod?.Logger.Log(
+                "Council slot pool only changes outside a campaign - return to the main menu first.");
+        }
+    }
 
     // Vanilla's ceiling, and the gate. Below it the size projects are unfinished and nothing here
     // applies; at it the unused spy slots open up.
