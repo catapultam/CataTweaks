@@ -156,34 +156,47 @@ These two change game balance rather than just the interface:
 
 Configuration:
 
-Every feature above can be switched on or off on its own. The mod writes
-Settings.txt into its own folder the first time it runs. The contents are
-JSON; the file is named .txt because Terra Invicta's own template loader
-tries to parse every .json file in an enabled mod folder as a template
-array, and gives up on the whole batch when one doesn't fit:
+Every feature above can be switched on or off on its own, from the Unity
+Mod Manager window - press Ctrl+F10 in game, open the Mods tab and click
+CataTweaks. Each feature has its own control there, and changes take
+effect immediately: no restart, and no reload of your save.
 
-    {
-        "habTemplateNaming": true,
-        "priorityPresetOverwrite": true,
-        "presetTrackingOnNationChanges": true,
-        "stationDividers": true,
-        "solarMirrorsBoostStations": false,
-        "expensiveFirstProjectReview": true,
-        "demandClaimDespiteOtherWars": true,
-        "fleetDetectionLocation": true,
-        "inheritedCapitalClaims": true,
-        "repeatableProjectScaling": 0.03
-    }
+    Hab template naming and icon round-trip        on
+    Priority presets overwrite in place            on
+    Nations keep their preset when priorities      on
+      change
+    Dividing rules between stations                on
+    Solar mirrors boost orbital stations           OFF
+    Project review favours the expensive project   on
+    Demand Claim ignores the target's other wars   on
+    Fleet detections name the orbit or body        on
+    Holding a capital borrows that nation's        on
+      claims
+    Unused spy slots become councilor slots        on
+    Repeatable payoff scaling per repeat           0.03
 
-repeatableProjectScaling is a number, not a switch: it is the
-fraction of the base effect that each repeat adds. 0 turns the patch
-off and restores stock behaviour; 0.03 is the default; larger values
-make the grind cheaper. See the last entry above for what it does.
+The last one is a number, not a switch: the fraction of the base effect
+that each repeat adds. 0 turns the patch off and restores stock
+behaviour; 0.03 is the default; larger values make the grind cheaper.
 
 The solar mirror change is the one that ships off, since it alters power
-output across every station you own; the rest are on. Edit the file and
-restart the game. A setting that is off is not merely inert - the patch
-is never applied at all, so that part of the game runs exactly as stock.
+output across every station you own; the rest are on.
+
+Click Save in the manager window to keep your choices. They are written
+to Settings.xml in the mod folder - Unity Mod Manager's own format, and
+never a .json, because Terra Invicta's template loader tries to parse
+every .json in an enabled mod folder as a template array and gives up on
+the whole batch when one doesn't fit.
+
+If you used an earlier version, its Settings.txt is read once and its
+values carried into Settings.xml; the old file is left behind as
+Settings.txt.migrated.
+
+Two notes on switching things off mid-campaign. Borrowed capital claims
+are handed back the moment you clear that box, so the map returns to
+exactly what vanilla would show. Solar mirror power is recalculated as
+stations next update rather than instantly, so a station may report its
+old output until something else touches it.
 
 Your own edits are never overwritten: the file is only written when it
 is missing. If it cannot be parsed the mod logs the error, falls back to

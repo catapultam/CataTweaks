@@ -12,53 +12,63 @@ using UnityModManagerNet;
 
 namespace CataTweaks;
 
-// Settings.txt in the mod folder, written with defaults on first run. Edit it and restart the
-// game: values are read once at load, because Harmony decides at patch time whether a patch
-// applies at all. UMM's own settings are XML, so this uses Unity's JsonUtility instead.
+// Settings live in the Unity Mod Manager window (Ctrl+F10 by default), under this mod's entry.
+// UMM draws one control per [Draw] field, writes Settings.xml into the mod folder on Save, and
+// calls OnChange the moment a control moves - so every toggle takes effect immediately, with no
+// restart. Each patch reads its setting when it runs rather than gating at patch time, which is
+// what makes that possible; the cost is that a disabled patch still runs one comparison.
 //
-// The contents are JSON but the file must NOT be named .json. Terra Invicta's own template
-// loader (ModTemplateManager.LoadJsonMods) globs every enabled mod file whose path contains
-// ".json" except ModInfo.json, parses it as List<JObject>, and on failure logs a warning and
-// BREAKS out of the loop - so one unparsable file stops template loading for every mod after
-// it, and CataTweaks sorts early alphabetically. A settings object is not a template array, so
-// .txt keeps us out of that glob entirely.
-[Serializable]
-public class Settings
+// The file must NOT be named .json. Terra Invicta's own template loader (ModTemplateManager
+// .LoadJsonMods) globs every enabled mod file whose path contains ".json" except ModInfo.json,
+// parses it as List<JObject>, and on failure logs a warning and BREAKS out of the loop - so one
+// unparsable file stops template loading for every mod after it, and CataTweaks sorts early
+// alphabetically. UMM's .xml keeps us out of that glob entirely, as the old .txt did.
+public class Settings : UnityModManager.ModSettings, IDrawable
 {
     // Habs renamed "Name (Template, Location)" when a saved template is applied, and saving a hab
     // as a template round-trips that name plus its map icon, overwriting the old one in place.
+    [Draw("Hab template naming and icon round-trip")]
     public bool habTemplateNaming = true;
 
     // Saving a priority preset under an existing custom preset's name overwrites it, instead of
     // the save button going dead.
+    [Draw("Priority presets overwrite in place")]
     public bool priorityPresetOverwrite = true;
 
     // Control points re-apply their preset when a nation's valid priorities change, instead of
     // the profile flipping to 'Custom'.
+    [Draw("Nations keep their preset when priorities change")]
     public bool presetTrackingOnNationChanges = true;
 
     // Full-width dividing rules between stations on the ship construction screen.
+    [Draw("Dividing rules between stations")]
     public bool stationDividers = true;
 
     // Solar mirrors boost orbital stations inward of them, not just surface bases.
+    [Draw("Solar mirrors boost orbital stations")]
     public bool solarMirrorsBoostStations = false;
 
     // Review Failed Projects favours the expensive missed project instead of the cheapest.
+    [Draw("Project review favours the expensive project")]
     public bool expensiveFirstProjectReview = true;
 
     // "Demand Claim" only blocks when the two nations are at war with each other, instead of
     // when the target is at war with anyone at all.
+    [Draw("Demand Claim ignores the target's other wars")]
     public bool demandClaimDespiteOtherWars = true;
 
     // Fleet-detected notifications name the hab's orbit or body as well as the hab itself.
+    [Draw("Fleet detections name the orbit or body")]
     public bool fleetDetectionLocation = true;
 
     // A nation that holds another nation's original capital borrows that nation's claims for as
     // long as it holds it, so unification no longer has to be worked strictly from the outside in.
+    [Draw("Holding a capital borrows that nation's claims")]
     public bool inheritedCapitalClaims = true;
 
     // The two turned-councilor slots on the council screen double as councilor slots once both
     // council size projects are done: no spies means eight councilors, two spies means six.
+    [Draw("Unused spy slots become councilor slots")]
     public bool spySlotsAsCouncilSlots = true;
 
     // Repeatable projects granting control point capacity or resources (Management, Audience,
@@ -66,41 +76,73 @@ public class Settings
     // repeat, matching the way their cost already scales. 0 disables the patches entirely and
     // restores vanilla. 0.03 puts the grind at roughly ten times the cost per point of the
     // median one-off project, so it stays a deliberately poor last resort.
+    [Draw("Repeatable payoff scaling per repeat")]
     public float repeatableProjectScaling = 0.03f;
 
-    internal static Settings Load(UnityModManager.ModEntry modEntry)
+    public override void Save(UnityModManager.ModEntry modEntry) => Save(this, modEntry);
+
+    // UMM calls this the moment a control moves, so this is where a live toggle takes hold for
+    // the patches that hold state of their own. Nothing here may throw: it runs from the GUI, and
+    // from the main menu where there is no campaign to walk.
+    public void OnChange()
     {
-        string path = Path.Combine(modEntry.Path, "Settings.txt");
         try
         {
-            if (File.Exists(path))
-            {
-                // Never rewritten once it exists, so hand edits and comments-by-absence survive.
-                return JsonUtility.FromJson<Settings>(File.ReadAllText(path)) ?? new Settings();
-            }
+            StationSolarMirrors.Invalidate();
+            InheritedCapitalClaims.OnSettingChanged();
         }
         catch (Exception e)
         {
-            // A typo in the file shouldn't take the whole mod down with it.
-            modEntry.Logger.Error("Settings.txt unreadable, using defaults - " + e.Message);
-            return new Settings();
+            Main.mod?.Logger.Error("Applying a setting change failed - " + e);
         }
-        Settings fresh = new Settings();
-        File.WriteAllText(path, JsonUtility.ToJson(fresh, true));
-        return fresh;
+    }
+
+    // One-time move from the pre-GUI Settings.txt. FromJsonOverwrite fills the fields it
+    // recognises and ignores the rest, so the old file's values survive the change of format;
+    // the original is kept under a new name rather than deleted.
+    internal static void MigrateLegacyFile(Settings target, UnityModManager.ModEntry modEntry)
+    {
+        string legacy = Path.Combine(modEntry.Path, "Settings.txt");
+        if (!File.Exists(legacy) || File.Exists(Path.Combine(modEntry.Path, "Settings.xml")))
+        {
+            return;
+        }
+        try
+        {
+            JsonUtility.FromJsonOverwrite(File.ReadAllText(legacy), target);
+            target.Save(modEntry);
+            File.Move(legacy, legacy + ".migrated");
+        }
+        catch (Exception e)
+        {
+            modEntry.Logger.Error("Could not carry Settings.txt over to Settings.xml - " + e.Message);
+        }
     }
 }
 
 public static class Main
 {
     internal static Settings settings = new Settings();
+    internal static UnityModManager.ModEntry mod;
 
     public static bool Load(UnityModManager.ModEntry modEntry)
     {
-        // Must precede PatchAll: Harmony calls each patch class's Prepare() while patching, and
-        // those read the settings to decide whether that patch is applied at all.
-        settings = Settings.Load(modEntry);
-        new Harmony(modEntry.Info.Id).PatchAll(Assembly.GetExecutingAssembly());
+        mod = modEntry;
+        settings = UnityModManager.ModSettings.Load<Settings>(modEntry);
+        Settings.MigrateLegacyFile(settings, modEntry);
+        modEntry.OnGUI = entry => settings.Draw(entry);
+        modEntry.OnSaveGUI = entry => settings.Save(entry);
+        Harmony harmony = new Harmony(modEntry.Info.Id);
+        harmony.PatchAll(Assembly.GetExecutingAssembly());
+        try
+        {
+            harmony.Patch(ReviewFavoursExpensiveProjects.TargetMethod(), prefix: new HarmonyMethod(
+                AccessTools.Method(typeof(ReviewFavoursExpensiveProjects), "Prefix")));
+        }
+        catch (Exception e)
+        {
+            modEntry.Logger.Error("Review Failed Projects tweak could not attach - " + e.Message);
+        }
         modEntry.Logger.Log("CataTweaks loaded.");
         return true;
     }
@@ -135,10 +177,12 @@ internal static class HabLocation
 [HarmonyPatch(typeof(ApplyHabTemplateAction), nameof(ApplyHabTemplateAction.Execute))]
 internal static class RenameOnTemplateApply
 {
-    private static bool Prepare() => Main.settings.habTemplateNaming;
-
     private static void Postfix(ApplyHabTemplateAction __instance)
     {
+        if (!Main.settings.habTemplateNaming)
+        {
+            return;
+        }
         TIHabState hab = __instance.habID.GetState<TIHabState>();
         TIHabTemplate design = __instance.habDesign;
         if (hab == null || design == null || string.IsNullOrEmpty(design.displayName))
@@ -162,13 +206,15 @@ internal static class RenameOnTemplateApply
 [HarmonyPatch(typeof(HabitatsScreenController), nameof(HabitatsScreenController.OnHabTemplateSelected))]
 internal static class ApplyTemplateForRename
 {
-    private static bool Prepare() => Main.settings.habTemplateNaming;
-
     private static readonly FieldInfo dropdownField =
         AccessTools.Field(typeof(HabitatsScreenController), "habTemplateDropdown");
 
     private static void Postfix(HabitatsScreenController __instance)
     {
+        if (!Main.settings.habTemplateNaming)
+        {
+            return;
+        }
         TIHabState hab = __instance.habToDisplay;
         var dropdown = (Dictionary<int, string>)dropdownField.GetValue(__instance);
         if (__instance.managementQueryConfirmButton.interactable || hab == null
@@ -204,10 +250,12 @@ internal static class ApplyTemplateForRename
 [HarmonyPatch(typeof(TIHabState), nameof(TIHabState.ConvertToTemplate))]
 internal static class HabTemplateCleanName
 {
-    private static bool Prepare() => Main.settings.habTemplateNaming;
-
     private static void Postfix(TIHabState __instance, TIHabTemplate __result)
     {
+        if (!Main.settings.habTemplateNaming)
+        {
+            return;
+        }
         if (__result == null)
         {
             return;
@@ -225,10 +273,12 @@ internal static class HabTemplateCleanName
 [HarmonyPatch(typeof(TIFactionState), nameof(TIFactionState.SaveHabDesign))]
 internal static class HabTemplateOverwrite
 {
-    private static bool Prepare() => Main.settings.habTemplateNaming;
-
     private static void Prefix(TIFactionState __instance, TIHabTemplate habDesign)
     {
+        if (!Main.settings.habTemplateNaming)
+        {
+            return;
+        }
         foreach (TIHabTemplate old in __instance.habDesigns
                      .Where(d => d.displayName == habDesign.displayName).ToList())
         {
@@ -244,8 +294,6 @@ internal static class HabTemplateOverwrite
 [HarmonyPatch(typeof(TIFactionState), nameof(TIFactionState.SaveCustomPresetDesign))]
 internal static class PriorityPresetOverwrite
 {
-    private static bool Prepare() => Main.settings.priorityPresetOverwrite;
-
     internal sealed class OverwriteState
     {
         public bool wasDefault;
@@ -255,6 +303,10 @@ internal static class PriorityPresetOverwrite
     private static void Prefix(TIFactionState __instance, TIPriorityPresetTemplate priorityPreset, out OverwriteState __state)
     {
         __state = new OverwriteState();
+        if (!Main.settings.priorityPresetOverwrite)
+        {
+            return;
+        }
         foreach (TIPriorityPresetTemplate old in __instance.customPresets
                      .Where(p => p.displayName == priorityPreset.displayName && p.customDesign).ToList())
         {
@@ -288,8 +340,6 @@ internal static class PriorityPresetOverwrite
 [HarmonyPatch(typeof(NationInfoController), "UpdateDesignPresetPanel")]
 internal static class PriorityPresetSaveButton
 {
-    private static bool Prepare() => Main.settings.priorityPresetOverwrite;
-
     // Read by the two patches below even when this one isn't applied, so it stays put.
     internal static readonly FieldInfo proposedField =
         AccessTools.Field(typeof(NationInfoController), "proposedPriorityPreset");
@@ -299,6 +349,10 @@ internal static class PriorityPresetSaveButton
 
     private static void Postfix(NationInfoController __instance)
     {
+        if (!Main.settings.priorityPresetOverwrite)
+        {
+            return;
+        }
         var proposed = (TIPriorityPresetTemplate)proposedField.GetValue(__instance);
         var settingsDuplicate = (TIPriorityPresetTemplate)duplicatedField.GetValue(__instance);
         TIFactionState player = __instance.activePlayer;
@@ -330,13 +384,15 @@ internal static class PriorityPresetSaveButton
 [HarmonyPatch(typeof(PavonisInteractive.TerraInvicta.Systems.PeriodicUpdates.NationPeriodicUpdate), "DailyNationUpdateTask")]
 internal static class ReapplyPresetsOnValidityChange
 {
-    private static bool Prepare() => Main.settings.presetTrackingOnNationChanges;
-
     private static readonly Dictionary<GameStateID, HashSet<PriorityType>> lastInvalid =
         new Dictionary<GameStateID, HashSet<PriorityType>>();
 
     private static void Postfix(TINationState nation)
     {
+        if (!Main.settings.presetTrackingOnNationChanges)
+        {
+            return;
+        }
         var current = new HashSet<PriorityType>(nation.InvalidPriorities);
         if (lastInvalid.TryGetValue(nation.ID, out HashSet<PriorityType> previous) && !previous.SetEquals(current))
         {
@@ -477,10 +533,12 @@ internal static class StationDivider
 [HarmonyPatch(typeof(FleetsScreenController), nameof(FleetsScreenController.FilterShipLists))]
 internal static class StationDividerApply
 {
-    private static bool Prepare() => Main.settings.stationDividers;
-
     private static void Postfix(FleetsScreenController __instance)
     {
+        if (!Main.settings.stationDividers)
+        {
+            return;
+        }
         StationDivider.Apply(__instance);
     }
 }
@@ -492,10 +550,12 @@ internal static class StationDividerClear
 {
     // Must share stationDividers with the Apply patch: clearing without adding would be
     // pointless, and adding without clearing would let ListManagerBase delete real cards.
-    private static bool Prepare() => Main.settings.stationDividers;
-
     private static void Prefix(FleetsScreenController __instance)
     {
+        if (!Main.settings.stationDividers)
+        {
+            return;
+        }
         StationDivider.Clear(__instance);
     }
 }
@@ -513,9 +573,8 @@ internal static class StationDividerClear
 // everything they credit under vanilla's rules - Sun-Earth L1 covers every Earth and Luna orbit.
 internal static class StationSolarMirrors
 {
-    // Master switch, read from Settings.txt. Harmony calls Prepare() on each patch class below
-    // and skips patching when it returns false, so with this off the game runs entirely stock -
-    // the code stays here but never touches SolarPowerOutput or ChangeSolarMirrorBonus.
+    // Master switch. The patches below are always attached and check it when they run, so the
+    // toggle takes effect immediately; with it off they return before touching anything.
     internal static bool Enabled => Main.settings.solarMirrorsBoostStations;
 
     // Frame-scoped, matching how the game caches its own hot per-hab queries (see
@@ -634,11 +693,13 @@ internal static class StationSolarMirrors
 [HarmonyPatch(typeof(TIHabModuleState), nameof(TIHabModuleState.SolarPowerOutput))]
 internal static class StationSolarMirrorOutput
 {
-    private static bool Prepare() => StationSolarMirrors.Enabled;
-
     private static void Postfix(TIGameState location, float powerValue, TIFactionState faction,
         int tier, bool skipMirrors, ref int __result)
     {
+        if (!StationSolarMirrors.Enabled)
+        {
+            return;
+        }
         if (skipMirrors || faction == null || !location.isHabState)
         {
             return;
@@ -662,10 +723,12 @@ internal static class StationSolarMirrorOutput
 [HarmonyPatch(typeof(TISpaceBodyState), nameof(TISpaceBodyState.ChangeSolarMirrorBonus))]
 internal static class StationSolarMirrorRefresh
 {
-    private static bool Prepare() => StationSolarMirrors.Enabled;
-
     private static void Postfix(TISpaceBodyState __instance, int changeBy, TIFactionState faction)
     {
+        if (!StationSolarMirrors.Enabled)
+        {
+            return;
+        }
         if (changeBy == 0 || faction == null)
         {
             return;
@@ -710,14 +773,13 @@ internal static class StationSolarMirrorRefresh
 // The picker is a local function inside TIEffectsState.ProcessInstantEffect, so it compiles to a
 // mangled name and its parameter is compiler-generated - hence the runtime name search and the
 // positional __0 argument.
-[HarmonyPatch]
+//
+// No [HarmonyPatch] attribute, so PatchAll skips this one and Main attaches it by hand: the
+// target is found by name at runtime, and a rename upstream throwing inside PatchAll would
+// abandon every patch after it. Attached alone, it fails alone and says so in the log.
 internal static class ReviewFavoursExpensiveProjects
 {
-    // Harmony calls Prepare() before TargetMethod(), so turning this off also silences the
-    // throw below rather than taking the mod down over a tweak that isn't wanted.
-    private static bool Prepare() => Main.settings.expensiveFirstProjectReview;
-
-    private static MethodBase TargetMethod()
+    internal static MethodBase TargetMethod()
     {
         MethodBase target = AccessTools.GetDeclaredMethods(typeof(TIEffectsState))
             .FirstOrDefault(m => m.Name.Contains("GrantMissedProjectToFaction"));
@@ -730,8 +792,12 @@ internal static class ReviewFavoursExpensiveProjects
         return target;
     }
 
-    private static bool Prefix(TIFactionState __0)
+    internal static bool Prefix(TIFactionState __0)
     {
+        if (!Main.settings.expensiveFirstProjectReview)
+        {
+            return true;
+        }
         if (__0?.missedProjects == null || __0.missedProjects.Count == 0)
         {
             return false;
@@ -780,10 +846,12 @@ internal static class ReviewFavoursExpensiveProjects
 [HarmonyPatch(typeof(NationInfoController), "DuplicateSelectedPreset")]
 internal static class PriorityPresetKeepName
 {
-    private static bool Prepare() => Main.settings.priorityPresetOverwrite;
-
     private static void Postfix(NationInfoController __instance, TIPriorityPresetTemplate presetToDuplicate)
     {
+        if (!Main.settings.priorityPresetOverwrite)
+        {
+            return;
+        }
         if (presetToDuplicate != null && presetToDuplicate.customDesign
             && !string.IsNullOrEmpty(presetToDuplicate.displayName))
         {
@@ -799,10 +867,12 @@ internal static class PriorityPresetKeepName
 [HarmonyPatch(typeof(NationInfoController), "OnNewPresetNameEntered")]
 internal static class PriorityPresetNameEntry
 {
-    private static bool Prepare() => Main.settings.priorityPresetOverwrite;
-
     private static bool Prefix(NationInfoController __instance)
     {
+        if (!Main.settings.priorityPresetOverwrite)
+        {
+            return true;
+        }
         string name = __instance.inputPresetName.text.Trim();
         if (name.Length == 0)
         {
@@ -839,10 +909,12 @@ internal static class PriorityPresetNameEntry
 [HarmonyPatch(typeof(TransferRegionsOption), nameof(TransferRegionsOption.GetPossibleTargets))]
 internal static class DemandClaimDespiteOtherWars
 {
-    private static bool Prepare() => Main.settings.demandClaimDespiteOtherWars;
-
     private static void Postfix(TINationState actingNation, ref IList<TIGameState> __result)
     {
+        if (!Main.settings.demandClaimDespiteOtherWars)
+        {
+            return;
+        }
         if (actingNation == null || __result == null)
         {
             return;
@@ -940,8 +1012,6 @@ internal static class RepeatableScaling
 [HarmonyPatch(typeof(TIFactionState), nameof(TIFactionState.GetControlPointMaintenanceFreebieCap))]
 internal static class RepeatableCapScalesWithCost
 {
-    private static bool Prepare() => RepeatableScaling.Rate > 0f;
-
     private struct Cached
     {
         public int completedCount;
@@ -984,6 +1054,10 @@ internal static class RepeatableCapScalesWithCost
 
     private static void Postfix(TIFactionState __instance, ref float __result)
     {
+        if (RepeatableScaling.Rate <= 0f)
+        {
+            return;
+        }
         if (!RepeatableScaling.Visible(__instance))
         {
             return;
@@ -1003,15 +1077,19 @@ internal static class RepeatableCapScalesWithCost
 [HarmonyPatch(typeof(TIFactionState), nameof(TIFactionState.OnProjectComplete))]
 internal static class RepeatableGrantsScaleWithCost
 {
-    private static bool Prepare() => RepeatableScaling.Rate > 0f;
-
     // A postfix runs even when vanilla returns early (slot project already completed), so only
     // pay out if this call actually recorded a completion.
+    // -1 can never match a real completion count, so with the tweak off the postfix's own
+    // "did this call record a completion" check is what gates it.
     private static void Prefix(TIFactionState __instance, out int __state) =>
-        __state = __instance.completedProjects?.Count ?? 0;
+        __state = RepeatableScaling.Rate > 0f ? (__instance.completedProjects?.Count ?? 0) : -1;
 
     private static void Postfix(TIFactionState __instance, TIProjectTemplate project, bool startup, int __state)
     {
+        if (RepeatableScaling.Rate <= 0f)
+        {
+            return;
+        }
         if (startup || project == null || !project.repeatable || !RepeatableScaling.Visible(__instance)
             || __instance.completedProjects.Count <= __state)
         {
@@ -1052,8 +1130,6 @@ internal static class RepeatableGrantsScaleWithCost
 [HarmonyPatch(typeof(TIProjectTemplate), nameof(TIProjectTemplate.BenefitsDescription))]
 internal static class RepeatableBenefitsDescription
 {
-    private static bool Prepare() => RepeatableScaling.Rate > 0f;
-
     private static readonly MethodInfo memberwiseClone = AccessTools.Method(typeof(object), "MemberwiseClone");
 
     private static string GrantsLine(ResourceValue[] values) =>
@@ -1062,6 +1138,10 @@ internal static class RepeatableBenefitsDescription
     private static void Postfix(TIProjectTemplate __instance, TIFactionState faction,
         TechBenefitsContext benefitsContext, ref string __result)
     {
+        if (RepeatableScaling.Rate <= 0f)
+        {
+            return;
+        }
         if (benefitsContext == TechBenefitsContext.Archive || !RepeatableScaling.Visible(faction)
             || !RepeatableScaling.Applies(__instance))
         {
@@ -1089,13 +1169,15 @@ internal static class RepeatableBenefitsDescription
 [HarmonyPatch(typeof(TIProjectTemplate), nameof(TIProjectTemplate.WarningsDescription))]
 internal static class RepeatableWarningsDescription
 {
-    private static bool Prepare() => RepeatableScaling.Rate > 0f;
-
     // Vanilla's "next attempt" cost is really the attempt in progress - the same repeat the
     // benefit lines describe - so the prediction here is the one after it.
     private static void Postfix(TIProjectTemplate __instance, TIFactionState faction,
         TechBenefitsContext context, ref string __result)
     {
+        if (RepeatableScaling.Rate <= 0f)
+        {
+            return;
+        }
         if (!RepeatableScaling.Visible(faction) || !RepeatableScaling.Applies(__instance))
         {
             return;
@@ -1144,14 +1226,13 @@ internal static class RepeatableWarningsDescription
 [HarmonyPatch(typeof(TINotificationQueueState), nameof(TINotificationQueueState.LogFleetDetected))]
 internal static class FleetDetectedLocation
 {
-    private static bool Prepare() => Main.settings.fleetDetectionLocation;
-
     // ThreadStatic: the flag is only meant for the notification's own two calls, so a hab list
     // rendering on another thread inside the same window keeps the short form.
     [ThreadStatic]
     internal static bool expanding;
 
-    private static void Prefix() => expanding = true;
+    // The flag is the gate: with the tweak off it never sets, and nothing expands.
+    private static void Prefix() => expanding = Main.settings.fleetDetectionLocation;
 
     // Finalizer rather than Postfix: it also runs if the notification throws.
     private static void Finalizer() => expanding = false;
@@ -1160,8 +1241,6 @@ internal static class FleetDetectedLocation
 [HarmonyPatch(typeof(TISpaceFleetState), nameof(TISpaceFleetState.GetLocationDescription))]
 internal static class FleetDetectedLocationExpand
 {
-    private static bool Prepare() => Main.settings.fleetDetectionLocation;
-
     private static void Prefix(ref bool expand) => expand |= FleetDetectedLocation.expanding;
 }
 
@@ -1189,8 +1268,6 @@ internal static class FleetDetectedLocationExpand
 [HarmonyPatch]
 internal static class InheritedCapitalClaims
 {
-    private static bool Prepare() => Main.settings.inheritedCapitalClaims;
-
     // What we lent each nation, and whether we lent it hostile, so a recompute takes back exactly
     // what it gave and never touches a claim the nation owns in its own right. RemoveClaim also
     // clears the hostile flag, so the flag has to be remembered here rather than read back off the
@@ -1229,9 +1306,29 @@ internal static class InheritedCapitalClaims
     // sequential - RecomputeAll's loop sets and clears it once per nation.
     private static bool recomputing;
 
+    // Called when the setting moves in the UMM window: hand every borrowed claim back on the way
+    // off, so turning the tweak off mid-campaign leaves the map exactly as vanilla had it.
+    internal static void OnSettingChanged()
+    {
+        if (Main.settings.inheritedCapitalClaims)
+        {
+            RecomputeAll();
+            return;
+        }
+        foreach (KeyValuePair<TINationState, Dictionary<TIRegionState, bool>> pair in lent)
+        {
+            foreach (TIRegionState region in pair.Value.Keys)
+            {
+                pair.Key.RemoveClaim(region);
+            }
+        }
+        lent.Clear();
+    }
+
     internal static void Recompute(TINationState nation)
     {
-        if (recomputing || nation == null || nation.alienNation || nation.claims == null)
+        if (!Main.settings.inheritedCapitalClaims || recomputing
+            || nation == null || nation.alienNation || nation.claims == null)
         {
             return;
         }
@@ -1410,10 +1507,12 @@ internal static class CouncilSlotPool
     [HarmonyPatch(typeof(TIFactionState), nameof(TIFactionState.maxCouncilSize), MethodType.Getter)]
     internal static class MaxCouncilSize
     {
-        private static bool Prepare() => Main.settings.spySlotsAsCouncilSlots;
-
-        private static void Postfix(TIFactionState __instance, ref int __result)
+            private static void Postfix(TIFactionState __instance, ref int __result)
         {
+            if (!Main.settings.spySlotsAsCouncilSlots)
+            {
+                return;
+            }
             if (__result >= FullCouncil && __instance.turnedCouncilors != null)
             {
                 __result = Pool - __instance.turnedCouncilors.Count;
@@ -1426,10 +1525,12 @@ internal static class CouncilSlotPool
     [HarmonyPatch(typeof(TIMissionCondition_HasSpySlot), nameof(TIMissionCondition_HasSpySlot.CanTarget))]
     internal static class HasSpySlot
     {
-        private static bool Prepare() => Main.settings.spySlotsAsCouncilSlots;
-
-        private static void Postfix(TICouncilorState councilor, ref string __result)
+            private static void Postfix(TICouncilorState councilor, ref string __result)
         {
+            if (!Main.settings.spySlotsAsCouncilSlots)
+            {
+                return;
+            }
             TIFactionState faction = councilor?.faction;
             if (__result == "_Pass" && faction != null
                 && faction.councilors.Count + faction.turnedCouncilors.Count >= Pool)
@@ -1448,10 +1549,12 @@ internal static class CouncilSlotPool
     [HarmonyPatch(typeof(CouncilGridController), nameof(CouncilGridController.UpdateCouncilorGrid))]
     internal static class Grid
     {
-        private static bool Prepare() => Main.settings.spySlotsAsCouncilSlots;
-
-        private static bool Prefix(CouncilGridController __instance)
+            private static bool Prefix(CouncilGridController __instance)
         {
+            if (!Main.settings.spySlotsAsCouncilSlots)
+            {
+                return true;
+            }
             TIFactionState player = GameControl.control.activePlayer;
             int size = Mathf.Max(Pool, player.councilors.Count + player.turnedCouncilors.Count);
             TICouncilorState[] slots = new TICouncilorState[size];
