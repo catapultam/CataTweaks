@@ -1176,8 +1176,9 @@ internal static class FleetDetectedLocationExpand
 // nation held hostilely stays hostile for you, because the point is to skip the merge dance, not
 // to launder a grievance into a peaceful merger.
 //
-// Recomputed when a nation is absorbed, when regions change hands, monthly as a backstop, and for
-// every nation on load - a load starts from vanilla claims, since borrowed ones are never written.
+// Recomputed when a nation is absorbed, when regions change hands, when a hostile claim turns
+// peaceful, when any project completes (claims can be gated behind one), monthly as a backstop, and
+// for every nation on load - a load starts from vanilla claims, since borrowed ones are never written.
 // Borrowed claims never reach a save file: SaveAllGameStates is bracketed so they are handed back
 // before serialisation and lent again afterwards. A save written with this on is a vanilla save,
 // and turning the tweak off loses nothing.
@@ -1219,59 +1220,74 @@ internal static class InheritedCapitalClaims
         return capitalOf.TryGetValue(region, out TINationState source) ? source : null;
     }
 
+    // SetClaim on a region already claimed calls RemoveHostileClaim, which is one of our triggers, so
+    // lending a claim would recurse back in here mid-lend. One flag, because recomputes are always
+    // sequential - RecomputeAll's loop sets and clears it once per nation.
+    private static bool recomputing;
+
     internal static void Recompute(TINationState nation)
     {
-        if (nation == null || nation.alienNation || nation.claims == null)
+        if (recomputing || nation == null || nation.alienNation || nation.claims == null)
         {
             return;
         }
-        var want = new Dictionary<TIRegionState, bool>();      // region -> borrow it as hostile
-        foreach (TIRegionState capital in nation.regions)
-        {
-            // the claim on that capital has to exist and be peaceful for its nation to answer to us
-            if (!nation.claims.Contains(capital) || nation.hostileClaims.Contains(capital))
+        recomputing = true;
+        try
             {
-                continue;
-            }
-            TINationState source = CapitalHolder(capital);
-            // Dormant nations only. A living nation that moved its capital still speaks for itself,
-            // and borrowing from it would be leeching rather than skipping the merge dance.
-            if (source == null || source == nation || source.alienNation || source.claims == null
-                || source.extant)
+            var want = new Dictionary<TIRegionState, bool>();      // region -> borrow it as hostile
+            foreach (TIRegionState capital in nation.regions)
             {
-                continue;
-            }
-            foreach (TIRegionState claim in source.claims)
-            {
-                if (claim == null || claim.nation == nation)
+                // The claim on that capital has to exist and be peaceful for its nation to answer to us.
+                // ClaimedBy, not claims.Contains: a claim whose unlock project is unresearched sits in
+                // the list already and is only gated at query time, and an unearned claim is no claim.
+                if (!capital.ClaimedBy(nation) || nation.hostileClaims.Contains(capital))
                 {
                     continue;
                 }
-                bool hostile = source.hostileClaims.Contains(claim);
-                // two sources disagreeing on hostility: the peaceful reading wins
-                want[claim] = want.TryGetValue(claim, out bool seen) ? (seen && hostile) : hostile;
+                TINationState source = CapitalHolder(capital);
+                // Dormant nations only. A living nation that moved its capital still speaks for itself,
+                // and borrowing from it would be leeching rather than skipping the merge dance.
+                if (source == null || source == nation || source.alienNation || source.claims == null
+                    || source.extant)
+                {
+                    continue;
+                }
+                foreach (TIRegionState claim in source.claims)
+                {
+                    if (claim == null || claim.nation == nation || !claim.ClaimedBy(source))
+                    {
+                        continue;                    // gated behind a project nobody has finished
+                    }
+                    bool hostile = source.hostileClaims.Contains(claim);
+                    // two sources disagreeing on hostility: the peaceful reading wins
+                    want[claim] = want.TryGetValue(claim, out bool seen) ? (seen && hostile) : hostile;
+                }
             }
-        }
-        if (!lent.TryGetValue(nation, out Dictionary<TIRegionState, bool> held))
-        {
-            held = lent[nation] = new Dictionary<TIRegionState, bool>();
-        }
-        foreach (TIRegionState region in held.Keys.ToList())
-        {
-            if (!want.ContainsKey(region) || want[region] != held[region])
+            if (!lent.TryGetValue(nation, out Dictionary<TIRegionState, bool> held))
             {
-                nation.RemoveClaim(region);       // gone, or its hostility changed: re-lend below
-                held.Remove(region);
+                held = lent[nation] = new Dictionary<TIRegionState, bool>();
+            }
+            foreach (TIRegionState region in held.Keys.ToList())
+            {
+                if (!want.ContainsKey(region) || want[region] != held[region])
+                {
+                    nation.RemoveClaim(region);       // gone, or its hostility changed: re-lend below
+                    held.Remove(region);
+                }
+            }
+            foreach (KeyValuePair<TIRegionState, bool> pair in want)
+            {
+                if (held.ContainsKey(pair.Key) || nation.claims.Contains(pair.Key))
+                {
+                    continue;                        // already lent, or theirs in their own right
+                }
+                nation.SetClaim(pair.Key, pair.Value, pair.Value);
+                held[pair.Key] = pair.Value;
             }
         }
-        foreach (KeyValuePair<TIRegionState, bool> pair in want)
+        finally
         {
-            if (held.ContainsKey(pair.Key) || nation.claims.Contains(pair.Key))
-            {
-                continue;                        // already lent, or theirs in their own right
-            }
-            nation.SetClaim(pair.Key, pair.Value, pair.Value);
-            held[pair.Key] = pair.Value;
+            recomputing = false;
         }
     }
 
@@ -1280,6 +1296,19 @@ internal static class InheritedCapitalClaims
     [HarmonyPatch(typeof(TINationState), nameof(TINationState.AbsorbNation))]
     [HarmonyPostfix]
     private static void OnAbsorb(TINationState __instance) => Recompute(__instance);
+
+    // A hostile claim turning peaceful is the one way a capital starts answering to us without any
+    // region changing hands.
+    [HarmonyPatch(typeof(TINationState), nameof(TINationState.RemoveHostileClaim))]
+    [HarmonyPostfix]
+    private static void OnClaimFlip(TINationState __instance) => Recompute(__instance);
+
+    // Finishing a project can ungate claims anywhere on the map, for any nation, so this one sweeps
+    // everybody. Research completion already stalls for a beat; a pass over the nation list is lost
+    // in it.
+    [HarmonyPatch(typeof(TIFactionState), "AddCompletedProject", typeof(TIProjectTemplate))]
+    [HarmonyPostfix]
+    private static void OnResearch() => RecomputeAll();
 
     // Monthly, not daily: the event hooks catch every case where a capital changes hands, so this is
     // only a backstop for claims that shift without one - research unlocking a claim on a capital we
@@ -1305,6 +1334,11 @@ internal static class InheritedCapitalClaims
     {
         lent.Clear();
         capitalOf = null;
+        RecomputeAll();
+    }
+
+    private static void RecomputeAll()
+    {
         foreach (TINationState nation in GameStateManager.AllNations())
         {
             Recompute(nation);
@@ -1316,6 +1350,7 @@ internal static class InheritedCapitalClaims
     [HarmonyPrefix]
     private static void BeforeSave()
     {
+        recomputing = true;   // no trigger may re-lend while the claims are handed back
         foreach (KeyValuePair<TINationState, Dictionary<TIRegionState, bool>> pair in lent)
         {
             foreach (TIRegionState region in pair.Value.Keys)
@@ -1337,5 +1372,6 @@ internal static class InheritedCapitalClaims
                 pair.Key.SetClaim(claim.Key, claim.Value, claim.Value);
             }
         }
+        recomputing = false;
     }
 }
