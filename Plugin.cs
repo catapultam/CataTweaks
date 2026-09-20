@@ -53,9 +53,9 @@ public class Settings
     // Fleet-detected notifications name the hab's orbit or body as well as the hab itself.
     public bool fleetDetectionLocation = true;
 
-    // A nation that absorbs another inherits the peaceful half of its claims, so unification no
-    // longer has to be worked strictly from the outside in.
-    public bool inheritClaimsOnMerge = true;
+    // A nation that holds another nation's original capital borrows that nation's claims for as
+    // long as it holds it, so unification no longer has to be worked strictly from the outside in.
+    public bool inheritedCapitalClaims = true;
 
     // Repeatable projects granting control point capacity or resources (Management, Audience,
     // Commercial, Operations Research) scale their payoff by this fraction of the base value per
@@ -1161,44 +1161,150 @@ internal static class FleetDetectedLocationExpand
     private static void Prefix(ref bool expand) => expand |= FleetDetectedLocation.expanding;
 }
 
-// Tweak 11: a nation that absorbs another inherits its peaceful claims.
+// Tweak 11: a nation that holds another nation's original capital borrows that nation's claims.
 //
 // TINationState.AbsorbNation moves regions, control points, nuclear weapons, the space program and
-// half the accumulated investment - and not one claim. The absorbed nation keeps its own claim list
-// while it sits dormant, so the only way to reach anything it claimed is to release it again, let
-// it expand, and re-absorb it. That is what forces unification to run strictly outside in: merge
-// the far end of a chain first, because merging inward first strands every claim beyond it.
+// half the accumulated investment - and not one claim. The absorbed nation keeps its claim list
+// while it sits dormant, so the only route to anything it claimed is to release it, rebuild its
+// government, let it expand and take it back. That is what forces unification to run strictly
+// outside in: merge inward first and every claim past that point is stranded.
 //
-// Here the absorbing nation takes over the peaceful half of what the joining nation claimed. Claims
-// the joiner held hostilely are left behind: those represent a population that fought its way out,
-// and inheriting them would hand over a casus belli that was never yours. Inherited claims are set
-// non-hostile (SetClaim with fromSeizure false), so they merge diplomatically rather than arriving
-// as fresh grievances.
+// So the claims are borrowed, not granted. While you hold a nation's original capital and your
+// claim on that capital is not hostile, its claims are yours; lose the capital, or have the claim
+// on it turn hostile, and they go again. Hostility carries across unchanged - a claim the other
+// nation held hostilely stays hostile for you, because the point is to skip the merge dance, not
+// to launder a grievance into a peaceful merger.
 //
-// This applies to annexation as well as unification, since both run through AbsorbNation, and to AI
-// nations as much as the player's.
-[HarmonyPatch(typeof(TINationState), nameof(TINationState.AbsorbNation))]
-internal static class InheritClaimsOnMerge
+// Borrowed claims never reach a save file: SaveAllGameStates is bracketed so they are handed back
+// before serialisation and lent again afterwards. A save written with this on is a vanilla save,
+// and turning the tweak off loses nothing.
+[HarmonyPatch]
+internal static class InheritedCapitalClaims
 {
-    private static bool Prepare() => Main.settings.inheritClaimsOnMerge;
+    private static bool Prepare() => Main.settings.inheritedCapitalClaims;
 
-    private static void Postfix(TINationState __instance, TINationState joiningNationState)
+    // What we lent each nation, and whether we lent it hostile, so a recompute takes back exactly
+    // what it gave and never touches a claim the nation owns in its own right. RemoveClaim also
+    // clears the hostile flag, so the flag has to be remembered here rather than read back off the
+    // nation. ponytail: in-memory only - borrowed claims are rebuilt on the first tick after a
+    // load, so nothing needs to survive a reload.
+    private static readonly Dictionary<TINationState, Dictionary<TIRegionState, bool>> lent =
+        new Dictionary<TINationState, Dictionary<TIRegionState, bool>>();
+
+    // originalCapital is set during world init and never moves afterwards (SetCapital changes the
+    // working capital, not this), so the region -> nation map is built once and only rebuilt if the
+    // nation count changes. Scanning every nation per region per day is otherwise millions of
+    // comparisons a turn.
+    private static Dictionary<TIRegionState, TINationState> capitalOf;
+    private static int mappedNations = -1;
+
+    private static TINationState CapitalHolder(TIRegionState region)
     {
-        if (__instance == null || joiningNationState == null || __instance == joiningNationState
-            || __instance.alienNation || joiningNationState.claims == null)
+        TINationState[] all = GameStateManager.AllNations();
+        if (capitalOf == null || mappedNations != all.Length)
+        {
+            capitalOf = new Dictionary<TIRegionState, TINationState>();
+            foreach (TINationState nation in all)
+            {
+                if (nation.originalCapital != null)
+                {
+                    capitalOf[nation.originalCapital] = nation;
+                }
+            }
+            mappedNations = all.Length;
+        }
+        return capitalOf.TryGetValue(region, out TINationState source) ? source : null;
+    }
+
+    internal static void Recompute(TINationState nation)
+    {
+        if (nation == null || nation.alienNation || nation.claims == null)
         {
             return;
         }
-        // ToList: SetClaim writes to the region's own claim bookkeeping, and the joiner's list can
-        // be touched by that, so iterate a copy.
-        foreach (TIRegionState region in joiningNationState.claims.ToList())
+        var want = new Dictionary<TIRegionState, bool>();      // region -> borrow it as hostile
+        foreach (TIRegionState capital in nation.regions)
         {
-            if (region == null || joiningNationState.hostileClaims.Contains(region)
-                || __instance.claims.Contains(region))
+            // the claim on that capital has to exist and be peaceful for its nation to answer to us
+            if (!nation.claims.Contains(capital) || nation.hostileClaims.Contains(capital))
             {
                 continue;
             }
-            __instance.SetClaim(region, fromSeizure: false, forceFromSeizure: false);
+            TINationState source = CapitalHolder(capital);
+            if (source == null || source == nation || source.alienNation || source.claims == null)
+            {
+                continue;
+            }
+            foreach (TIRegionState claim in source.claims)
+            {
+                if (claim == null || claim.nation == nation)
+                {
+                    continue;
+                }
+                bool hostile = source.hostileClaims.Contains(claim);
+                // two sources disagreeing on hostility: the peaceful reading wins
+                want[claim] = want.TryGetValue(claim, out bool seen) ? (seen && hostile) : hostile;
+            }
+        }
+        if (!lent.TryGetValue(nation, out Dictionary<TIRegionState, bool> held))
+        {
+            held = lent[nation] = new Dictionary<TIRegionState, bool>();
+        }
+        foreach (TIRegionState region in held.Keys.ToList())
+        {
+            if (!want.ContainsKey(region) || want[region] != held[region])
+            {
+                nation.RemoveClaim(region);       // gone, or its hostility changed: re-lend below
+                held.Remove(region);
+            }
+        }
+        foreach (KeyValuePair<TIRegionState, bool> pair in want)
+        {
+            if (held.ContainsKey(pair.Key) || nation.claims.Contains(pair.Key))
+            {
+                continue;                        // already lent, or theirs in their own right
+            }
+            nation.SetClaim(pair.Key, pair.Value, pair.Value);
+            held[pair.Key] = pair.Value;
+        }
+    }
+
+    // Recompute the moment a merger or conquest changes who holds what, and once a day after that,
+    // so a capital that slips away takes its borrowed claims with it.
+    [HarmonyPatch(typeof(TINationState), nameof(TINationState.AbsorbNation))]
+    [HarmonyPostfix]
+    private static void OnAbsorb(TINationState __instance) => Recompute(__instance);
+
+    [HarmonyPatch(typeof(PavonisInteractive.TerraInvicta.Systems.PeriodicUpdates.NationPeriodicUpdate),
+        "DailyNationUpdateTask")]
+    [HarmonyPostfix]
+    private static void Daily(TINationState nation) => Recompute(nation);
+
+    // Saves stay vanilla: hand every borrowed claim back, let the game serialise, then lend again.
+    [HarmonyPatch(typeof(GameStateManager), nameof(GameStateManager.SaveAllGameStates))]
+    [HarmonyPrefix]
+    private static void BeforeSave()
+    {
+        foreach (KeyValuePair<TINationState, Dictionary<TIRegionState, bool>> pair in lent)
+        {
+            foreach (TIRegionState region in pair.Value.Keys)
+            {
+                pair.Key.RemoveClaim(region);
+            }
+        }
+    }
+
+    // Finalizer, not a postfix: a save that throws still has to give the claims back.
+    [HarmonyPatch(typeof(GameStateManager), nameof(GameStateManager.SaveAllGameStates))]
+    [HarmonyFinalizer]
+    private static void AfterSave()
+    {
+        foreach (KeyValuePair<TINationState, Dictionary<TIRegionState, bool>> pair in lent)
+        {
+            foreach (KeyValuePair<TIRegionState, bool> claim in pair.Value)
+            {
+                pair.Key.SetClaim(claim.Key, claim.Value, claim.Value);
+            }
         }
     }
 }

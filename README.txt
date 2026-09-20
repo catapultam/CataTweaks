@@ -116,18 +116,23 @@ These two change game balance rather than just the interface:
   it elsewhere; the notification just asked for the short one. Now it
   asks for the long one, so a detection tells you where to look.
 
-- Unifying a nation inherits its peaceful claims. Absorbing a nation
+- Holding a nation's capital borrows its claims. Absorbing a nation
   moves its regions, control points, nuclear weapons, space program and
   half its accumulated investment - and none of its claims. The absorbed
   nation keeps them while it sits dormant, so the only way to reach what
-  it claimed is to release it, let it expand and take it back. That is
-  what forces unification to be worked strictly from the outside in:
-  merge the far end of a chain first, because merging inward first
-  strands every claim beyond it. Now the absorbing nation takes over the
-  peaceful half of the claims. Claims the other nation held hostilely
-  are left behind, since those are a grievance that was never yours, and
-  inherited claims arrive non-hostile. Applies to annexation as well,
-  and to AI nations as much as yours.
+  it claimed is to release it, rebuild its government, let it expand and
+  take it back. That is what forces unification to be worked strictly
+  from the outside in: merge inward first and every claim past that
+  point is stranded. Now, while you hold a nation's original capital and
+  your claim on that capital is not hostile, its claims are yours to
+  use. Lose the capital, or have the claim on it turn hostile, and they
+  go again - they are borrowed, not granted. Hostility carries across
+  unchanged: a claim the other nation held hostilely stays hostile for
+  you, so this skips the merge dance without letting you do anything you
+  could not otherwise do. Borrowed claims are stripped before a save is
+  written and restored afterwards, so saves stay vanilla and turning the
+  setting off loses nothing. Applies to annexation as well, and to AI
+  nations as much as yours.
 
 Configuration:
 
@@ -146,7 +151,7 @@ array, and gives up on the whole batch when one doesn't fit:
         "expensiveFirstProjectReview": true,
         "demandClaimDespiteOtherWars": true,
         "fleetDetectionLocation": true,
-        "inheritClaimsOnMerge": true,
+        "inheritedCapitalClaims": true,
         "repeatableProjectScaling": 0.03
     }
 

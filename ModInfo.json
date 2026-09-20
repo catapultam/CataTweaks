@@ -2,10 +2,10 @@
   "Title": "CataTweaks",
   "Author": "alex",
   "ModURL": "",
-  "Description": "QoL tweaks: habs named 'Name (Template, Orbit, Body)' on template apply, with save-as-template round-tripping the template name and map icon and overwriting in place; priority presets overwrite and track too; dividing rules between stations on the ship construction screen. Balance: solar mirrors boost orbital stations inward of them, Review Failed Projects favours the expensive missed project instead of the cheapest, and Demand Claim only blocks when the two nations are at war with each other rather than when the target is at war with anyone at all. Fleet detection notices name the hab's orbit or body, not just the hab. Unifying a nation inherits the peaceful half of its claims, so mergers no longer have to be worked outside in. Repeatable income projects (Management, Audience, Commercial, Operations Research) scale their payoff with their rising cost, at a configurable rate. Every feature switches on and off individually in Settings.txt in the mod folder; the solar mirror change ships off. (Code mod; requires Unity Mod Manager. Toggle applies on restart.)",
+  "Description": "QoL tweaks: habs named 'Name (Template, Orbit, Body)' on template apply, with save-as-template round-tripping the template name and map icon and overwriting in place; priority presets overwrite and track too; dividing rules between stations on the ship construction screen. Balance: solar mirrors boost orbital stations inward of them, Review Failed Projects favours the expensive missed project instead of the cheapest, and Demand Claim only blocks when the two nations are at war with each other rather than when the target is at war with anyone at all. Fleet detection notices name the hab's orbit or body, not just the hab. Holding a nation's original capital borrows that nation's claims for as long as you hold it (hostility carried across unchanged), so mergers no longer have to be worked outside in; borrowed claims never reach a save. Repeatable income projects (Management, Audience, Commercial, Operations Research) scale their payoff with their rising cost, at a configurable rate. Every feature switches on and off individually in Settings.txt in the mod folder; the solar mirror change ships off. (Code mod; requires Unity Mod Manager. Toggle applies on restart.)",
   "Id": "CataTweaks",
   "DisplayName": "CataTweaks",
-  "Version": "2.7.0",
+  "Version": "2.8.0",
   "ManagerVersion": "0.24.0",
   "AssemblyName": "CataTweaks.dll",
   "EntryMethod": "CataTweaks.Main.Load"
