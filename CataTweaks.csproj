@@ -14,6 +14,8 @@
     <Reference Include="UnityEngine" HintPath="$(GameDir)\TerraInvicta_Data\Managed\UnityEngine.dll" Private="false" />
     <Reference Include="UnityEngine.CoreModule" HintPath="$(GameDir)\TerraInvicta_Data\Managed\UnityEngine.CoreModule.dll" Private="false" />
     <Reference Include="UnityEngine.JSONSerializeModule" HintPath="$(GameDir)\TerraInvicta_Data\Managed\UnityEngine.JSONSerializeModule.dll" Private="false" />
+    <Reference Include="UnityEngine.TextRenderingModule" HintPath="$(GameDir)\TerraInvicta_Data\Managed\UnityEngine.TextRenderingModule.dll" Private="false" />
+    <Reference Include="UnityEngine.UIModule" HintPath="$(GameDir)\TerraInvicta_Data\Managed\UnityEngine.UIModule.dll" Private="false" />
     <Reference Include="UnityEngine.IMGUIModule" HintPath="$(GameDir)\TerraInvicta_Data\Managed\UnityEngine.IMGUIModule.dll" Private="false" />
     <Reference Include="UnityEngine.VideoModule" HintPath="$(GameDir)\TerraInvicta_Data\Managed\UnityEngine.VideoModule.dll" Private="false" />
     <Reference Include="UnityEngine.UI" HintPath="$(GameDir)\TerraInvicta_Data\Managed\UnityEngine.UI.dll" Private="false" />

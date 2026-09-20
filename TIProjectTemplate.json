@@ -1,0 +1,127 @@
+[
+  {
+    "friendlyName": "Deep Cover Handlers",
+    "dataName": "Project_CataTweaks_CouncilSize7",
+    "techCategory": "SocialScience",
+    "AI_techRole": "EarthPolitics",
+    "AI_criticalTech": true,
+    "AI_projectRole": "Core",
+    "researchCost": 2400,
+    "prereqs": [
+      "Project_CovertOperations",
+      "AppliedArtificialIntelligence"
+    ],
+    "effects": [
+      "Effect_IncreaseCouncilSize"
+    ],
+    "oneTimeGlobally": false,
+    "repeatable": false,
+    "factionAvailableChance": 100,
+    "initialUnlockChance": 25,
+    "deltaUnlockChance": 10,
+    "maxUnlockChance": 60,
+    "resourcesGranted": []
+  },
+  {
+    "friendlyName": "Shadow Cabinet",
+    "dataName": "Project_CataTweaks_CouncilSize8",
+    "techCategory": "SocialScience",
+    "AI_techRole": "EarthPolitics",
+    "AI_criticalTech": true,
+    "AI_projectRole": "Core",
+    "researchCost": 4800,
+    "prereqs": [
+      "Project_CataTweaks_CouncilSize7",
+      "AdministrationAlgorithms"
+    ],
+    "effects": [
+      "Effect_IncreaseCouncilSize"
+    ],
+    "oneTimeGlobally": false,
+    "repeatable": false,
+    "factionAvailableChance": 100,
+    "initialUnlockChance": 20,
+    "deltaUnlockChance": 10,
+    "maxUnlockChance": 50,
+    "resourcesGranted": []
+  },
+  {
+    "friendlyName": "The Sun Never Sets",
+    "dataName": "Project_TheSunNeverSets",
+    "techCategory": "SocialScience",
+    "AI_techRole": "EarthPolitics",
+    "AI_projectRole": "ExpandNation",
+    "researchCost": 25000,
+    "prereqs": [
+      "Project_CommonwealthRestored",
+      "GreatNations"
+    ],
+    "oneTimeGlobally": true,
+    "repeatable": false,
+    "requiresNation": "GBR",
+    "factionAvailableChance": 100,
+    "initialUnlockChance": 0,
+    "deltaUnlockChance": 5,
+    "maxUnlockChance": 50,
+    "resourcesGranted": []
+  },
+  {
+    "friendlyName": "Mare Nostrum",
+    "dataName": "Project_MareNostrum",
+    "techCategory": "SocialScience",
+    "AI_techRole": "EarthPolitics",
+    "AI_projectRole": "ExpandNation",
+    "researchCost": 10000,
+    "prereqs": [
+      "UnityMovements"
+    ],
+    "oneTimeGlobally": true,
+    "repeatable": false,
+    "requiresNation": "SPR",
+    "factionAvailableChance": 100,
+    "initialUnlockChance": 0,
+    "deltaUnlockChance": 5,
+    "maxUnlockChance": 50,
+    "resourcesGranted": []
+  },
+  {
+    "friendlyName": "Imperium Sine Fine",
+    "dataName": "Project_ImperiumSineFine",
+    "techCategory": "SocialScience",
+    "AI_techRole": "EarthPolitics",
+    "AI_projectRole": "ExpandNation",
+    "researchCost": 25000,
+    "prereqs": [
+      "Project_MareNostrum",
+      "GreatNations"
+    ],
+    "oneTimeGlobally": true,
+    "repeatable": false,
+    "requiresNation": "SPR",
+    "factionAvailableChance": 100,
+    "initialUnlockChance": 0,
+    "deltaUnlockChance": 5,
+    "maxUnlockChance": 50,
+    "resourcesGranted": []
+  },
+  {
+    "friendlyName": "New Liberia",
+    "dataName": "Project_NewLiberia",
+    "techCategory": "SocialScience",
+    "AI_techRole": "EarthPolitics",
+    "AI_projectRole": "ExpandNation",
+    "researchCost": 20000,
+    "prereqs": [
+      "Project_GreaterDominion",
+      "GreatNations"
+    ],
+    "oneTimeGlobally": true,
+    "repeatable": false,
+    "requiresNation": "LBR",
+    "factionAvailableChance": 100,
+    "initialUnlockChance": 0,
+    "deltaUnlockChance": 5,
+    "maxUnlockChance": 50,
+    "resourcesGranted": []
+  }
+]

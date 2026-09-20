@@ -2,12 +2,11 @@
   "Title": "CataTweaks",
   "Author": "alex",
   "ModURL": "",
-  "Description": "QoL tweaks: habs named 'Name (Template, Orbit, Body)' on template apply, with save-as-template round-tripping the template name and map icon and overwriting in place; priority presets overwrite and track too; dividing rules between stations on the ship construction screen. Balance: solar mirrors boost orbital stations inward of them, Review Failed Projects favours the expensive missed project instead of the cheapest, and Demand Claim only blocks when the two nations are at war with each other rather than when the target is at war with anyone at all. Fleet detection notices name the hab's orbit or body, not just the hab. Holding a dormant nation's original capital borrows that nation's claims for as long as you hold it (hostility carried across unchanged), so mergers no longer have to be worked outside in; borrowed claims never reach a save. The council screen's two turned-councilor slots double as councilor slots once both council size projects are done, so an unused spy slot is a seventh or eighth councilor instead. Repeatable income projects (Management, Audience, Commercial, Operations Research) scale their payoff with their rising cost, at a configurable rate. Every feature switches on and off individually in the Unity Mod Manager window and applies immediately; the solar mirror change ships off. (Code mod; requires Unity Mod Manager.)",
+  "Description": "Quality of life, interface and balance tweaks, each switchable on the game's own Settings screen under a CataTweaks tab, applying immediately with no restart. Hab templates name and re-icon the hab they are applied to and overwrite in place when saved; priority presets overwrite in place and keep countries tracking them; dividers between stations on the ship construction screen; fleet detections name the orbit or body; Customize Campaign remembers its options between sessions, with faction names remembered per faction. Balance: solar mirrors boost orbital stations under a configurable cap, Review Failed Projects favors the expensive missed project, Demand Claim only blocks on a war between the two nations involved, holding a dormant nation's original capital borrows its claims, and repeatable management projects scale their payoff with their rising cost. Per campaign, chosen on Customize Campaign and stored in the save: unused turned-councilor slots become councilor slots, unlocked by two new projects; and Restored Empires claim chains give the United Kingdom, Rome, the Dominion of America and Liberia a route back to the map. (Code and template mod; requires Unity Mod Manager.)",
   "Id": "CataTweaks",
   "DisplayName": "CataTweaks",
-  "Version": "2.10.1",
+  "Version": "3.0.0",
   "ManagerVersion": "0.25.0",
   "AssemblyName": "CataTweaks.dll",
   "EntryMethod": "CataTweaks.Main.Load"
 }
-

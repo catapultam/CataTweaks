@@ -1,53 +1,39 @@
-[h1]CataTweaks — small QoL fixes for templates and presets[/h1]
+[h1]CataTweaks[/h1]
 
+Quality of life, interface and balance tweaks, each switchable on the game's own Settings screen under a [b]CataTweaks[/b] tab. Changes take effect the moment you click them: no restart, no reload. Every row has a tooltip.
+
+Two settings belong to a campaign rather than to you, so they sit at the bottom of [b]New Game / Customize Campaign[/b] under a CataTweaks header. They are fixed for the life of that campaign and stored in its save.
+
+[h2]Quality of life and UI[/h2]
 [list]
-[*][b]Hab naming workflow:[/b] applying a saved hab template names the hab [i]Name (Template, Orbit, Body)[/i] - your existing name, then the template and where it is: [i]Freeport (Mining, Low Earth Orbit 2, Earth)[/i], [i]Peary Crater Base (Mining, Peary Crater, Luna)[/i]. Single-orbit bodies like Lagrange points drop the orbit: [i]Outpost (Mining, Earth-Luna L1)[/i]. Re-applying only replaces the part in parentheses, so your custom name sticks. Saving a hab as a template names it after the one in the parentheses, so [i]Freeport (Mining, ...)[/i] saves as [i]Mining[/i] and overwrites the previous version (vanilla appends description + timestamp). Update a hab, save it, re-apply to your other habs - no manual renaming. A hab that already has the template's modules but not the suffix can still Apply (vanilla greys the button out) - it just gets renamed. The template also remembers the hab's [b]custom map icon[/b] and applies it along with the modules and name, so a [i]Mining[/i] template carries its mining icon everywhere you apply it (templates saved before v2.1.0 store no icon and leave the target's icon alone - re-save one to record it).
-[*][b]Priority preset overwrite:[/b] saving a priority preset under an existing custom preset's name replaces it instead of the save button going dead. Overwriting your default preset cleanly re-points the default to the new version, and every country/control point using the old version updates to the new one automatically instead of flipping to 'Custom'. Built-in presets are never overwritten.
-[*][b]Preset tracking on nation changes:[/b] when a country's valid priorities change (gains a spaceflight program, founds a military, unlocks navy/STO/space defenses/nukes...), control points on a preset re-apply it within a day, picking up the preset's weights for the newly available priorities instead of the profile flipping to 'Custom'.
-[*][b]Station dividers on the construction screen:[/b] a dividing rule between stations in the shipyard list. One station can host several shipyards and the list already groups them together, so the rule simply marks where one station's yards end and the next begin - handy once you are running yards at several habs. It respects the vanilla location filter, dividing whichever yards are on screen.
+[*][b]Remember campaign options between sessions.[/b] Customize Campaign opens with the options from the last campaign you set up instead of resetting to defaults, and they save when you leave the screen rather than only when you launch. Custom faction names are remembered per faction and reappear only when that faction is selected.
+[*][b]Hab template tweaks.[/b] Applying a saved hab template names the hab "Name (Template, Orbit, Body)" and applies the template's map icon. Re-applying only replaces the part in brackets, so your custom name is kept. Saving a hab as a template names it after the text in brackets and overwrites the previous version in place. A template that would change nothing can still be applied, so a hab can be renamed on its own.
+[*][b]Priority presets overwrite in place.[/b] Saving a preset under an existing custom name replaces it instead of the save button going dead. Control points using the old version move to the new one, so countries keep tracking the profile instead of flipping to Custom.
+[*][b]Nations keep their preset when priorities change.[/b] Gaining a spaceflight program, founding a military, unlocking nuclear options: the preset is re-applied with weights for the newly valid priorities.
+[*][b]Dividers between stations in the ship construction UI.[/b] One station can host several shipyards; this marks where each station's yards end.
+[*][b]Fleet detections name the orbit or body.[/b] The game can already write the longer form and uses it elsewhere; the notification just asked for the short one.
 [/list]
 
-[h1]Balance changes[/h1]
-
-These alter game balance rather than just the interface.
-
+[h2]Gameplay[/h2]
 [list]
-[*][b]Solar mirrors boost orbital stations:[/b] vanilla builds the entire mechanism - station-mounted mirrors, per-body accumulation, mirror mass scaling with the square of distance from the Sun, an 8x output ceiling - and then only ever spends it on surface bases. Now stations benefit too, with a direction rule: a mirror only lights targets [i]inward[/i] of itself. A mirror in high Mars orbit boosts medium and low; one in medium boosts low but never high; one level with its target does nothing. Lagrange points sit outside the orbit ladder and light everything they already credit in vanilla, so a Sun-Earth L1 mirror covers every Earth and Luna orbit, while an Earth-Luna L1 mirror covers Luna only. Surface bases behave exactly as before.
-[*][b]Review Failed Projects favours the expensive project:[/b] vanilla weights each missed candidate by availability chance divided by research cost, so a 200-research throwaway outdraws a 5000-research drive by 25 to 1 - the review is least useful precisely when it matters most. That divide becomes a multiply, so a high cost raises a project's odds instead of sinking them. Availability chance still scales the weight, so genuinely rare projects stay rare.
-[*][b]Demand Claim works while the target is fighting someone else:[/b] vanilla tests whether the target nation is at war [i]at all[/i], not whether it is at war with the nation asking - so any nation in any war can never cede a region to anybody. An alien war that never ends freezes every peaceful border change on the map for the rest of the campaign, including transfers between two nations the same faction already controls, which the game would otherwise approve without even prompting. Now only a war between those two nations blocks the demand. Everything else is untouched: no capitals, no hostile claims, both sides still need consolidated executive control, and the improve-relations cooldown still applies.
-[*][b]Repeatable income projects scale with their cost:[/b] the Nth completion of a repeatable already costs N times the base, but Management, Audience, Commercial and Operations Research pay the same flat amount every time, so research per point of reward grows without limit. Now the Nth repeat pays the base times (1 + rate x (N-1)), rounded to whole units, so the cost per point converges instead. At the default rate of 0.03, Management Research settles around 4,000 research per point of control point capacity - about ten times the median one-off capacity project and twice the worst in the game, so the grind stays a deliberately poor last resort rather than a shortcut. The capacity bonus is derived from the repeat count, so it covers repeats you already finished; resource grants apply from the next completion on. Project descriptions show the scaled figure in place of the base one, and the repeatable-project note also says what the next attempt will grant.
-[*][b]Fleet detection notices say where the hab is:[/b] "Surveillance telescopes have detected a new Protectorate fleet docked at Montezuma Base" is only useful if you already know where Montezuma Base is. The game already knows how to write the longer form - the same line with ", Low Mars Orbit" after the hab name, or the body for a landed fleet - and uses it in the fleet screen; the notification simply asked for the short version. Now it asks for the long one.
-[*][b]The two turned-councilor slots double as councilor slots:[/b] the council screen has eight - six for your councilors, two for councilors you have turned in other factions - and the spy slots sit idle in most campaigns while a fully developed council is stuck at six. Now the eight are one pool: once both council size projects are done, every spy slot you are not using is a councilor slot instead, so no spies means eight councilors, one spy seven, two spies six exactly as vanilla. Turning is blocked when the pool is full, so the trade runs both ways. Nothing before both projects changes. The AI plays it too, but it will not hold a slot open for a spy, so expect AI factions to fill up on councilors and stop spying.
-[*][b]Holding a nation's capital borrows its claims:[/b] absorbing a nation moves its regions, control points, nuclear weapons, space program and half its accumulated investment - and none of its claims. The absorbed nation keeps them while dormant, so the only way to reach what it claimed is to release it, rebuild its government, let it expand, and take it back - which is what forces unification to be worked strictly from the outside in. Now, while you hold a dormant nation's original capital and your claim on it is not hostile, that nation's claims are yours to use; lose the capital or have the claim turn hostile and they go again. Nations that still hold territory are excluded - they can speak for themselves. Hostility carries across unchanged, so this skips the dance without letting you do anything you otherwise could not. The borrowing is recalculated whenever a nation is absorbed, whenever regions change hands, whenever a hostile claim turns peaceful, whenever a project completes (a claim can be gated behind one), on every load, and monthly as a backstop. Borrowed claims are stripped before a save is written, so saves stay vanilla.
+[*][b]Solar mirrors boost orbital stations.[/b] Vanilla builds the whole mechanism, including station-mounted mirrors, per-body accumulation and mirror mass scaling with distance from the Sun squared, but only ever spends it on surface bases. Now a station's solar modules benefit too, with a direction rule: a mirror only lights targets inward of itself. Surface bases are unchanged. Ships off.
+[*][b]Solar mirror orbital boost cap.[/b] The most a mirror-lit station's solar modules may produce, as a multiple of their unlit output. 8 is vanilla's own ceiling; lower it to blunt mirrors without switching them off.
+[*][b]Project review favors the expensive project.[/b] Vanilla weights candidates by availability chance divided by research cost, so a 200-research throwaway outdraws a 5000-research drive by 25 to 1. That divide becomes a multiply. Rare projects stay rare.
+[*][b]Demand Claim ignores the target's other wars.[/b] Vanilla asks whether the target is at war at all, not whether it is at war with you, so an endless alien war freezes every peaceful border change on the map. Now only a war between those two nations blocks it.
+[*][b]Holding a capital borrows that nation's claims.[/b] Absorbing a nation moves its regions, control points and nuclear weapons, and none of its claims, which is what forces unification to be worked outside in. While you hold a dormant nation's original capital with a non-hostile claim on it, its claims are yours to use. Lose the capital and they go again. Hostility carries across unchanged, and living nations are excluded.
+[*][b]Repeatable management project scaling.[/b] Management, Audience, Commercial and Operations Research cost N times the base on their Nth completion but pay the same flat amount every time. Each repeat now pays base x (1 + rate x (N-1)), so cost per point converges instead of diverging. 0% restores vanilla.
 [/list]
 
-[h1]Configuration[/h1]
-
-Every feature above can be switched on or off on its own, from the [b]Unity Mod Manager window[/b] - Ctrl+F10 in game, Mods tab, CataTweaks. Each has its own control and [b]changes take effect immediately[/b]: no restart, no save reload. The one exception is the council slot pool, which is fixed for the life of a campaign and only changes from the main menu. Click Save to keep them; they are stored in Settings.xml in the mod folder. A Settings.txt from an earlier version is read once and carried over automatically.
-
-[i]repeatableProjectScaling[/i] is a number rather than a switch - the fraction of the base effect each repeat adds. Set it to 0 for stock behaviour, or raise it to make the grind cheaper; 0.03 is the default.
-
-The solar mirror change is the one that ships [b]off[/b], since it alters power output across every station you own; everything else is on by default. A setting that is off is not merely inert - the patch is never applied at all, so that part of the game runs exactly as stock. Your own edits are never overwritten, as the file is only written when it is missing; and if it cannot be parsed the mod logs the error, uses defaults for that run, and leaves the file alone for you to fix.
-
-[h1]Requires Unity Mod Manager (one-time setup)[/h1]
-
-This is a [b]code / Harmony mod[/b], like PrecisionInfo. It requires Unity Mod Manager:
-
-[olist]
-[*]Download Unity Mod Manager 0.25.0 or later from [url=https://www.nexusmods.com/site/mods/21]Nexus Mods[/url].
-[*]Run UnityModManager.exe, select "Terra Invicta" as the game, set your game folder, choose the "DoorstopProxy" installation method, and click Install.
-[/olist]
-
-With UMM installed, subscribing here is a complete install — the mod loads from the game's Mods folder like any other, shows in the in-game Mods list, and the enable/disable toggle works (on restart). Workshop updates apply automatically.
-
-[h1]Compatibility[/h1]
-
+[h2]Campaign options[/h2]
 [list]
-[*]No save data schema is touched — only display names and your saved designs/presets. Safe to add or remove mid-campaign.
-[*]Multiplayer: all players need the mod installed.
-[*]As a code mod, a game patch can break it; if that happens, report it here and it will be rebuilt.
+[*][b]Spy slots become councilor slots.[/b] The council screen has eight slots: six for your councilors and two for councilors you have turned in other factions. This makes the eight one pool, so an unused spy slot is another councilor. No spies seats eight; two spies seats six, exactly as vanilla. Seats seven and eight are researched, via two new projects continuing the chain after Covert Operations. The AI plays it too, but will not hold a slot open for a spy.
+[*][b]Restored Empires claims.[/b] Claim chains and four projects giving old powers a route back to the map. The Sun Never Sets extends the United Kingdom past the settler dominions; Commonwealth Restored gains Delhi, Calcutta and Ireland; New Liberia lets the Dominion of America reach the West African coast, and it also claims Jamaica. Mare Nostrum and Imperium Sine Fine give Rome the Mediterranean world, the eastern roads and both American seaboards, in Broken Earth only. Claims on territories that fought their way out are hostile; small dependencies are peaceful.
 [/list]
 
+[h2]Notes[/h2]
 
+Requires [b]Unity Mod Manager[/b]. See the included README for the one-time setup.
 
+Restored Empires was previously a separate mod and is now part of this one. If you have it installed, remove it, or its claim rows will be duplicated.
 
+A save made with this mod still loads without it.

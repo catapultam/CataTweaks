@@ -1,4 +1,4 @@
-# CataTweaks — handoff
+# CataTweaks - handoff
 
 Working note for resuming in a fresh session. Delete when the work below is finished.
 
@@ -6,7 +6,7 @@ Working note for resuming in a fresh session. Delete when the work below is fini
 
 The previous session repeatedly listed "what I need to look up next" and then ended the turn
 without running anything. **Don't do that.** Everything needed to finish the remaining work is
-written down below — decompiled signatures, line numbers, formulas, decisions. Open the files,
+written down below - decompiled signatures, line numbers, formulas, decisions. Open the files,
 write the code, build. If something here turns out wrong, verify that one thing and keep going.
 
 ## State
@@ -18,10 +18,10 @@ Version bumped **2.4.0 → 2.5.0** in `CataTweaks.csproj` and `ModInfo.json`.
 
 ### Done, builds clean, NOT deployed
 
-- **Tweak 8 — `DemandClaimDespiteOtherWars`** (`Plugin.cs`, postfix on
+- **Tweak 8 - `DemandClaimDespiteOtherWars`** (`Plugin.cs`, postfix on
   `TransferRegionsOption.GetPossibleTargets`). Setting: `demandClaimDespiteOtherWars`, bool,
   default `true`.
-- **Tweak 9 — `RepeatableCapScalesWithCost`** (`Plugin.cs`, postfix on
+- **Tweak 9 - `RepeatableCapScalesWithCost`** (`Plugin.cs`, postfix on
   `TIFactionState.GetControlPointMaintenanceFreebieCap`). Setting:
   `repeatableProjectScaling`, float, default `0.03`, `0` = vanilla.
 - `README.txt` and `workshop-description.txt` updated for both.
@@ -38,7 +38,7 @@ Version bumped **2.4.0 → 2.5.0** in `CataTweaks.csproj` and `ModInfo.json`.
 
 **Deploy only**, once the user says the game is closed (see checklist). Then delete this file.
 
-## Decisions already made — do not relitigate
+## Decisions already made - do not relitigate
 
 - **Rate: 3%**, exposed as float `repeatableProjectScaling`, `0` restores vanilla.
   Chosen against measured benchmarks: one-off CP-cap projects the player can actually take run
@@ -48,11 +48,11 @@ Version bumped **2.4.0 → 2.5.0** in `CataTweaks.csproj` and `ModInfo.json`.
 - **Asymmetry is accepted.** Management Research is retroactive (cap postfix recomputes from
   repeat count, `base * rate * N(N-1)/2`, +49 on load at 26 repeats). Resource grants are
   forward-only (already-spent resources can't be topped up). User signed off, **provided the UI
-  shows consistent numbers** — that's Patch B's job.
+  shows consistent numbers** - that's Patch B's job.
 - Ledger will not itemise the cap bonus; total exceeds listed sources. Accepted.
 - Both tweaks apply to AI factions too. Accepted.
 
-## API facts (all verified — don't re-derive)
+## API facts (all verified - don't re-derive)
 
 - `TIProjectTemplate : TIGenericTechTemplate`; `Effects` (`List<TIEffectTemplate>`) declared on
   the base at `TIGenericTechTemplate.cs:95`, resolved from `effects` string list.
@@ -63,7 +63,7 @@ Version bumped **2.4.0 → 2.5.0** in `CataTweaks.csproj` and `ModInfo.json`.
 - Repeatable cost: `TIProjectTemplate.GetResearchCost` →
   `researchCost * (1 + completedProjects.Count(x => x == this))`.
 - `TransferRegionsOption` is in the **global namespace** (no namespace decl).
-- Cap maths is **float end to end** — no int casts, no rounding. Any rate works; `N0` formatting
+- Cap maths is **float end to end** - no int casts, no rounding. Any rate works; `N0` formatting
   in the UI is display-only.
 
 ## Constraints
@@ -72,11 +72,11 @@ Version bumped **2.4.0 → 2.5.0** in `CataTweaks.csproj` and `ModInfo.json`.
   Ask, or wait for the user to say the game is closed. Historically they say "game closed deploy
   new version".
 - `Settings.txt` is written only when missing, never rewritten. New keys therefore do **not**
-  appear in an existing install and fall through to their C# defaults — which is why both new
+  appear in an existing install and fall through to their C# defaults - which is why both new
   settings are live for the user without editing anything.
 - The settings file must **not** be named `.json`. TI's `ModTemplateManager.LoadJsonMods` globs
   every enabled-mod path containing `.json` (except `ModInfo.json`), parses as `List<JObject>`,
-  and `break`s the whole loop on failure — one bad file kills template loading for every mod
+  and `break`s the whole loop on failure - one bad file kills template loading for every mod
   sorted after it, and CataTweaks sorts early.
 - No AI attribution in commits or PRs (global CLAUDE.md).
 
@@ -84,7 +84,7 @@ Version bumped **2.4.0 → 2.5.0** in `CataTweaks.csproj` and `ModInfo.json`.
 
 Copy to the Mods\Enabled\CataTweaks folder: `CataTweaks.dll`, `ModInfo.json`, `README.txt`,
 `workshop-description.txt`. Leave `Settings.txt` alone. Use `Rename-Item` rather than
-`Remove-Item` under Program Files — an environment guard blocks `Remove-Item` there and refuses
+`Remove-Item` under Program Files - an environment guard blocks `Remove-Item` there and refuses
 the whole script pre-execution.
 
 ## Loose threads (unrelated to the patches, low priority)
@@ -96,7 +96,7 @@ the whole script pre-execution.
   Ratios and orderings derived from it held up; absolute numbers did not. Trust the in-game
   Nations screen over any reconstruction.
 - **Denpasar / Demand Claim.** `1962_LesserSundas` is owned by `1962_WES`, claimed non-hostile by
-  `1962_IDN`. Blocker was `item.nation.atWar` (bare `wars.Count > 0`) — fixed by Tweak 8. Two
+  `1962_IDN`. Blocker was `item.nation.atWar` (bare `wars.Count > 0`) - fixed by Tweak 8. Two
   conditions were never verified and could still block after deploying:
   `ExecutivePowerConsolidated` on both nations (IDN cohesion 0.005 / unrest 4.31 is suspect) and
   `CanImproveRelationsYet(WES)` cooldown.

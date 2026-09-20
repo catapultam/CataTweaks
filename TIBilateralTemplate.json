@@ -1,0 +1,3026 @@
+[
+  {
+    "dataName": "ClaimGBR_NewDelhi_CommonwealthRestored",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "NewDelhi",
+    "projectUnlockName": "Project_CommonwealthRestored",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_Kolkata_CommonwealthRestored",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Kolkata",
+    "projectUnlockName": "Project_CommonwealthRestored",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_Ireland_CommonwealthRestored",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Ireland",
+    "projectUnlockName": "Project_CommonwealthRestored",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_Faridabad_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Faridabad",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_Mumbai_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Mumbai",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_Chennai_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Chennai",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_Bangalore_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Bangalore",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_Hyderabad_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Hyderabad",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_Gujarat_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Gujarat",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_Odisha_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Odisha",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_AndhraPradesh_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "AndhraPradesh",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_Indore_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Indore",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_Punjab_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Punjab",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_Sindh_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Sindh",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_Bangladesh_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Bangladesh",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_SriLanka_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "SriLanka",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_Maldives_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Maldives",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "ClaimGBR_MalayPeninsula_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "MalayPeninsula",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_Singapore_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Singapore",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "ClaimGBR_SarawakandSabah_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "SarawakandSabah",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "ClaimGBR_Brunei_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Brunei",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "ClaimGBR_Ghana_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Accra",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_SierraLeone_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "SierraLeone",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_Senegambia_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Senegambia",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_Lagos_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Lagos",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_PortHarcourt_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "PortHarcourt",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_WestCameroon_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "WestCameroon",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_Cameroon_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Cameroon",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_Kenya_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Kenya",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_Uganda_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Uganda",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_Tanzania_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Tanzania",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_WestTanzania_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "WestTanzania",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_RwandaBurundi_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Kigali",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_Seychelles_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Seychelles",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "ClaimGBR_Mauritius_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Mauritius",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "ClaimGBR_Zambia_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Zambia",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_Zimbabwe_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Zimbabwe",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_Malawi_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Malawi",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_Botswana_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Botswana",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "ClaimGBR_Namibia_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Namibia",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_CapeTown_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "CapeTown",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_Johannesburg_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Johannesburg",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_Lesotho_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Lesotho",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "ClaimGBR_Eswatini_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Eswatini",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "ClaimGBR_Mozambique_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Mozambique",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_NorthMozambique_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "NorthMozambique",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_Jamaica_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Jamaica",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "ClaimGBR_Bahamas_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Bahamas",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "ClaimGBR_Guyana_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Guyana",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "ClaimGBR_PapuaNewGuinea_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "PortMorseby",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "ClaimGBR_Dixie_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Dixie",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_Shenandoah_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Shenandoah",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_Cumberland_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "Cumberland",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimGBR_MississippiDelta_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "GBR",
+    "region1": "MississippiDelta",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "ClaimLBR_SierraLeone_NewLiberia",
+    "relationType": "Claim",
+    "nation1": "LBR",
+    "region1": "SierraLeone",
+    "projectUnlockName": "Project_NewLiberia"
+  },
+  {
+    "dataName": "ClaimLBR_IvoryCoast_NewLiberia",
+    "relationType": "Claim",
+    "nation1": "LBR",
+    "region1": "IvoryCoast",
+    "projectUnlockName": "Project_NewLiberia"
+  },
+  {
+    "dataName": "ClaimLBR_Ghana_NewLiberia",
+    "relationType": "Claim",
+    "nation1": "LBR",
+    "region1": "Accra",
+    "projectUnlockName": "Project_NewLiberia"
+  },
+  {
+    "dataName": "ClaimLBR_TogoBenin_NewLiberia",
+    "relationType": "Claim",
+    "nation1": "LBR",
+    "region1": "TogoBenin",
+    "projectUnlockName": "Project_NewLiberia"
+  },
+  {
+    "dataName": "ClaimLBR_LowerGuinea_NewLiberia",
+    "relationType": "Claim",
+    "nation1": "LBR",
+    "region1": "Libreville",
+    "projectUnlockName": "Project_NewLiberia"
+  },
+  {
+    "dataName": "ClaimCSA_Liberia_GreaterDominion",
+    "relationType": "Claim",
+    "nation1": "CSA",
+    "region1": "Liberia",
+    "projectUnlockName": "Project_GreaterDominion"
+  },
+  {
+    "dataName": "Claim2026_GBR_NewDelhi_CommonwealthRestored",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_NewDelhi",
+    "projectUnlockName": "Project_CommonwealthRestored",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_Kolkata_CommonwealthRestored",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Kolkata",
+    "projectUnlockName": "Project_CommonwealthRestored",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_Ireland_CommonwealthRestored",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Ireland",
+    "projectUnlockName": "Project_CommonwealthRestored",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_Faridabad_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Faridabad",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_Mumbai_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Mumbai",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_Chennai_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Chennai",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_Bangalore_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Bangalore",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_Hyderabad_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Hyderabad",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_Gujarat_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Gujarat",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_Odisha_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Odisha",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_AndhraPradesh_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_AndhraPradesh",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_Indore_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Indore",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_Punjab_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Punjab",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_Sindh_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Sindh",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_Bangladesh_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Bangladesh",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_SriLanka_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_SriLanka",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_Maldives_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Maldives",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2026_GBR_MalayPeninsula_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_MalayPeninsula",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_Singapore_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Singapore",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2026_GBR_SarawakandSabah_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_SarawakandSabah",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2026_GBR_Brunei_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Brunei",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2026_GBR_Ghana_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Accra",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_SierraLeone_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_SierraLeone",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_Senegambia_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Senegambia",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_Lagos_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Lagos",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_PortHarcourt_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_PortHarcourt",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_WestCameroon_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_WestCameroon",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_Cameroon_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Cameroon",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_Kenya_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Kenya",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_Uganda_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Uganda",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_Tanzania_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Tanzania",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_WestTanzania_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_WestTanzania",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_RwandaBurundi_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Kigali",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_Seychelles_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Seychelles",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2026_GBR_Mauritius_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Mauritius",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2026_GBR_Zambia_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Zambia",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_Zimbabwe_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Zimbabwe",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_Malawi_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Malawi",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_Botswana_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Botswana",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2026_GBR_Namibia_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Namibia",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_CapeTown_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_CapeTown",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_Johannesburg_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Johannesburg",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_Lesotho_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Lesotho",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2026_GBR_Eswatini_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Eswatini",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2026_GBR_Mozambique_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Mozambique",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_NorthMozambique_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_NorthMozambique",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_Jamaica_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Jamaica",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2026_GBR_Bahamas_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Bahamas",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2026_GBR_Guyana_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Guyana",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2026_GBR_PapuaNewGuinea_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_PortMorseby",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2026_GBR_Dixie_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Dixie",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_Shenandoah_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Shenandoah",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_Cumberland_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_Cumberland",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_GBR_MississippiDelta_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2026_GBR",
+    "region1": "2026_MississippiDelta",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2026_LBR_SierraLeone_NewLiberia",
+    "relationType": "Claim",
+    "nation1": "2026_LBR",
+    "region1": "2026_SierraLeone",
+    "projectUnlockName": "Project_NewLiberia"
+  },
+  {
+    "dataName": "Claim2026_LBR_IvoryCoast_NewLiberia",
+    "relationType": "Claim",
+    "nation1": "2026_LBR",
+    "region1": "2026_IvoryCoast",
+    "projectUnlockName": "Project_NewLiberia"
+  },
+  {
+    "dataName": "Claim2026_LBR_Ghana_NewLiberia",
+    "relationType": "Claim",
+    "nation1": "2026_LBR",
+    "region1": "2026_Accra",
+    "projectUnlockName": "Project_NewLiberia"
+  },
+  {
+    "dataName": "Claim2026_LBR_TogoBenin_NewLiberia",
+    "relationType": "Claim",
+    "nation1": "2026_LBR",
+    "region1": "2026_TogoBenin",
+    "projectUnlockName": "Project_NewLiberia"
+  },
+  {
+    "dataName": "Claim2026_LBR_LowerGuinea_NewLiberia",
+    "relationType": "Claim",
+    "nation1": "2026_LBR",
+    "region1": "2026_Libreville",
+    "projectUnlockName": "Project_NewLiberia"
+  },
+  {
+    "dataName": "Claim2026_CSA_Liberia_GreaterDominion",
+    "relationType": "Claim",
+    "nation1": "2026_CSA",
+    "region1": "2026_Liberia",
+    "projectUnlockName": "Project_GreaterDominion"
+  },
+  {
+    "dataName": "Claim2070_GBR_NewDelhi_CommonwealthRestored",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_NewDelhi",
+    "projectUnlockName": "Project_CommonwealthRestored",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_Kolkata_CommonwealthRestored",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Kolkata",
+    "projectUnlockName": "Project_CommonwealthRestored",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_Ireland_CommonwealthRestored",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Ireland",
+    "projectUnlockName": "Project_CommonwealthRestored",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_Faridabad_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Faridabad",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_Mumbai_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Mumbai",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_Chennai_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Chennai",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_Bangalore_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Bangalore",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_Hyderabad_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Hyderabad",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_Gujarat_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Gujarat",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_Odisha_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Odisha",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_AndhraPradesh_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_AndhraPradesh",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_Indore_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Indore",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_Punjab_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Punjab",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_Sindh_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Sindh",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_Bangladesh_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Bangladesh",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_SriLanka_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_SriLanka",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_Maldives_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Maldives",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2070_GBR_MalayPeninsula_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_MalayPeninsula",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_Singapore_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Singapore",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2070_GBR_SarawakandSabah_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_SarawakandSabah",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2070_GBR_Brunei_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Brunei",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2070_GBR_Ghana_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Accra",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_SierraLeone_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_SierraLeone",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_Senegambia_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Senegambia",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_Lagos_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Lagos",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_PortHarcourt_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_PortHarcourt",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_WestCameroon_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_WestCameroon",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_Cameroon_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Cameroon",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_Kenya_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Kenya",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_Uganda_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Uganda",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_Tanzania_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Tanzania",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_WestTanzania_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_WestTanzania",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_RwandaBurundi_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Kigali",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_Seychelles_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Seychelles",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2070_GBR_Mauritius_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Mauritius",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2070_GBR_Zambia_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Zambia",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_Zimbabwe_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Zimbabwe",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_Malawi_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Malawi",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_Botswana_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Botswana",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2070_GBR_Namibia_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Namibia",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_CapeTown_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_CapeTown",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_Johannesburg_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Johannesburg",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_Lesotho_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Lesotho",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2070_GBR_Eswatini_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Eswatini",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2070_GBR_Mozambique_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Mozambique",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_NorthMozambique_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_NorthMozambique",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_Jamaica_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Jamaica",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2070_GBR_Bahamas_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Bahamas",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2070_GBR_Guyana_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Guyana",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2070_GBR_PapuaNewGuinea_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_PortMorseby",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2070_GBR_Dixie_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Dixie",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_Shenandoah_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Shenandoah",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_Cumberland_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_Cumberland",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_GBR_MississippiDelta_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2070_GBR",
+    "region1": "2070_MississippiDelta",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2070_LBR_SierraLeone_NewLiberia",
+    "relationType": "Claim",
+    "nation1": "2070_LBR",
+    "region1": "2070_SierraLeone",
+    "projectUnlockName": "Project_NewLiberia"
+  },
+  {
+    "dataName": "Claim2070_LBR_IvoryCoast_NewLiberia",
+    "relationType": "Claim",
+    "nation1": "2070_LBR",
+    "region1": "2070_IvoryCoast",
+    "projectUnlockName": "Project_NewLiberia"
+  },
+  {
+    "dataName": "Claim2070_LBR_Ghana_NewLiberia",
+    "relationType": "Claim",
+    "nation1": "2070_LBR",
+    "region1": "2070_Accra",
+    "projectUnlockName": "Project_NewLiberia"
+  },
+  {
+    "dataName": "Claim2070_LBR_TogoBenin_NewLiberia",
+    "relationType": "Claim",
+    "nation1": "2070_LBR",
+    "region1": "2070_TogoBenin",
+    "projectUnlockName": "Project_NewLiberia"
+  },
+  {
+    "dataName": "Claim2070_LBR_LowerGuinea_NewLiberia",
+    "relationType": "Claim",
+    "nation1": "2070_LBR",
+    "region1": "2070_Libreville",
+    "projectUnlockName": "Project_NewLiberia"
+  },
+  {
+    "dataName": "Claim2070_CSA_Liberia_GreaterDominion",
+    "relationType": "Claim",
+    "nation1": "2070_CSA",
+    "region1": "2070_Liberia",
+    "projectUnlockName": "Project_GreaterDominion"
+  },
+  {
+    "dataName": "Claim2003_GBR_NewDelhi_CommonwealthRestored",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_NewDelhi",
+    "projectUnlockName": "Project_CommonwealthRestored",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_Kolkata_CommonwealthRestored",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Kolkata",
+    "projectUnlockName": "Project_CommonwealthRestored",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_Ireland_CommonwealthRestored",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Ireland",
+    "projectUnlockName": "Project_CommonwealthRestored",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_Faridabad_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Faridabad",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_Mumbai_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Mumbai",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_Chennai_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Chennai",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_Bangalore_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Bangalore",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_Hyderabad_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Hyderabad",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_Gujarat_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Gujarat",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_Odisha_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Odisha",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_AndhraPradesh_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_AndhraPradesh",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_Indore_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Indore",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_Punjab_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Punjab",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_Sindh_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Sindh",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_Bangladesh_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Bangladesh",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_SriLanka_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_SriLanka",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_Maldives_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Maldives",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2003_GBR_MalayPeninsula_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_MalayPeninsula",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_Singapore_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Singapore",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2003_GBR_SarawakandSabah_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_SarawakandSabah",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2003_GBR_Brunei_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Brunei",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2003_GBR_Ghana_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Accra",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_SierraLeone_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_SierraLeone",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_Senegambia_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Senegambia",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_Lagos_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Lagos",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_PortHarcourt_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_PortHarcourt",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_WestCameroon_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_WestCameroon",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_Cameroon_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Cameroon",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_Kenya_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Kenya",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_Uganda_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Uganda",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_Tanzania_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Tanzania",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_WestTanzania_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_WestTanzania",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_RwandaBurundi_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Kigali",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_Seychelles_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Seychelles",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2003_GBR_Mauritius_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Mauritius",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2003_GBR_Zambia_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Zambia",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_Zimbabwe_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Zimbabwe",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_Malawi_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Malawi",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_Botswana_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Botswana",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2003_GBR_Namibia_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Namibia",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_CapeTown_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_CapeTown",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_Johannesburg_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Johannesburg",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_Lesotho_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Lesotho",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2003_GBR_Eswatini_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Eswatini",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2003_GBR_Mozambique_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Mozambique",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_NorthMozambique_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_NorthMozambique",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_Jamaica_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Jamaica",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2003_GBR_Bahamas_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Bahamas",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2003_GBR_Guyana_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Guyana",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2003_GBR_PapuaNewGuinea_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_PortMorseby",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim2003_GBR_Dixie_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Dixie",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_Shenandoah_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Shenandoah",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_Cumberland_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_Cumberland",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_GBR_MississippiDelta_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "2003_GBR",
+    "region1": "2003_MississippiDelta",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim2003_LBR_SierraLeone_NewLiberia",
+    "relationType": "Claim",
+    "nation1": "2003_LBR",
+    "region1": "2003_SierraLeone",
+    "projectUnlockName": "Project_NewLiberia"
+  },
+  {
+    "dataName": "Claim2003_LBR_IvoryCoast_NewLiberia",
+    "relationType": "Claim",
+    "nation1": "2003_LBR",
+    "region1": "2003_IvoryCoast",
+    "projectUnlockName": "Project_NewLiberia"
+  },
+  {
+    "dataName": "Claim2003_LBR_Ghana_NewLiberia",
+    "relationType": "Claim",
+    "nation1": "2003_LBR",
+    "region1": "2003_Accra",
+    "projectUnlockName": "Project_NewLiberia"
+  },
+  {
+    "dataName": "Claim2003_LBR_TogoBenin_NewLiberia",
+    "relationType": "Claim",
+    "nation1": "2003_LBR",
+    "region1": "2003_TogoBenin",
+    "projectUnlockName": "Project_NewLiberia"
+  },
+  {
+    "dataName": "Claim2003_LBR_LowerGuinea_NewLiberia",
+    "relationType": "Claim",
+    "nation1": "2003_LBR",
+    "region1": "2003_Libreville",
+    "projectUnlockName": "Project_NewLiberia"
+  },
+  {
+    "dataName": "Claim2003_CSA_Liberia_GreaterDominion",
+    "relationType": "Claim",
+    "nation1": "2003_CSA",
+    "region1": "2003_Liberia",
+    "projectUnlockName": "Project_GreaterDominion"
+  },
+  {
+    "dataName": "Claim1962_GBR_NewDelhi_CommonwealthRestored",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_NewDelhi",
+    "projectUnlockName": "Project_CommonwealthRestored",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_Kolkata_CommonwealthRestored",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Kolkata",
+    "projectUnlockName": "Project_CommonwealthRestored",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_Ireland_CommonwealthRestored",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Ireland",
+    "projectUnlockName": "Project_CommonwealthRestored",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_Faridabad_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Faridabad",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_Mumbai_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Mumbai",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_Chennai_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Chennai",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_Bangalore_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Bangalore",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_Hyderabad_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Hyderabad",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_Gujarat_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Gujarat",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_Odisha_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Odisha",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_AndhraPradesh_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_AndhraPradesh",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_Indore_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Indore",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_Punjab_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Punjab",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_Sindh_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Sindh",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_Bangladesh_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Bangladesh",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_SriLanka_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_SriLanka",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_Maldives_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Maldives",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim1962_GBR_MalayPeninsula_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_MalayPeninsula",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_Singapore_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Singapore",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim1962_GBR_SarawakandSabah_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_SarawakandSabah",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim1962_GBR_Brunei_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Brunei",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim1962_GBR_Ghana_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Accra",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_SierraLeone_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_SierraLeone",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_Senegambia_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Senegambia",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_Lagos_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Lagos",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_PortHarcourt_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_PortHarcourt",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_WestCameroon_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_WestCameroon",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_Cameroon_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Cameroon",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_Kenya_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Kenya",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_Uganda_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Uganda",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_Tanzania_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Tanzania",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_WestTanzania_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_WestTanzania",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_RwandaBurundi_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Kigali",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_Seychelles_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Seychelles",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim1962_GBR_Mauritius_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Mauritius",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim1962_GBR_Zambia_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Zambia",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_Zimbabwe_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Zimbabwe",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_Malawi_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Malawi",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_Botswana_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Botswana",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim1962_GBR_Namibia_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Namibia",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_CapeTown_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_CapeTown",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_Johannesburg_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Johannesburg",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_Lesotho_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Lesotho",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim1962_GBR_Eswatini_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Eswatini",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim1962_GBR_Mozambique_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Mozambique",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_NorthMozambique_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_NorthMozambique",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_Jamaica_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Jamaica",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim1962_GBR_Bahamas_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Bahamas",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim1962_GBR_Guyana_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Guyana",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim1962_GBR_PapuaNewGuinea_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_PortMorseby",
+    "projectUnlockName": "Project_TheSunNeverSets"
+  },
+  {
+    "dataName": "Claim1962_GBR_Dixie_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Dixie",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_Shenandoah_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Shenandoah",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_Cumberland_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_Cumberland",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_GBR_MississippiDelta_TheSunNeverSets",
+    "relationType": "Claim",
+    "nation1": "1962_GBR",
+    "region1": "1962_MississippiDelta",
+    "projectUnlockName": "Project_TheSunNeverSets",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Naples_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Naples",
+    "projectUnlockName": "Project_MareNostrum"
+  },
+  {
+    "dataName": "Claim1962_SPR_Milan_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Milan",
+    "projectUnlockName": "Project_MareNostrum"
+  },
+  {
+    "dataName": "Claim1962_SPR_Spain_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Spain",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Barcelona_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Barcelona",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_LeonGalicia_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_NorthernSpain",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Portugal_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Portugal",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Paris_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Paris",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Lyon_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Lyon",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Toulouse_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Toulouse",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Nantes_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Nantes",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Switzerland_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Zurich",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Austria_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Vienna",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Slovenia_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Slovenia",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_CroatiaSlovenia_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Zagreb",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_BosniaMontenegro_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Sarajevo",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Albania_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Tirana",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Greece_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Greece",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_NorthMacedonia_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_NorthMacedonia",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Kosovo_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Kosovo",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Belgrade_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Belgrade",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Bulgaria_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Bulgaria",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Romania_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Romania",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Transylvania_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Transylvania",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Hungary_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Hungary",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Tunisia_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Tunisia",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Algeria_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Algeria",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Libya_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Libya",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Cyrenaica_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Cyrenaica",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Morocco_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Rabat",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Egypt_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Cairo",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Alexandria_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Alexandria",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Luxor_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Luxor",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Anatolia_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Anatolia",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Istanbul_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Istanbul",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Syria_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Syria",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Lebanon_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Lebanon",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Israel_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Israel",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Palestine_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Palestine",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Jordan_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Jordan",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Belgium_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Belgium",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Netherlands_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Netherlands",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Germany_MareNostrum",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Germany",
+    "projectUnlockName": "Project_MareNostrum",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_England_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_England",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_EnglishMidlands_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_EnglishMidlands",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Wales_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Wales",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Scotland_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Scotland",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Crimea_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Crimea",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Armenia_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Armenia",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Georgia_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Georgia",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Baghdad_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Baghdad",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Mosul_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Mosul",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Diyarbakir_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Diyarbakir",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Sudan_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Sudan",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_NorthernSudan_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_NorthernSudan",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Ethiopia_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Ethiopia",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Halifax_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Halifax",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Quebec_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Laurentia",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_NewEngland_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_NewEngland",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_NewYork_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_NewYork",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Shenandoah_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Shenandoah",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Cumberland_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Cumberland",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Dixie_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Dixie",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_MississippiDelta_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_MississippiDelta",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Bahamas_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Bahamas",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Cuba_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Cuba",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_WestHispanola_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_WestHispanola",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_EastHispanola_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_EastHispanola",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Jamaica_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Jamaica",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_AmericanCaribbean_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_AmericanCaribbean",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_WestIndies_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_WestIndies",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_FrenchWestIndies_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_FrenchWestIndies",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_BritishWestIndies_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_BritishWestIndies",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_DutchCaribbean_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_DutchCaribbean",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Guyana_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Guyana",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Suriname_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Suriname",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_FrenchGuiana_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_FrenchGuiana",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Belem_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Belem",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Fortaleza_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Fortaleza",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Recife_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Recife",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_RiodeJaneiro_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_RiodeJaneiro",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_SaoPaulo_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_SaoPaulo",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_PortoAlegre_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_PortoAlegre",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Uruguay_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Uruguay",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Pampas_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Pampas",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_SPR_Patagonia_ImperiumSineFine",
+    "relationType": "Claim",
+    "nation1": "1962_SPR",
+    "region1": "1962_Patagonia",
+    "projectUnlockName": "Project_ImperiumSineFine",
+    "hostileClaim": true
+  },
+  {
+    "dataName": "Claim1962_LBR_SierraLeone_NewLiberia",
+    "relationType": "Claim",
+    "nation1": "1962_LBR",
+    "region1": "1962_SierraLeone",
+    "projectUnlockName": "Project_NewLiberia"
+  },
+  {
+    "dataName": "Claim1962_LBR_IvoryCoast_NewLiberia",
+    "relationType": "Claim",
+    "nation1": "1962_LBR",
+    "region1": "1962_IvoryCoast",
+    "projectUnlockName": "Project_NewLiberia"
+  },
+  {
+    "dataName": "Claim1962_LBR_Ghana_NewLiberia",
+    "relationType": "Claim",
+    "nation1": "1962_LBR",
+    "region1": "1962_Accra",
+    "projectUnlockName": "Project_NewLiberia"
+  },
+  {
+    "dataName": "Claim1962_LBR_TogoBenin_NewLiberia",
+    "relationType": "Claim",
+    "nation1": "1962_LBR",
+    "region1": "1962_TogoBenin",
+    "projectUnlockName": "Project_NewLiberia"
+  },
+  {
+    "dataName": "Claim1962_LBR_LowerGuinea_NewLiberia",
+    "relationType": "Claim",
+    "nation1": "1962_LBR",
+    "region1": "1962_Libreville",
+    "projectUnlockName": "Project_NewLiberia"
+  },
+  {
+    "dataName": "Claim1962_CSA_Liberia_GreaterDominion",
+    "relationType": "Claim",
+    "nation1": "1962_CSA",
+    "region1": "1962_Liberia",
+    "projectUnlockName": "Project_GreaterDominion"
+  },
+  {
+    "dataName": "Claim1962_RNA_Jamaica_Irredenta",
+    "relationType": "Claim",
+    "nation1": "1962_RNA",
+    "region1": "1962_Jamaica"
+  },
+  {
+    "dataName": "ClaimCSA_Jamaica_GreaterDominion",
+    "relationType": "Claim",
+    "nation1": "CSA",
+    "region1": "Jamaica",
+    "projectUnlockName": "Project_GreaterDominion"
+  },
+  {
+    "dataName": "Claim2026_CSA_Jamaica_GreaterDominion",
+    "relationType": "Claim",
+    "nation1": "2026_CSA",
+    "region1": "2026_Jamaica",
+    "projectUnlockName": "Project_GreaterDominion"
+  },
+  {
+    "dataName": "Claim2070_CSA_Jamaica_GreaterDominion",
+    "relationType": "Claim",
+    "nation1": "2070_CSA",
+    "region1": "2070_Jamaica",
+    "projectUnlockName": "Project_GreaterDominion"
+  },
+  {
+    "dataName": "Claim2003_CSA_Jamaica_GreaterDominion",
+    "relationType": "Claim",
+    "nation1": "2003_CSA",
+    "region1": "2003_Jamaica",
+    "projectUnlockName": "Project_GreaterDominion"
+  },
+  {
+    "dataName": "Claim1962_CSA_Jamaica_GreaterDominion",
+    "relationType": "Claim",
+    "nation1": "1962_CSA",
+    "region1": "1962_Jamaica",
+    "projectUnlockName": "Project_GreaterDominion"
+  }
+]
