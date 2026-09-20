@@ -116,6 +116,22 @@ These two change game balance rather than just the interface:
   it elsewhere; the notification just asked for the short one. Now it
   asks for the long one, so a detection tells you where to look.
 
+- The two turned-councilor slots double as councilor slots. The council
+  screen has eight: six for your councilors, two for councilors you have
+  turned in other factions. The spy slots sit idle in most campaigns -
+  the second one especially - while a fully developed council is stuck
+  at six. Now the eight are one pool. Once both council size projects
+  are done, every spy slot you are not using is a councilor slot
+  instead: no spies, eight councilors; one spy, seven; two spies, six,
+  exactly as vanilla. Turning is blocked when the pool is full, so the
+  trade runs both ways. Nothing before both projects changes - a council
+  capped at four or five keeps its two spy slots - so this is a late
+  reward for a finished council rather than an early buff. The AI plays
+  it without being taught: both caps are read by the recruit button, its
+  influence budgeting and the Turn mission's targeting condition alike.
+  It will not hold a slot open for a spy, though, so expect AI factions
+  to run eight councilors and stop spying.
+
 - Holding a nation's capital borrows its claims. Absorbing a nation
   moves its regions, control points, nuclear weapons, space program and
   half its accumulated investment - and none of its claims. The absorbed

@@ -57,6 +57,10 @@ public class Settings
     // long as it holds it, so unification no longer has to be worked strictly from the outside in.
     public bool inheritedCapitalClaims = true;
 
+    // The two turned-councilor slots on the council screen double as councilor slots once both
+    // council size projects are done: no spies means eight councilors, two spies means six.
+    public bool spySlotsAsCouncilSlots = true;
+
     // Repeatable projects granting control point capacity or resources (Management, Audience,
     // Commercial, Operations Research) scale their payoff by this fraction of the base value per
     // repeat, matching the way their cost already scales. 0 disables the patches entirely and
@@ -1373,5 +1377,119 @@ internal static class InheritedCapitalClaims
             }
         }
         recomputing = false;
+    }
+}
+
+// Tweak 12: the two turned-councilor slots double as councilor slots.
+//
+// The council screen has eight slots: six for your councilors, two for councilors you have turned
+// in other factions. The spy slots sit idle in most campaigns - the second one especially, since
+// even the AI only values a spy when it has none - while a fully developed council is stuck at six.
+//
+// So the eight become one pool. Finish both council size projects and every spy slot you are not
+// using is a councilor slot instead: no spies, eight councilors; one spy, seven; two spies, six,
+// exactly as vanilla. Turning is blocked when the pool is full, so the trade runs both ways.
+//
+// Nothing before both size projects changes. A council still capped at four or five keeps its two
+// spy slots untouched, so this is a late reward for a finished council rather than an early buff.
+//
+// Both caps are one expression each and every consumer reads them - the recruit button, the AI's
+// influence budgeting, emptyCouncilorSlots, the Turn mission's targeting condition - so the AI
+// plays the mechanic without being taught it. What it will not do is hold a slot open for a spy:
+// it fills councilor slots as soon as it can afford one, so AI factions will tend to run eight
+// councilors and no spies. That is the intended trade, taken in the direction the numbers favour.
+internal static class CouncilSlotPool
+{
+    // The council grid is built for eight. Not a setting: a larger pool would need a bigger grid.
+    internal const int Pool = 8;
+
+    // Vanilla's ceiling, and the gate. Below it the size projects are unfinished and nothing here
+    // applies; at it the unused spy slots open up.
+    private const int FullCouncil = 6;
+
+    [HarmonyPatch(typeof(TIFactionState), nameof(TIFactionState.maxCouncilSize), MethodType.Getter)]
+    internal static class MaxCouncilSize
+    {
+        private static bool Prepare() => Main.settings.spySlotsAsCouncilSlots;
+
+        private static void Postfix(TIFactionState __instance, ref int __result)
+        {
+            if (__result >= FullCouncil && __instance.turnedCouncilors != null)
+            {
+                __result = Pool - __instance.turnedCouncilors.Count;
+            }
+        }
+    }
+
+    // The whole vanilla condition is "fewer than two spies". Now the pool has to have room too,
+    // and the same condition name comes back so the UI explains the block the way it always has.
+    [HarmonyPatch(typeof(TIMissionCondition_HasSpySlot), nameof(TIMissionCondition_HasSpySlot.CanTarget))]
+    internal static class HasSpySlot
+    {
+        private static bool Prepare() => Main.settings.spySlotsAsCouncilSlots;
+
+        private static void Postfix(TICouncilorState councilor, ref string __result)
+        {
+            TIFactionState faction = councilor?.faction;
+            if (__result == "_Pass" && faction != null
+                && faction.councilors.Count + faction.turnedCouncilors.Count >= Pool)
+            {
+                __result = nameof(TIMissionCondition_HasSpySlot);
+            }
+        }
+    }
+
+    // Vanilla packs the grid into a fixed TICouncilorState[8] with the turned councilors written at
+    // index 6 - so a seventh councilor lands on top of a spy and a ninth would be off the end of the
+    // array. Councilors now fill from the front and spies from the back, which leaves the vanilla
+    // layout alone at six and two. The array is sized off the actual counts as well as the pool,
+    // because a councilor can be turned by a route that never consults the cap: an assassination
+    // can hand a rival faction the victim as a vengeful defector.
+    [HarmonyPatch(typeof(CouncilGridController), nameof(CouncilGridController.UpdateCouncilorGrid))]
+    internal static class Grid
+    {
+        private static bool Prepare() => Main.settings.spySlotsAsCouncilSlots;
+
+        private static bool Prefix(CouncilGridController __instance)
+        {
+            TIFactionState player = GameControl.control.activePlayer;
+            int size = Mathf.Max(Pool, player.councilors.Count + player.turnedCouncilors.Count);
+            TICouncilorState[] slots = new TICouncilorState[size];
+            int next = 0;
+            foreach (TICouncilorState councilor in player.councilors)
+            {
+                slots[next++] = councilor;
+            }
+            next = size - 1;
+            foreach (TICouncilorState spy in player.turnedCouncilors)
+            {
+                slots[next--] = spy;
+            }
+
+            __instance.councilorGrid.SetListSize<CouncilorGridItemController>(size);
+            CouncilorGridItemController[] items =
+                __instance.councilorGrid.GetComponentsInChildren<CouncilorGridItemController>(true);
+            for (int i = 0; i < items.Length && i < size; i++)
+            {
+                items[i].Init(__instance, i);
+                if (slots[i] == null)
+                {
+                    items[i].primaryPanel.SetActive(false);
+                    continue;
+                }
+                items[i].UpdateListItem(slots[i]);
+                items[i].primaryPanel.SetActive(true);
+                if (items[i].councilorVideo.clip != null && !items[i].councilorVideo.isPlaying)
+                {
+                    if (!__instance.councilorVideo.isPrepared)
+                    {
+                        TIUtilities.TryPrepareVideo(items[i].councilorVideo);
+                    }
+                    __instance.StartCoroutine(
+                        __instance.PlayVideoWhenPrepared(items[i].councilorVideo));
+                }
+            }
+            return false;
+        }
     }
 }
