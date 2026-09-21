@@ -7,6 +7,9 @@ the game's own Settings screen. You do not edit a text file.
 The mod contains two parts. Harmony patches run as code, and Unity Mod Manager loads them.
 Projects and claim rows are templates, and the game's own template system loads them.
 
+On the Steam Workshop:
+[CataTweaks](https://steamcommunity.com/sharedfiles/filedetails/?id=3805519545).
+
 ---
 
 ## The settings screen
