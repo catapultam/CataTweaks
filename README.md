@@ -32,123 +32,107 @@ that the Customize Campaign screen starts from.
 ## Quality of life and UI
 
 **Remember campaign options between sessions.** Customize Campaign opens with the options from
-the last campaign you set up, instead of resetting to defaults. It saves them when you leave the
-screen, not only when you launch a campaign. Custom faction names are saved for each faction and
-come back only when that faction is selected.
+the last campaign you set up. They are saved when you leave the screen, not only when you launch
+a campaign. Custom faction names are saved for each faction and return when that faction is
+selected.
 
 **Hab template tweaks.** Applying a saved hab template names the hab
-`Name (Template, Orbit, Body)`, as in `Freeport (Mining, Low Earth Orbit 2, Earth)`. Bodies with
-one orbit, such as Lagrange points, drop the orbit. Applying a template again replaces only the
-text in brackets, so your custom name stays. The template also carries its map icon to each hab
-you apply it to.
+`Name (Template, Orbit, Body)`, as in `Freeport (Mining, Low Earth Orbit 2, Earth)`, and applies
+the template's map icon. Bodies with one orbit, such as Lagrange points, drop the orbit.
+Applying a template again replaces only the text in brackets.
 
-Saving a hab as a template names the template after the text in brackets, and overwrites the
-existing template of that name. The Apply button also stays enabled when the hab already has the
-modules of the template. You can therefore apply a template that changes nothing, which is how
-you rename a hab on its own.
+Saving a hab as a template names the template after the text in brackets and overwrites the
+existing template of that name. The Apply button stays enabled when the hab already has the
+modules of the template, so a template that changes nothing can still be applied.
 
 **Priority presets overwrite in place.** Saving a preset under an existing custom name replaces
 it. It stays the default preset if the old one was, and control points using the old version move
-to the new one, so countries keep tracking the preset instead of changing to Custom. Built-in
-presets are never overwritten. Selecting a custom preset from the dropdown also carries its name
-into the name field, and the field accepts a name that already exists instead of rejecting it.
+to the new one. Built-in presets are not overwritten. Selecting a custom preset from the dropdown
+carries its name into the name field, and the field accepts a name that already exists.
 
-**Nations keep their preset when priorities change.** A nation that gains a spaceflight program,
-founds a military, or unlocks navy, STO, space defense or nuclear options keeps its preset. The
-mod applies the preset again for the new set of priorities, within a day.
+**Nations keep their preset when priorities change.** When a nation gains or loses a priority,
+such as a spaceflight program, a military, or navy, STO, space defense and nuclear options, the
+preset is applied again for the new set of priorities, within a day.
 
-**Dividers between stations in the ship construction UI.** One station can hold several
-shipyards. The mod draws a line between the shipyards of one station and the next, following the
-vanilla location filter.
+**Dividers between stations in the ship construction UI.** A line is drawn between the shipyards
+of one station and the next. It follows the vanilla location filter.
 
-**Fleet detections name the orbit or body.** "A new fleet docked at Montezuma Base" helps only if
-you know where Montezuma Base is. The game can write the longer form and uses it elsewhere.
+**Fleet detections name the orbit or body.** Detection notices include the hab's orbit, and the
+body for a landed fleet.
 
 ## Gameplay
 
-**Solar mirrors boost orbital stations.** The game has the whole solar mirror mechanism and
-spends it on surface bases only. With this setting, the solar modules of a station benefit too. A
-mirror lights targets that orbit inward of it, so a mirror in high Mars orbit boosts medium and
-low orbit, and one in medium orbit boosts low orbit only. A mirror level with its target does
-nothing for it. Lagrange points are outside that ladder and light everything they already light
-in the vanilla game. Surface bases are unchanged. When mirror numbers change, the mod also
-refreshes power management for the stations affected. This setting is off by default.
+**Solar mirrors boost orbital stations.** The solar modules of an orbital station receive the
+solar mirror bonus. A mirror lights targets that orbit inward of it, so a mirror in high Mars
+orbit boosts medium and low orbit, one in medium orbit boosts low orbit, and a mirror level with
+its target does nothing for it. Mirrors at Lagrange points light what they light in the vanilla
+game. Surface bases are unchanged. Power management is refreshed for affected stations when
+mirror numbers change. Off by default.
 
 **Solar mirror orbital boost cap.** The maximum output of a mirror-lit station's solar modules,
-as a multiple of their unlit output, from 2 to 8. The vanilla ceiling is 8, so the default changes
-nothing. Surface bases keep the vanilla ceiling whatever this is set to.
+as a multiple of their unlit output, from 2 to 8. The vanilla ceiling is 8. Stations only.
 
-**Project review favors the expensive project.** Review Failed Projects divides the availability
-chance of each candidate by its research cost, so a 200-research throwaway beats a 5000-research
-drive by 25 to 1. The mod multiplies instead. Availability chance still scales the result, so
-rare projects stay rare.
+**Project review favors the expensive project.** Review Failed Projects weights each candidate by
+availability chance multiplied by research cost, rather than divided by it.
 
-**Demand Claim ignores the target's other wars.** The game asks whether the target nation is at
-war at all, not whether it is at war with you. A nation at war can therefore never give a region
-to anyone, so one endless alien war stops every peaceful border change on the map. With this
-setting, only a war between those two nations blocks the demand. Every other condition is
+**Demand Claim ignores the target's other wars.** Demand Claim is blocked only by a war between
+the two nations involved, rather than by the target being at war with anyone. Every other
+condition is unchanged.
+
+**Holding a capital borrows that nation's claims.** While you hold a dormant nation's original
+capital, and your claim on that capital is not hostile, you may use that nation's claims. Losing
+the capital, or that claim turning hostile, removes them. A claim the other nation held as
+hostile stays hostile for you. Nations that still hold territory are excluded. Save files are
 unchanged.
 
-**Holding a capital borrows that nation's claims.** Absorbing a nation moves its regions, control
-points, nuclear weapons, space program and half its investment, and none of its claims. That is
-what forces unification to be worked from the outside in. With this setting, you can use the
-claims of a dormant nation while you hold its original capital and your claim on that capital is
-not hostile. Lose the capital, or have that claim turn hostile, and the borrowed claims go with
-it. A claim the other nation held as hostile stays hostile for you, and nations that still hold
-territory are excluded. This never changes what your save file contains.
+**Repeatable management project scaling.** Each repeat of Management Research, Audience Research,
+Commercial Research and Operations Research pays its base reward plus this percentage for every
+repeat already completed. The slider runs from 0% to 20%, and 0% is the vanilla flat reward.
+Alien factions are not affected.
 
-**Repeatable management project scaling.** Management Research, Audience Research, Commercial
-Research and Operations Research cost more on each repeat but pay the same flat amount, so the
-research you spend for each point of control point capacity grows without limit. With this
-setting, each repeat pays more in step with its cost, and the cost for each point settles instead
-of climbing. The slider runs from 0% to 20%, and 0% is the vanilla behavior. Alien factions are
-not affected.
-
-The project descriptions show the scaled value and predict the next completion. The capacity
-bonus is calculated from the number of repeats, so it covers repeats you completed before
-installing the mod. Resources already granted are not topped up.
+The capacity bonus is calculated from the number of repeats, so it covers repeats completed
+before installing the mod. Resources already granted are not topped up. Project descriptions show
+the scaled value and the next completion.
 
 ## Campaign options
 
 Both of these are lightly tested. The code does what this section describes, and the projects and
-claim rows load without errors, but neither has been played through a campaign. Expect rough
-edges, and turn them off if you want a settled game.
+claim rows load without errors, but neither has been played through a campaign.
 
-**Spy slots become councilor slots.** The council screen has eight slots: six for your councilors
-and two for councilors you turned in other factions. This setting makes the eight one pool, so
-every spy slot you do not use is a councilor slot instead. No spies seats eight, one spy seats
-seven, and two spies seats six, as in the vanilla game. Turning is blocked when the pool is full.
+**Spy slots become councilor slots.** The eight slots on the council screen become one pool
+shared between your councilors and councilors you have turned in other factions. No spies seats
+eight councilors, one spy seats seven, and two spies seats six, as in the vanilla game. Turning
+is blocked when the pool is full.
 
-Seats seven and eight must be researched. **Deep Cover Handlers** (2,400) follows Covert
-Operations and Applied Artificial Intelligence. **Shadow Cabinet** (4,800) follows Deep Cover
-Handlers and Administration Algorithms. Neither is guaranteed to be offered. With this option
-off, both projects are hidden.
+Seats seven and eight are researched. **Deep Cover Handlers** (2,400) follows Covert Operations
+and Applied Artificial Intelligence. **Shadow Cabinet** (4,800) follows Deep Cover Handlers and
+Administration Algorithms. Neither is guaranteed to be offered. With this option off, both
+projects are hidden.
 
-The AI obeys both caps, but it has no model of the trade and will not keep a slot free for a spy.
-Expect AI factions to fill their councils and stop spying.
+The AI obeys both caps and does not keep a slot free for a spy, so AI factions fill their
+councils and stop spying.
 
-**Restored Empires claims.** Claim chains and four projects that give old powers a route back to
-the map. This was a separate mod and is now part of CataTweaks.
+**Restored Empires claims.** Claim chains and four projects for old powers. This was a separate
+mod and is now part of CataTweaks.
 
-- **The Sun Never Sets** (United Kingdom, 25,000) extends Britain past the settler dominions to
-  the whole Empire and Commonwealth. The vanilla project **Commonwealth Restored** also gains
-  Delhi, Calcutta and Ireland.
+- **The Sun Never Sets** (United Kingdom, 25,000) claims the Empire and Commonwealth beyond the
+  settler dominions. The vanilla project **Commonwealth Restored** also gains Delhi, Calcutta and
+  Ireland.
 - **New Liberia** (Liberia, 20,000) claims Sierra Leone, the Ivory Coast, Accra, Togo-Benin and
-  Libreville. Settlers founded Monrovia, Freetown and Libreville for freed slaves within forty
-  years of each other, and the Kru coast between them crewed the ships of all three. The
-  **Dominion of America** claims Liberia and Jamaica behind the vanilla project Greater Dominion,
-  so it can reach that coast by releasing Liberia, letting it grow, and absorbing it again.
-- **Mare Nostrum** (Rome, 10,000) and **Imperium Sine Fine** (Rome, 25,000) give the Republic the
-  Mediterranean world, the eastern roads, Aksum and both American seaboards. These two appear in
+  Libreville. The **Dominion of America** claims Liberia and Jamaica behind the vanilla project
+  Greater Dominion, which gives it a route to that coast by releasing Liberia, letting it grow,
+  and absorbing it again.
+- **Mare Nostrum** (Rome, 10,000) and **Imperium Sine Fine** (Rome, 25,000) claim the
+  Mediterranean world, the eastern roads, Aksum and both American seaboards. Both appear in
   Broken Earth only, which is the one scenario the Roman Republic exists in.
 
-A claim on a territory that fought its way out is hostile. A claim on a small dependency that
-left by agreement is peaceful. A hostile claim needs more work: conquer the region, push
-government until the claim becomes peaceful, then release the nation, let it grow, and absorb it.
+Claims on territories that fought their way out are hostile. Claims on small dependencies that
+left by agreement are peaceful. A hostile claim needs conquest, then a government push until the
+claim becomes peaceful, then release, regrowth and reabsorption.
 
-Broken Earth is where these chains pay off most, because its claim web is dense and one doorway
-opens a continent. The intact starts are sparse, so the same projects open far less there. The
-scripts in `tools/` recompute the reach for each scenario from the game's own templates.
+Broken Earth has a dense claim web, so these chains reach much further there than in the intact
+starts. The scripts in `tools/` recompute the reach for each scenario from the game's own
+templates.
 
 ## Notes
 

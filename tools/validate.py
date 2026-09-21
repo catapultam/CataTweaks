@@ -1,13 +1,12 @@
 """Checks that run without the game installed.
 
-The mod cannot be compiled in CI: it references Assembly-CSharp and eleven Unity
-assemblies out of the Terra Invicta install, which are proprietary and are not in this
-repo. What can be checked is everything that fails silently in game, which is most of the
+The mod cannot be compiled in CI: it references Assembly-CSharp, nine Unity assemblies,
+UnityModManager and 0Harmony out of the Terra Invicta install, which are proprietary and
+are not in this repo. What can be checked is everything that fails silently in game, which is most of the
 ways these files go wrong: a claim row whose scenario prefixes disagree is simply inert,
 and a project with no localization shows its dataName to the player.
 """
 
-import io
 import json
 import os
 import re
@@ -24,7 +23,7 @@ def fail(message):
 
 def read_json(name):
     path = os.path.join(ROOT, name)
-    with io.open(path, encoding="utf-8-sig") as handle:
+    with open(path, encoding="utf-8-sig") as handle:
         return json.load(handle)
 
 
@@ -57,21 +56,37 @@ def check_projects(projects):
 
 
 def check_localization(projects):
-    path = os.path.join(ROOT, "Localization", "en", "TIProjectTemplate.en")
-    if not os.path.exists(path):
-        fail("no Localization/en/TIProjectTemplate.en")
+    """Every language, not only English.
+
+    The game has no English fallback. LocalizationManager.Find returns the key itself when a
+    string is missing, so a player on another language reads
+    TIProjectTemplate.displayName.Project_MareNostrum in the tech tree.
+    """
+    root = os.path.join(ROOT, "Localization")
+    if not os.path.isdir(root):
+        fail("no Localization folder")
         return
-    with io.open(path, encoding="utf-8") as handle:
+    languages = sorted(name for name in os.listdir(root)
+                       if os.path.isdir(os.path.join(root, name)))
+    if "en" not in languages:
+        fail("no Localization/en")
+    for language in languages:
+        path = os.path.join(root, language, "TIProjectTemplate." + language)
+        if not os.path.exists(path):
+            fail(language + " has no TIProjectTemplate." + language)
+            continue
         keys = set()
-        for line in handle:
-            if "=" in line:
-                keys.add(line.split("=", 1)[0].strip())
-    for project in projects:
-        name = project.get("dataName")
-        for kind in ("displayName", "summary", "description"):
-            key = "TIProjectTemplate." + kind + "." + name
-            if key not in keys:
-                fail("no " + kind + " localization for " + name)
+        with open(path, encoding="utf-8") as handle:
+            for line in handle:
+                if "=" in line:
+                    keys.add(line.split("=", 1)[0].strip())
+        for project in projects:
+            name = project.get("dataName")
+            for kind in ("displayName", "summary", "description"):
+                key = "TIProjectTemplate." + kind + "." + name
+                if key not in keys:
+                    fail(language + " has no " + kind + " for " + name)
+    print(str(len(languages)) + " of 14 languages")
 
 
 def check_claims(claims, project_names):
@@ -115,7 +130,7 @@ def check_claims(claims, project_names):
             fail(family + " exists in " + str(len(found)) + " scenarios, not 1 or 5")
 
 
-def check_modinfo(projects):
+def check_modinfo():
     info = read_json("ModInfo.json")
     for field in ("Id", "DisplayName", "Version", "AssemblyName", "EntryMethod"):
         if not info.get(field):
@@ -124,7 +139,7 @@ def check_modinfo(projects):
     if not re.match(r"^\d+\.\d+\.\d+$", version):
         fail("ModInfo.json version is not x.y.z: " + version)
     csproj = os.path.join(ROOT, "CataTweaks.csproj")
-    with io.open(csproj, encoding="utf-8") as handle:
+    with open(csproj, encoding="utf-8") as handle:
         text = handle.read()
     match = re.search(r"<Version>([^<]+)</Version>", text)
     if match and match.group(1) != version:
@@ -139,7 +154,7 @@ def check_house_style():
             if not name.endswith((".cs", ".md", ".txt", ".json", ".en")):
                 continue
             path = os.path.join(folder, name)
-            with io.open(path, encoding="utf-8", errors="replace") as handle:
+            with open(path, encoding="utf-8", errors="replace") as handle:
                 text = handle.read()
             if "—" in text or "–" in text:
                 fail(os.path.relpath(path, ROOT) + " contains an em or en dash")
@@ -151,7 +166,7 @@ def main():
     names = check_projects(projects)
     check_localization(projects)
     check_claims(claims, names)
-    check_modinfo(projects)
+    check_modinfo()
     check_house_style()
 
     print(str(len(projects)) + " projects, " + str(len(claims)) + " claim rows")

@@ -166,6 +166,9 @@ public static class Main
         {
             modEntry.Logger.Error("Review Failed Projects tweak could not attach - " + e.Message);
         }
+        // Read now rather than from the first claim query that needs it, which would land the
+        // file read and its regex in the middle of a frame.
+        _ = ModTemplates.Claims.Count;
         modEntry.Logger.Log("CataTweaks loaded.");
         return true;
     }
@@ -1548,17 +1551,20 @@ internal static class CouncilSlotPool
             {
                 return true;
             }
-            bool ours = Array.IndexOf(Projects, project.dataName) >= 0
-                || Array.IndexOf(RestoredEmpires.Projects, project.dataName) >= 0;
+            bool council = Array.IndexOf(Projects, project.dataName) >= 0;
+            bool empires = Array.IndexOf(RestoredEmpires.Projects, project.dataName) >= 0;
+            if (!council && !empires)
+            {
+                return true;
+            }
             bool hidden =
-                (!CampaignFlags.CouncilPool && Array.IndexOf(Projects, project.dataName) >= 0)
-                || (!CampaignFlags.RestoredEmpires
-                    && Array.IndexOf(RestoredEmpires.Projects, project.dataName) >= 0)
+                (council && !CampaignFlags.CouncilPool)
+                || (empires && !CampaignFlags.RestoredEmpires)
                 // requiresNation is not the gate it looks like: PrereqsSatisfied only rejects a
                 // project whose required nation exists and is gone, so one naming a nation the
                 // scenario never had passes. Rome exists in Broken Earth alone, and its two
                 // projects would otherwise be offered in every start with nothing to claim.
-                || (ours && !string.IsNullOrEmpty(project.requiresNation)
+                || (!string.IsNullOrEmpty(project.requiresNation)
                     && project.requiredNationState == null);
             if (!hidden)
             {
@@ -1578,6 +1584,14 @@ internal static class CouncilSlotPool
             {
                 return;
             }
+            // Below vanilla's ceiling the clamp never bound, so its answer already counts every
+            // effect and the pool cannot bite: two spies still leave six seats. Nothing to do,
+            // and the effects walk below is worth skipping on a getter this warm.
+            if (__result < Pool - 2)
+            {
+                return;
+            }
+
             // Vanilla clamps to six however many CouncilSize effects are held, which is what stops
             // the two projects this mod adds from counting. Recompute without that clamp, then
             // clamp to what the pool has left after spies instead.
@@ -1705,12 +1719,6 @@ internal static class VanillaOptionsRows
     };
     private const string PaneName = "CataTweaks_Pane";
 
-    // Fixed for the life of a campaign and headed for the new-campaign screen instead.
-    // Nothing is excluded. These two are only the defaults a new campaign starts from, and
-    // their labels say so; with the mod manager panel gone, leaving them out of this tab left
-    // them reachable only by hand-editing Settings.xml.
-    private static readonly string[] Excluded = new string[0];
-
     // Settings that only mean something while another is on, and gray out with it.
     private static readonly Dictionary<string, string> DependsOn = new Dictionary<string, string>
     {
@@ -1804,8 +1812,7 @@ internal static class VanillaOptionsRows
     // Declaration order, which is the order they read in the UMM window too.
     private static IEnumerable<FieldInfo> Drawn() =>
         typeof(Settings).GetFields()
-            .Where(f => Array.IndexOf(Excluded, f.Name) < 0
-                && f.GetCustomAttribute<DrawAttribute>() != null
+            .Where(f => f.GetCustomAttribute<DrawAttribute>() != null
                 && (f.FieldType == typeof(bool) || f.FieldType == typeof(float)));
 
     private static Transform Toggle(Transform list, Transform source, TMP_Text title,
@@ -1866,7 +1873,10 @@ internal static class VanillaOptionsRows
         {
             field.SetValue(Main.settings, v);
             readout?.SetText(show(v));
-            Commit();
+            // Not Commit: this fires every frame of a drag, and Commit writes Settings.xml and
+            // recomputes every nation's borrowed claims. The patches read the field directly, so
+            // the value is already live; the bookkeeping waits for the screen to close.
+            pendingSave = true;
         });
         return row;
     }
@@ -2019,6 +2029,22 @@ internal static class VanillaOptionsRows
         return header.transform;
     }
 
+    private static bool pendingSave;
+
+    // Sliders defer their commit to here rather than paying for it on every frame of a drag.
+    [HarmonyPatch(typeof(OptionsMenuController), nameof(OptionsMenuController.OnDisable))]
+    internal static class CommitOnClose
+    {
+        private static void Postfix()
+        {
+            if (pendingSave)
+            {
+                pendingSave = false;
+                Commit();
+            }
+        }
+    }
+
     private static void Commit()
     {
         Main.settings.OnChange();
@@ -2032,7 +2058,7 @@ internal static class VanillaOptionsRows
     // earth-lights row is a DynamicEarthLights inside another DynamicEarthLights - and only the
     // outer one is a sibling of the other settings, so stopping at the first ancestor holding
     // both control and label drops the clone into a container with its single slot already taken.
-    private static Transform Row<T>(Transform control) where T : Component
+    internal static Transform Row<T>(Transform control) where T : Component
     {
         if (control == null)
         {
@@ -2202,6 +2228,8 @@ internal static class VanillaOptionsRows
 internal static class CampaignFlags
 {
     private const string Prefix = "CataTweaks.";
+    private const string CouncilPoolKey = Prefix + "councilPool";
+    private const string RestoredEmpiresKey = Prefix + "restoredEmpires";
 
     private static ScenarioCustomizations Current =>
         TIGlobalValuesState.GlobalValues != null
@@ -2210,11 +2238,13 @@ internal static class CampaignFlags
 
     // A campaign started without going through Customize Campaign records nothing, so the answer
     // falls back to the default in Settings.xml rather than to a hardcoded one.
-    internal static bool CouncilPool => Get("councilPool", Main.settings.spySlotsAsCouncilSlots);
+    // Read per claim row per claim query, so the key is a compile-time constant rather than a
+    // concatenation, and nothing here allocates.
+    internal static bool CouncilPool => Get(CouncilPoolKey, Main.settings.spySlotsAsCouncilSlots);
 
-    internal static bool RestoredEmpires => Get("restoredEmpires", Main.settings.restoredEmpires);
+    internal static bool RestoredEmpires => Get(RestoredEmpiresKey, Main.settings.restoredEmpires);
 
-    private static bool Get(string name, bool fallback)
+    private static bool Get(string key, bool fallback)
     {
         ScenarioCustomizations customizations = Current;
         if (customizations?.customFactionText == null)
@@ -2222,7 +2252,7 @@ internal static class CampaignFlags
             return fallback;
         }
         return customizations.customFactionText.TryGetValue(
-            Prefix + name, out ScenarioCustomizations.CustomFactionText entry)
+            key, out ScenarioCustomizations.CustomFactionText entry)
             ? entry.customDisplayName == "1"
             : fallback;
     }
@@ -2318,25 +2348,21 @@ internal static class RestoredEmpires
     internal static bool Hidden(TIBilateralTemplate row) =>
         row != null && !CampaignFlags.RestoredEmpires && ModTemplates.Claims.Contains(row.dataName);
 
-    [HarmonyPatch(typeof(TIBilateralTemplate), nameof(TIBilateralTemplate.BilateralIsActive))]
+    // Both methods, because they answer for different callers. BilateralIsActive is what a
+    // claim query goes through, and BilateralIsInScenario is what the loop in TIFactionState
+    // tests when it hands out the claims of a completed project. Rows behind the vanilla
+    // Commonwealth Restored and Greater Dominion reach only the second one.
+    [HarmonyPatch]
     internal static class HideClaims
     {
-        private static void Postfix(TIBilateralTemplate __instance, ref bool __result)
+        private static IEnumerable<MethodBase> TargetMethods()
         {
-            if (__result && Hidden(__instance))
-            {
-                __result = false;
-            }
+            yield return AccessTools.Method(typeof(TIBilateralTemplate),
+                nameof(TIBilateralTemplate.BilateralIsActive));
+            yield return AccessTools.Method(typeof(TIBilateralTemplate),
+                nameof(TIBilateralTemplate.BilateralIsInScenario));
         }
-    }
 
-    // BilateralIsActive alone is not enough. The claims a project grants on completion are
-    // handed out by a loop in TIFactionState that tests BilateralIsInScenario, not
-    // BilateralIsActive. Rows behind vanilla projects, Commonwealth Restored and Greater
-    // Dominion, would therefore still be granted with this option off.
-    [HarmonyPatch(typeof(TIBilateralTemplate), nameof(TIBilateralTemplate.BilateralIsInScenario))]
-    internal static class HideClaimsFromScenario
-    {
         private static void Postfix(TIBilateralTemplate __instance, ref bool __result)
         {
             if (__result && Hidden(__instance))
@@ -2412,7 +2438,7 @@ internal static class CampaignOptionsRows
             // toggle-sized cell and pushes the grid over what follows. Sections live one level up,
             // in the scroll content: the header goes there, and so does a grid of our own, which
             // keeps vanilla's cell sizing for the toggles inside it.
-            Transform sourceRow = Outermost<Toggle>(template.transform);
+            Transform sourceRow = VanillaOptionsRows.Row<Toggle>(template.transform);
             Transform grid = sourceRow.parent;
             Transform list = grid != null ? grid.parent : null;
             if (list == null)
@@ -2429,7 +2455,7 @@ internal static class CampaignOptionsRows
             {
                 // Cloned from "Your Faction Names" rather than built, so it carries that section
                 // header's own font, size and spacing without having to guess at them.
-                Transform styleRow = Outermost<TMP_Text>(headerStyle.transform);
+                Transform styleRow = VanillaOptionsRows.Row<TMP_Text>(headerStyle.transform);
                 GameObject made = UnityEngine.Object.Instantiate(styleRow.gameObject, list);
                 made.name = HeaderName;
                 foreach (TMP_Text text in made.GetComponentsInChildren<TMP_Text>(true))
@@ -2505,16 +2531,6 @@ internal static class CampaignOptionsRows
         toggle.onValueChanged.AddListener(on => option.Chosen = on);
     }
 
-    // Same nesting as the options rows: the control sits inside a container that is the real row.
-    private static Transform Outermost<T>(Transform control) where T : Component
-    {
-        Transform row = control;
-        while (row.parent != null && row.parent.GetComponentsInChildren<T>(true).Length == 1)
-        {
-            row = row.parent;
-        }
-        return row;
-    }
 }
 
 // Custom faction names, remembered against the faction they were written for.

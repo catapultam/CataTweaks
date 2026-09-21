@@ -10,12 +10,14 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
+// Paths resolve against the working directory. CI runs dotnet run from the repo root, and so
+// does any local invocation of that same command.
 int failures = 0;
-string root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
+
 
 foreach (string name in args)
 {
-    string path = Path.Combine(root, name);
+    string path = Path.GetFullPath(name);
     if (!File.Exists(path))
     {
         Console.WriteLine($"FAIL {name} not found at {path}");
@@ -35,7 +37,7 @@ foreach (string name in args)
         Console.WriteLine($"FAIL {name}({span.StartLinePosition.Line + 1}): {error.GetMessage()}");
     }
     failures += errors.Length;
-    Console.WriteLine($"{name}: {tree.GetRoot().DescendantNodes().Count()} nodes, {errors.Length} errors");
+    Console.WriteLine($"{name}: {errors.Length} errors");
 }
 
 return failures == 0 ? 0 : 1;
