@@ -33,6 +33,8 @@ Two settings belong to the campaign rather than to you. They sit at the bottom o
 [/list]
 
 [h2]Campaign options[/h2]
+
+[i]Both of these are lightly tested. They load and behave as described, but neither has been played through a campaign. Turn them off if you want a settled game.[/i]
 [list]
 [*][b]Spy slots become councilor slots.[/b] The council screen has eight slots: six councilors and two for councilors you turned elsewhere. This makes them one pool, so an unused spy slot is another councilor. No spies seats eight, two spies seats six. Seats seven and eight are unlocked by two new projects after Covert Operations. The AI plays it too, and will trade its spies for councilors.
 [*][b]Restored Empires claims.[/b] Claim chains and four projects that give old powers a route back to the map. The Sun Never Sets takes Britain past the settler dominions, and Commonwealth Restored gains Delhi, Calcutta and Ireland. New Liberia opens the West African coast for the Dominion of America, which also claims Jamaica. Mare Nostrum and Imperium Sine Fine give Rome the Mediterranean, the eastern roads and both American seaboards, in Broken Earth only. Claims on territories that fought their way out are hostile.

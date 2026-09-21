@@ -124,10 +124,12 @@ Gameplay
   base on their Nth completion but pay the same flat amount every time,
   so research per point of capacity grows without limit. Each repeat now
   pays base x (1 + rate x (N-1)), rounded, so cost per point converges
-  instead of diverging. At the default 3% it settles around 4,000
-  research per point of control point capacity, roughly ten times the
-  median one-off capacity project, so the grind stays a deliberately
-  poor last resort rather than a shortcut. The capacity bonus is derived
+  instead of diverging. The research spent per point of capacity settles
+  on the project's base cost divided by its grant and the rate: at the
+  default 3% that is 10,000 per point in the base game and 4,000 in
+  Broken Earth, well above any one-off capacity project, so the grind
+  stays a poor last resort rather than a shortcut. The slider runs from
+  0% to 20%, and alien factions are not affected. The capacity bonus is derived
   from the number of repeats, so it covers repeats finished before the
   mod was installed; the other three top up from the next completion on.
   Project descriptions show the scaled figure and predict the next
@@ -135,6 +137,11 @@ Gameplay
 
 
 Campaign options (New Game / Customize Campaign)
+
+Both of these are lightly tested. The code does what is described below, and
+the projects and claim rows load without errors, but neither has been played
+through a campaign. Expect rough edges, and turn them off if you want a
+settled game.
 
 - Spy slots become councilor slots. The council screen has eight slots:
   six for your councilors and two for councilors you have turned in

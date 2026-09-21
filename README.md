@@ -110,6 +110,10 @@ installing the mod. Resources already granted are not topped up.
 
 ## Campaign options
 
+Both of these are lightly tested. The code does what this section describes, and the projects and
+claim rows load without errors, but neither has been played through a campaign. Expect rough
+edges, and turn them off if you want a settled game.
+
 **Spy slots become councilor slots.** The council screen has eight slots: six for your councilors
 and two for councilors you turned in other factions. This setting makes the eight one pool, so
 every spy slot you do not use is a councilor slot instead. No spies seats eight, one spy seats
