@@ -2541,6 +2541,13 @@ public class FactionNames
     public string adjective;
     public string leader;
     public string fleet;
+
+    // Namelist keys, as the game stores them. Not the dropdown index, which moves when a mod
+    // adds a list, and not the label, which changes with the display language.
+    public string smallShips;
+    public string mediumShips;
+    public string largeShips;
+    public string habs;
 }
 
 // Campaign options carried between sessions.
@@ -2560,6 +2567,49 @@ internal static class PersistCampaignOptions
 
     private static readonly MethodInfo setPrevious =
         AccessTools.Method(typeof(StartMenuController), "SetPreviousCampaignOptions");
+
+    // Maps a namelist key to the label its dropdown shows.
+    private static readonly FieldInfo nameLists =
+        AccessTools.Field(typeof(StartMenuController), "nameListsToAdd");
+
+    private static string SelectedList(StartMenuController menu, TMP_Dropdown dropdown)
+    {
+        if (dropdown == null || dropdown.value < 0 || dropdown.value >= dropdown.options.Count)
+        {
+            return null;
+        }
+        string label = dropdown.options[dropdown.value].text;
+        Dictionary<string, string> lists =
+            nameLists?.GetValue(menu) as Dictionary<string, string>;
+        if (lists == null)
+        {
+            return null;
+        }
+        foreach (KeyValuePair<string, string> pair in lists)
+        {
+            if (pair.Value == label)
+            {
+                return pair.Key;
+            }
+        }
+        return null;
+    }
+
+    private static void SelectList(TMP_Dropdown dropdown, string key)
+    {
+        if (dropdown == null || string.IsNullOrEmpty(key))
+        {
+            return;
+        }
+        string label = TIUtilities.LocalizedNamelistIDX(key);
+        int index = dropdown.options.FindIndex(option => option.text == label);
+        if (index < 0)
+        {
+            return;
+        }
+        dropdown.value = index;
+        dropdown.RefreshShownValue();
+    }
 
     internal static string SelectedFaction(StartMenuController menu)
     {
@@ -2664,6 +2714,10 @@ internal static class PersistCampaignOptions
                     adjective = __instance.customAdjectiveInput.text,
                     leader = __instance.customLeaderAddressInput.text,
                     fleet = __instance.customFleetInput.text,
+                    smallShips = SelectedList(__instance, __instance.smallShipNameListIdxDropdown),
+                    mediumShips = SelectedList(__instance, __instance.mediumShipNameListIdxDropdown),
+                    largeShips = SelectedList(__instance, __instance.largeShipNameListIdxDropdown),
+                    habs = SelectedList(__instance, __instance.habNameListIdxDropdown),
                 });
                 if (Main.mod != null)
                 {
@@ -2701,6 +2755,10 @@ internal static class PersistCampaignOptions
                 Fill(__instance.customAdjectiveInput, saved.adjective);
                 Fill(__instance.customLeaderAddressInput, saved.leader);
                 Fill(__instance.customFleetInput, saved.fleet);
+                SelectList(__instance.smallShipNameListIdxDropdown, saved.smallShips);
+                SelectList(__instance.mediumShipNameListIdxDropdown, saved.mediumShips);
+                SelectList(__instance.largeShipNameListIdxDropdown, saved.largeShips);
+                SelectList(__instance.habNameListIdxDropdown, saved.habs);
             }
             catch (Exception e)
             {

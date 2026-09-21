@@ -5,7 +5,7 @@
   "Description": "Collection of UI, QOL, and Gameplay tweaks built to my personal gameplay tastes. Requires Unity Mod Manager.",
   "Id": "CataTweaks",
   "DisplayName": "CataTweaks",
-  "Version": "3.1.0",
+  "Version": "3.1.1",
   "ManagerVersion": "0.25.0",
   "AssemblyName": "CataTweaks.dll",
   "EntryMethod": "CataTweaks.Main.Load"
