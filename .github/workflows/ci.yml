@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Templates and style
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Validate templates, localization and style
+        run: python tools/validate.py
+
+  syntax:
+    name: C# syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      # A full build is not possible here. CataTweaks.csproj reads Assembly-CSharp.dll and
+      # eleven Unity assemblies from the game install. Those are proprietary and are not in
+      # this repository. Roslyn can still parse the sources, which catches the syntax errors
+      # that scripted edits introduce.
+      - name: Parse the C# sources
+        run: dotnet run --project tools/SyntaxCheck -c Release -- Plugin.cs HabNamer.cs
