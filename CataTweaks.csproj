@@ -8,6 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="test\**" />
+    <Compile Remove="tools\**" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Assembly-CSharp" HintPath="$(GameDir)\TerraInvicta_Data\Managed\Assembly-CSharp.dll" Private="false" />

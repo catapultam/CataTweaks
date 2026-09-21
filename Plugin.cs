@@ -979,20 +979,21 @@ internal static class DemandClaimDespiteOtherWars
 // Tweak 9: repeatable income projects scale their payoff alongside their cost.
 //
 // TIProjectTemplate.GetResearchCost multiplies a repeatable's cost by (1 + times completed), so
-// the Nth repeat of Management Research costs N x 600 - but always grants the same flat
-// Effect_BSBE_CPMaintenanceBonus5. Research per point of capacity is therefore 120N and diverges:
-// 3,240 by the 27th repeat, 12,000 by the 100th, with the cumulative cost of N points growing as
-// ~12N^2. Meanwhile the rest of the cap - global freebies, councilor attributes, one admin module
-// per station, a fixed list of one-off projects - is hard-bounded, while maintenance cost scales
-// with national GDP forever. The repeatable is the only unbounded source and vanilla prices it
-// out of reach, so the cap stops rising long before GDP does. Audience, Commercial and
-// Operations Research have the same shape with Influence, Money and Operations.
+// the Nth repeat of Management Research costs N times its base while always granting the same
+// flat 5 capacity. Research per point is therefore 300N in the base game (cost 1500), 120N in
+// Broken Earth (600) and 60N in Adamantine Sky (300). It diverges in each of them, with the
+// cumulative cost of N points growing as the square of N. Meanwhile the rest of the cap - global
+// freebies, councilor attributes, one admin module per station, a fixed list of one-off projects
+// - is hard-bounded, while maintenance cost scales with national GDP forever. The repeatable is
+// the only unbounded source and vanilla prices it out of reach, so the cap stops rising long
+// before GDP does. Audience, Commercial and Operations Research have the same shape with
+// Influence, Money and Operations.
 //
 // With scaling r the Nth repeat pays base x (1 + r(N-1)), rounded to whole units, so research per
-// point converges on cost/r instead of diverging. At the default 0.03 Management Research settles
-// around 4,000: about ten times the median one-off CP-cap project (417 across those a faction can
-// actually take) and twice the worst one in the game, so grinding this remains strictly worse
-// than every alternative while ceasing to be pointless. Set the scaling to 0 for stock behavior.
+// point converges on base/(grant x r) instead of diverging. At the default 0.03 that is 10,000
+// per point in the base game and 4,000 in Broken Earth, well above any one-off capacity project,
+// so grinding this stays a poor option rather than a pointless one. Set the scaling to 0 for
+// stock behavior.
 //
 // Keyed on payload shape - repeatable, with positive resourcesGranted or a negative
 // ControlPointMaintenance effect - rather than on project names, so another project of the same
@@ -1705,11 +1706,10 @@ internal static class VanillaOptionsRows
     private const string PaneName = "CataTweaks_Pane";
 
     // Fixed for the life of a campaign and headed for the new-campaign screen instead.
-    private static readonly string[] Excluded =
-    {
-        "spySlotsAsCouncilSlots",
-        "restoredEmpires",
-    };
+    // Nothing is excluded. These two are only the defaults a new campaign starts from, and
+    // their labels say so; with the mod manager panel gone, leaving them out of this tab left
+    // them reachable only by hand-editing Settings.xml.
+    private static readonly string[] Excluded = new string[0];
 
     // Settings that only mean something while another is on, and gray out with it.
     private static readonly Dictionary<string, string> DependsOn = new Dictionary<string, string>
@@ -2315,13 +2315,31 @@ internal static class RestoredEmpires
         "Project_NewLiberia",
     };
 
+    internal static bool Hidden(TIBilateralTemplate row) =>
+        row != null && !CampaignFlags.RestoredEmpires && ModTemplates.Claims.Contains(row.dataName);
+
     [HarmonyPatch(typeof(TIBilateralTemplate), nameof(TIBilateralTemplate.BilateralIsActive))]
     internal static class HideClaims
     {
         private static void Postfix(TIBilateralTemplate __instance, ref bool __result)
         {
-            if (__result && !CampaignFlags.RestoredEmpires
-                && ModTemplates.Claims.Contains(__instance.dataName))
+            if (__result && Hidden(__instance))
+            {
+                __result = false;
+            }
+        }
+    }
+
+    // BilateralIsActive alone is not enough. The claims a project grants on completion are
+    // handed out by a loop in TIFactionState that tests BilateralIsInScenario, not
+    // BilateralIsActive. Rows behind vanilla projects, Commonwealth Restored and Greater
+    // Dominion, would therefore still be granted with this option off.
+    [HarmonyPatch(typeof(TIBilateralTemplate), nameof(TIBilateralTemplate.BilateralIsInScenario))]
+    internal static class HideClaimsFromScenario
+    {
+        private static void Postfix(TIBilateralTemplate __instance, ref bool __result)
+        {
+            if (__result && Hidden(__instance))
             {
                 __result = false;
             }
