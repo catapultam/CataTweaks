@@ -2,7 +2,7 @@
   "Title": "CataTweaks",
   "Author": "alex",
   "ModURL": "",
-  "Description": "Quality of life, interface and balance tweaks, each switchable on the game's own Settings screen under a CataTweaks tab, applying immediately with no restart. Hab templates name and re-icon the hab they are applied to and overwrite in place when saved; priority presets overwrite in place and keep countries tracking them; dividers between stations on the ship construction screen; fleet detections name the orbit or body; Customize Campaign remembers its options between sessions, with faction names remembered per faction. Balance: solar mirrors boost orbital stations under a configurable cap, Review Failed Projects favors the expensive missed project, Demand Claim only blocks on a war between the two nations involved, holding a dormant nation's original capital borrows its claims, and repeatable management projects scale their payoff with their rising cost. Per campaign, chosen on Customize Campaign and stored in the save: unused turned-councilor slots become councilor slots, unlocked by two new projects; and Restored Empires claim chains give the United Kingdom, Rome, the Dominion of America and Liberia a route back to the map. (Code and template mod; requires Unity Mod Manager.)",
+  "Description": "Collection of UI, QOL, and Gameplay tweaks built to my personal gameplay tastes. Requires Unity Mod Manager.",
   "Id": "CataTweaks",
   "DisplayName": "CataTweaks",
   "Version": "3.0.0",
