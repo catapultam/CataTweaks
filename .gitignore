@@ -1,4 +1,6 @@
 bin/
 obj/
+dist/
 tools/SyntaxCheck/bin/
 tools/SyntaxCheck/obj/
+__pycache__/

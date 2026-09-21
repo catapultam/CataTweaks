@@ -1,16 +1,12 @@
-[b]AI was used to create this mod, if that bothers you, don't feel compelled to use it. I made it for myself, and was asked to post it.[/b]
-
-[h1]CataTweaks[/h1]
-
 A collection of UI, quality of life and gameplay tweaks, built to my own tastes. Every feature has its own switch, so you can run only the parts you want.
 
-[b]Requires Unity Mod Manager.[/b] Get it from nexusmods.com/site/mods/21, run it, pick Terra Invicta, set the game folder, choose DoorstopProxy, and click Install. The included README has the same steps.
+[b]Requires Unity Mod Manager.[/b]
 
 [h2]Settings[/h2]
 
 CataTweaks adds its own tab to the game's Settings screen, in the main menu and in a loaded campaign. Every setting has a tooltip. Changes apply the moment you click them, with no restart and no reload.
 
-Two settings belong to the campaign rather than to you. They sit at the bottom of New Game / Customize Campaign and are stored in the save, so a campaign always plays the way it was started.
+Two settings are added to the 'Customize Campaign' dialogue - Spy slots become councilor slots and Restored Empires claims.
 
 [h2]Quality of life and UI[/h2]
 [list]
@@ -24,7 +20,7 @@ Two settings belong to the campaign rather than to you. They sit at the bottom o
 
 [h2]Gameplay[/h2]
 [list]
-[*][b]Solar mirrors boost orbital stations.[/b] The game builds the entire mirror mechanism and then spends it on surface bases only. Now stations benefit too, with a direction rule: a mirror lights targets orbiting inward of it. Surface bases are unchanged. Off by default.
+[*][b]Solar mirrors boost orbital stations.[/b] Vanilla solar mirrors only affect surface habs. Now stations benefit too, with a direction rule: a mirror lights targets orbiting inward of it. Surface bases are unchanged. Off by default.
 [*][b]Solar mirror boost cap.[/b] Maximum output of a mirror-lit station, from 2x to 8x its unlit output. 8 is the vanilla ceiling.
 [*][b]Project review favors the expensive project.[/b] Review Failed Projects divides by research cost, so a cheap throwaway beats an expensive drive by a wide margin. This multiplies instead.
 [*][b]Demand Claim ignores the target's other wars.[/b] The game asks whether the target is at war at all, not whether it is at war with you, so one endless alien war freezes peaceful border changes for the rest of the campaign.
@@ -33,8 +29,7 @@ Two settings belong to the campaign rather than to you. They sit at the bottom o
 [/list]
 
 [h2]Campaign options[/h2]
-
-[i]Both of these are lightly tested. They load and behave as described, but neither has been played through a campaign. Turn them off if you want a settled game.[/i]
+Both of these are only lightly tested. The code does what this section describes, and the projects and claim rows load without errors, but neither has been played through a campaign. Expect rough edges, and turn them off if you want a settled game.
 [list]
 [*][b]Spy slots become councilor slots.[/b] The council screen has eight slots: six councilors and two for councilors you turned elsewhere. This makes them one pool, so an unused spy slot is another councilor. No spies seats eight, two spies seats six. Seats seven and eight are unlocked by two new projects after Covert Operations. The AI plays it too, and will trade its spies for councilors.
 [*][b]Restored Empires claims.[/b] Claim chains and four projects that give old powers a route back to the map. The Sun Never Sets takes Britain past the settler dominions, and Commonwealth Restored gains Delhi, Calcutta and Ireland. New Liberia opens the West African coast for the Dominion of America, which also claims Jamaica. Mare Nostrum and Imperium Sine Fine give Rome the Mediterranean, the eastern roads and both American seaboards, in Broken Earth only. Claims on territories that fought their way out are hostile.
@@ -42,9 +37,9 @@ Two settings belong to the campaign rather than to you. They sit at the bottom o
 
 [h2]Notes[/h2]
 
-A save made with this mod still loads without it.
+[b]AI was used to create this mod, including most of the text of this post and most text in the mod. The mod is localized (by machine) in every language TI ships. If that bothers you, don't feel compelled to use it. I made it for myself, and was asked to post it.[/b]
 
-Restored Empires used to be a separate mod and is now part of this one. If you still have it installed, remove it, or its claim rows will be duplicated.
+A save made with this mod still loads without it.
 
 Source, full documentation and issues: https://github.com/catapultam/CataTweaks
 

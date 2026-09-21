@@ -87,6 +87,8 @@ def check_localization(projects):
                 if key not in keys:
                     fail(language + " has no " + kind + " for " + name)
     print(str(len(languages)) + " of 14 languages")
+    if len(languages) != 14:
+        fail("Terra Invicta ships 14 languages and the game has no English fallback")
 
 
 def check_claims(claims, project_names):
