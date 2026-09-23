@@ -32,39 +32,39 @@ public class Settings : UnityModManager.ModSettings, IDrawable
 {
     // Campaign Options are re-applied from the last campaign you started, instead of the screen
     // resetting to stock values every session.
-    [Draw("Remember campaign options between sessions", Tooltip = "The Customize Campaign screen opens with the options from the last campaign you started, rather than resetting to defaults. Custom faction names are remembered per faction and reappear only when that faction is selected.")]
+    [Draw("Remember campaign options between sessions", Tooltip = "The Customize Campaign screen opens with the options from your last campaign. A custom faction name is saved for each faction, and appears again when you select that faction.")]
     public bool persistCampaignOptions = true;
 
     // Habs renamed "Name (Template, Location)" when a saved template is applied, and saving a hab
     // as a template round-trips that name plus its map icon, overwriting the old one in place.
-    [Draw("Hab Template Tweaks & QOL", Tooltip = "Applying a saved hab template renames the hab to Name (Template, Orbit, Body) and applies the template's map icon. Saving a hab as a template names it after the text in brackets and overwrites the existing template of that name. A template that would change nothing can still be applied, so a hab can be renamed on its own.")]
+    [Draw("Hab template naming", Tooltip = "When you apply a hab template, the hab is renamed to Name (Template, Orbit, Body) and takes the map icon of the template. When you save a hab as a template, the template takes the name in brackets and replaces the template that has that name. You can apply a template that changes nothing, to rename a hab.")]
     public bool habTemplateNaming = true;
 
     // Saving a priority preset under an existing custom preset's name overwrites it, instead of
     // the save button going dead.
-    [Draw("Priority presets overwrite in place", Tooltip = "Saving a priority preset under an existing custom name replaces it. Control points using the old version move to the new one, and it stays the default preset if it was.")]
+    [Draw("Priority presets overwrite in place", Tooltip = "When you save a priority preset with the name of an existing custom preset, it replaces that preset. Control points that use the old preset move to the new one. The new preset stays the default preset if the old one was the default.")]
     public bool priorityPresetOverwrite = true;
 
     // Control points re-apply their preset when a nation's valid priorities change, instead of
     // the profile flipping to 'Custom'.
-    [Draw("Nations keep their preset when priorities change", Tooltip = "Re-applies a nation's preset when its set of valid priorities changes, instead of the nation switching to Custom.")]
+    [Draw("Nations keep their preset when priorities change", Tooltip = "When a nation gains or loses a priority, its preset is applied again. The nation does not change to Custom.")]
     public bool presetTrackingOnNationChanges = true;
 
     // Full-width dividing rules between stations on the ship construction screen.
-    [Draw("Dividers between stations in Ship Construction UI", Tooltip = "Draws a rule between one station's shipyards and the next in the construction list.")]
+    [Draw("Dividers between stations in the ship construction screen", Tooltip = "The ship construction list shows a line between the shipyards of one station and the shipyards of the next station.")]
     public bool stationDividers = true;
 
     // Fleet-detected notifications name the hab's orbit or body as well as the hab itself.
-    [Draw("Fleet detections name the orbit or body", Tooltip = "Fleet detection notices name the hab's orbit and body, and the body for a landed fleet.")]
+    [Draw("Fleet detections name the orbit or body", Tooltip = "A fleet detection notice gives the orbit and the body of the hab. For a landed fleet it gives the body.")]
     public bool fleetDetectionLocation = true;
 
     // The nation panel's name becomes a dropdown of the nations we hold a control point in,
     // with the map mode picker's arrows either side of it.
-    [Draw("Nation picker on the nation panel", Tooltip = "The nation's name on its panel becomes a dropdown of the nations we hold a control point in, with previous and next arrows either side, in name order, wrapping at either end.")]
+    [Draw("Nation picker on the nation panel", Tooltip = "The nation name on the nation panel becomes a dropdown. The dropdown lists the nations where you hold a control point, in name order. Previous and next arrows are on each side of it, and they continue from the last nation to the first.")]
     public bool nationCycleButtons = true;
 
     // Solar mirrors boost orbital stations inward of them, not just surface bases.
-    [Draw("Solar mirrors boost orbital stations", Tooltip = "Solar mirrors add power to orbital stations as well as surface bases. A mirror lights targets orbiting inward of it, and Lagrange point mirrors light everything they already credit. Surface bases are unchanged.")]
+    [Draw("Solar mirrors boost orbital stations", Tooltip = "Solar mirrors add power to orbital stations and to surface bases. A mirror lights the stations that orbit inward of it. A mirror at a Lagrange point lights the same stations as before. Surface bases do not change.")]
     public bool solarMirrorsBoostStations = false;
 
     // Review Failed Projects favors the expensive missed project instead of the cheapest.
@@ -72,34 +72,39 @@ public class Settings : UnityModManager.ModSettings, IDrawable
     // unlit output. 8 is vanilla's own figure and the default; lower it to blunt mirrors without
     // switching them off. Surface bases keep vanilla's 8x either way - this patch only ever runs
     // for stations.
-    [Draw("Solar mirror orbital boost cap", DrawType.Slider, Min = 2f, Max = 8f, Tooltip = "Maximum output of a mirror-lit station's solar modules, as a multiple of their unlit output. Vanilla's ceiling is 8. Applies to stations only.")]
+    [Draw("Solar mirror orbital boost cap", DrawType.Slider, Min = 2f, Max = 8f, Tooltip = "The maximum output of the solar modules of a mirror-lit station, as a multiple of their unlit output. This applies to orbital stations only. The standard limit is 8.")]
     public float solarMirrorOutputCap = 8f;
 
-    [Draw("Project review favors the expensive project", Tooltip = "Review Failed Projects weights each candidate by availability chance times research cost rather than divided by it.")]
+    [Draw("Project review favors the expensive project", Tooltip = "Review Failed Projects weights each project by its availability chance multiplied by its research cost. An expensive project is more likely to be selected.")]
     public bool expensiveFirstProjectReview = true;
 
     // Launch facility priorities pick their region properly: vanilla drops the filter that was
     // meant to keep occupied regions out, and then weights the roll by existing boost times
     // 500000, so a region that already launches outdraws the equator by three orders of
     // magnitude and the nation never opens a better site.
-    [Draw("Launch facilities prefer better sites", Tooltip = "A completed Launch Facilities priority can favor the nation's best available launch site - the one nearest the equator, which earns the most boost - instead of almost always adding to a site it already has. Occupied regions stop being eligible, and the priority's tooltip shows the range those eligible regions can actually pay.")]
+    [Draw("Boost priority prefers better launch sites", Tooltip = "A completed Boost priority can build its launch facilities in the best available region of the nation. The best region is the eligible region nearest the equator. A region under occupation is not eligible. The Boost priority tooltip shows the range of the eligible regions.")]
     public bool betterLaunchSites = true;
 
     // How much of the roll is taken away from vanilla's weighting and handed to the best site.
     // A straight mix of the two distributions, so the number means what it says: at 40%, two
     // completions in five go to the best site and the other three roll as vanilla does. 0 is
     // vanilla's weighting, kept for the bug fixes alone; 100% always builds at the best site.
-    [Draw("Launch site focus", DrawType.Slider, Min = 0f, Max = 1f, Tooltip = "How often a completed Launch Facilities priority goes to the best available site rather than rolling as vanilla does. At 0% the roll is vanilla's, which almost always adds to an existing site. At 100% the nation always builds at its best site.")]
+    [Draw("Launch site focus", DrawType.Slider, Min = 0f, Max = 1f, Tooltip = "How often a completed Boost priority builds in the best available region. At 0% the game selects the region as the standard game does, which almost always adds to a region that already has launch facilities. At 100% the nation always builds in the best region.")]
     public float launchSiteFocus = 0.5f;
+
+    // Both halves of the same change to dormancy: who it can reach, and whether it is final.
+    // Off by default, as a change to the shape of the campaign rather than a repair.
+    [Draw("Any faction can go dormant, and can come back", Tooltip = "The campaign option Allow AI Factions To Be Disabled spares three factions. In a game with all factions these are the Servants, the Protectorate and Humanity First. These three factions can now go dormant on the same terms as the others. Only the aliens and your own faction cannot. A faction that is dormant comes back when it holds two control points again. It comes back with no money, no orgs and no income from its founding or from events. This setting does nothing if the campaign option is off.")]
+    public bool factionDormancy = false;
 
     // "Demand Claim" only blocks when the two nations are at war with each other, instead of
     // when the target is at war with anyone at all.
-    [Draw("Demand Claim ignores the target's other wars", Tooltip = "Demand Claim is blocked only by a war between the two nations involved, rather than by the target being at war with anyone.")]
+    [Draw("Demand Claim ignores the target's other wars", Tooltip = "A war blocks Demand Claim only if it is a war between the two nations in the claim.")]
     public bool demandClaimDespiteOtherWars = true;
 
     // A nation that holds another nation's original capital borrows that nation's claims for as
     // long as it holds it, so unification no longer has to be worked strictly from the outside in.
-    [Draw("Holding a capital borrows that nation's claims", Tooltip = "While you hold a dormant nation's original capital, and your claim on that capital is not hostile, that nation's claims are yours to use. Lose the capital, or have that claim turn hostile, and the borrowed claims go with it. Claims the other nation held hostilely stay hostile for you, and nations that still hold territory of their own are excluded.")]
+    [Draw("Holding a capital borrows that nation's claims", Tooltip = "While you hold the original capital of a dormant nation, you can use the claims of that nation. Your claim on the capital must not be hostile. You lose the borrowed claims when you lose the capital, or when your claim on it becomes hostile. A claim that the other nation held as hostile stays hostile for you. A nation that still holds territory is excluded.")]
     public bool inheritedCapitalClaims = true;
 
     // Repeatable projects granting control point capacity or resources (Management, Audience,
@@ -107,12 +112,12 @@ public class Settings : UnityModManager.ModSettings, IDrawable
     // repeat, matching the way their cost already scales. 0 disables the patches entirely and
     // restores vanilla. 0.03 puts the grind at roughly ten times the cost per point of the
     // median one-off project, so it stays a deliberately poor last resort.
-    [Draw("Repeatable Management Project Scaling", DrawType.Slider, Min = 0f, Max = 0.2f, Tooltip = "Management Research, Audience Research, Commercial Research and Operations Research pay this much more of their base reward on each repeat. Management Research grants control point capacity; the other three grant Influence, Money and Operations. At 0% every repeat pays the flat vanilla amount.")]
+    [Draw("Repeatable management project scaling", DrawType.Slider, Min = 0f, Max = 0.2f, Tooltip = "Management Research, Audience Research, Commercial Research and Operations Research pay this percentage of their base reward in addition, for each repeat you have already completed. Management Research grants control point capacity. The other three grant Influence, Money and Operations. At 0% each repeat pays the standard flat amount.")]
     public float repeatableProjectScaling = 0.03f;
 
     // Control points join orgs, habs and projects on the diplomacy table, and the AI values
     // them: it asks a price for its own and pays for yours. On by default while it is new.
-    [Draw("Allow trading control points", Tooltip = "Control points can be put on the diplomacy table alongside orgs, habs and projects, under a tab of their own, by nation. The AI values them and will refuse a deal it does not like.")]
+    [Draw("Allow trading control points", Tooltip = "You can put control points on the diplomacy table with orgs, habs and projects. They are on a separate tab, listed by nation. The AI gives them a value, and refuses a deal that it does not accept.")]
     public bool tradeControlPoints = true;
 
     // How heavily the AI weighs a control point against everything else on the table. The
@@ -120,7 +125,7 @@ public class Settings : UnityModManager.ModSettings, IDrawable
     // tenth of the value to a holder that has abandoned the nation - is in ControlPointTrade
     // .Value. This is the one knob over the top of it, because that arithmetic has no vanilla
     // scale to be calibrated against.
-    [Draw("Control point base value", DrawType.Slider, Min = 0.5f, Max = 5f, Tooltip = "How much the AI values a control point in a trade, against orgs, habs, projects and resources. Higher means it asks more for its own and pays more for yours. A seat is worth a tenth of this to a holder that has abandoned the nation, so abandoned seats change hands cheaply.")]
+    [Draw("Control point base value", DrawType.Slider, Min = 0.5f, Max = 5f, Tooltip = "The value that the AI gives a control point in a trade, against orgs, habs, projects and resources. A higher value makes the AI ask more for its own control points and pay more for yours. A control point in a nation that its holder has abandoned is worth one tenth of this value.")]
     public float controlPointTradeValue = 2f;
 
     // Why a seat is suppressed is not written down anywhere: a crackdown mission and the
@@ -131,27 +136,27 @@ public class Settings : UnityModManager.ModSettings, IDrawable
     // covers abandoned seats too: abandoning a nation suppresses its seats, and the toggle that
     // marks a nation abandoned is an automation switch a player can flip at will, so gating on
     // it would be gating on nothing.
-    [Draw("Allow trading suppressed control points", Tooltip = "Control points under a crackdown can be put on the table, including seats in a nation their holder has abandoned, which are suppressed for the same reason. The crackdown goes with them: the new owner serves out what is left of it.")]
+    [Draw("Allow trading suppressed control points", Tooltip = "You can put a control point that is under a crackdown on the diplomacy table. This includes a control point in a nation that its holder has abandoned. The crackdown moves with the control point, and the new owner completes the remaining time.")]
     public bool tradeSuppressedControlPoints = false;
 
     // A pact is not a rule the game enforces: what ends one is the hate a hostile mission hands
     // the other side, so leaving a pact standing means not handing over that hate.
-    [Draw("Allow purge of friendly control points", Tooltip = "Purging a suppressed control point held by a faction we have a non-aggression pact or a truce with does not anger them, so the pact survives it. Purging anything else angers them as usual.")]
+    [Draw("Allow purge of friendly control points", Tooltip = "When you purge a suppressed control point of a faction that has a non-aggression pact or a truce with you, that faction does not become angry and the pact continues. A purge of any other control point makes the faction angry.")]
     public bool friendlyPurge = false;
 
     // Vanilla marks a target whose faction has a pact with an inline icon in the target list and
     // then drops it from the line it writes for the target actually chosen, which is the moment
     // it matters.
-    [Draw("Warn before a mission breaks a pact", Tooltip = "A mission aimed at a faction we have a non-aggression pact or a truce with marks the chosen target and asks for confirmation before the councilor is assigned.")]
+    [Draw("Warn before a mission breaks a pact", Tooltip = "A mission against a faction that has a non-aggression pact or a truce with you marks the selected target. The game asks you to confirm before it assigns the councilor.")]
     public bool warnOnPactBreak = true;
 
     // Only the default the Customize Campaign screen starts from. The campaign's own answer is
     // stored in its save, so changing this never reaches a campaign already under way.
-    [Draw("New campaigns: unused spy slots become councilor slots", Tooltip = "Default for the Customize Campaign option of the same name.")]
+    [Draw("New campaigns: unused spy slots become councilor slots", Tooltip = "Sets the default for the Customize Campaign option with the same name.")]
     public bool spySlotsAsCouncilSlots = true;
 
     // Only the default the Customize Campaign screen starts from.
-    [Draw("New campaigns: Restored Empires claims", Tooltip = "Default for the Customize Campaign option of the same name.")]
+    [Draw("New campaigns: Restored Empires claims", Tooltip = "Sets the default for the Customize Campaign option with the same name.")]
     public bool restoredEmpires = true;
 
     // Remembered per faction, so a name written for one never follows you to another.
@@ -3689,6 +3694,85 @@ internal static class BestBoostLatitudeMagnitude
         if (LaunchSites.Enabled)
         {
             __result = Mathf.Abs(__result);
+        }
+    }
+}
+
+// Tweak 17: faction dormancy reaches every faction but the aliens and the player, and a faction
+// that comes back into control points is no longer stuck in it.
+//
+// The campaign option "Allow AI Factions To Be Disabled" lets a human AI faction that has been
+// reduced to nothing - no fleets, habs, councilors or control points on a daily tick, once
+// councilor turns fall below twice a month, which is campaign year 15 - cease operating for good.
+// The two halves below are the same change seen from either end: who the option can reach, and
+// whether what it does is final.
+//
+// TIFactionState.CanBeDisabled spares five factions. Two are structural and stay: the alien
+// faction, and whoever is playing. Three are spared for the story and are what this drops:
+//
+//   - the alien proxy, whichever faction in the campaign has the lowest positive willProxy on its
+//     ideology, which is the Servants in a game with every faction;
+//   - the alien appeaser, the lowest positive willAppease, which is the Protectorate;
+//   - the faction with the highest ideology x, which is Humanity First, then the Resistance, then
+//     whoever is left - and this one only applies while the player is not very anti-alien
+//     themselves, so playing either of the first two already switches it off.
+//
+// None of the three is a named faction, and in a game missing the usual holder the role moves to
+// whoever fits best - without the Servants, the Protectorate is both proxy and appeaser. So the
+// waiver is written as the rule that is left rather than as a list of exceptions to vanilla's:
+// the four conditions below are CanBeDisabled with the three story clauses struck out. A faction
+// that vanilla refused for any other reason fails them here too, which is why they can be tested
+// on their own rather than after asking which exemption applied.
+[HarmonyPatch(typeof(TIFactionState), "CanBeDisabled")]
+internal static class DormancyReachesEveryone
+{
+    private static void Postfix(TIFactionState __instance, ref bool __result)
+    {
+        if (__result || !Main.settings.factionDormancy)
+        {
+            return;
+        }
+        __result = TIGlobalValuesState.CanDisableFactions
+            && TIMissionPhaseState.phasesPerMonth < 2f
+            && !__instance.IsAlienFaction
+            && !__instance.isActivePlayer;
+    }
+}
+
+// The other half. Dormancy is one-way in the vanilla game: TIFactionState.defeated is set once and
+// nothing ever clears it, and nothing stops a dormant faction being given a control point either,
+// because of the thirteen places the flag is read not one of them is control point ownership. So
+// the aliens' Enthrall Elites and Terrorize missions go on handing seats to the alien proxy and
+// the alien appeaser long after those two have gone quiet, a seat on the diplomacy table can be
+// traded to one the same way, and the seat is then held by a faction that will never act on it
+// and can never lose it to anybody else.
+//
+// Waking one costs nothing that has to be rebuilt by hand. The council has four slots whatever
+// the faction holds, the AI's task groups gate on the flag alone and go back to recruiting and
+// setting goals the moment it clears, and CheckForDefeated is called daily for a dormant faction
+// - Daily0000FactionUpdate calls it before it returns on the flag - so the hook is already there.
+//
+// What does not come back is what the defeat routine spent: base incomes from the faction's
+// founding and from events were zeroed, the treasury was emptied, and the orgs in its unassigned
+// pool were taken. A faction that returns runs on what its seats bring in and nothing else, which
+// is a fair price for having been put down. There is no notification either way, because the game
+// has one for a faction going quiet and none for a faction coming back.
+[HarmonyPatch(typeof(TIFactionState), "CheckForDefeated")]
+internal static class DormancyCanBeUndone
+{
+    // Two rather than one, so a single seat changing hands cannot flip a faction awake and back
+    // to dormant on consecutive days, running the defeat routine and its notification each time.
+    // ponytail: a constant rather than a setting, worth a slider only if it wants tuning.
+    private const int SeatsToReturn = 2;
+
+    private static void Prefix(TIFactionState __instance)
+    {
+        if (Main.settings.factionDormancy && __instance.defeated
+            && __instance.controlPoints.Count >= SeatsToReturn)
+        {
+            // Vanilla's check runs next and reads the flag again. With seats in hand the faction
+            // no longer answers to Defeated() either, so it is not put straight back down.
+            __instance.defeated = false;
         }
     }
 }

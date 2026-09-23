@@ -32,169 +32,188 @@ that the Customize Campaign screen starts from.
 ## Quality of life and UI
 
 **Remember campaign options between sessions.** Customize Campaign opens with the options from
-the last campaign you set up. They are saved when you leave the screen, not only when you launch
-a campaign. Custom faction names are saved for each faction and return when that faction is
-selected.
+your last campaign. The options are saved when you leave the screen, and not only when you start a
+campaign. A custom faction name is saved for each faction, and appears again when you select that
+faction.
 
-**Hab template tweaks.** Applying a saved hab template names the hab
-`Name (Template, Orbit, Body)`, as in `Freeport (Mining, Low Earth Orbit 2, Earth)`, and applies
-the template's map icon. Bodies with one orbit, such as Lagrange points, drop the orbit.
-Applying a template again replaces only the text in brackets.
+**Hab template naming.** When you apply a hab template, the hab is renamed to Name (Template,
+Orbit, Body), for example Freeport (Mining, Low Earth Orbit 2, Earth), and takes the map icon of
+the template. A body with one orbit, such as a Lagrange point, does not show the orbit. When you
+apply a template again, only the text in brackets changes.
 
-Saving a hab as a template names the template after the text in brackets and overwrites the
-existing template of that name. The Apply button stays enabled when the hab already has the
-modules of the template, so a template that changes nothing can still be applied.
+When you save a hab as a template, the template takes the name in brackets and replaces the
+template that has that name. The Apply button stays enabled when the hab already has the modules
+of the template, so you can apply a template that changes nothing and rename the hab.
 
-**Priority presets overwrite in place.** Saving a preset under an existing custom name replaces
-it. It stays the default preset if the old one was, and control points using the old version move
-to the new one. Built-in presets are not overwritten. Selecting a custom preset from the dropdown
-carries its name into the name field, and the field accepts a name that already exists.
+**Priority presets overwrite in place.** When you save a preset with the name of an existing
+custom preset, it replaces that preset. The new preset stays the default preset if the old one was
+the default. Control points that use the old preset move to the new one. Built-in presets are not
+replaced. When you select a custom preset from the dropdown, its name goes into the name field,
+and the field accepts a name that already exists.
 
-**Nations keep their preset when priorities change.** When a nation gains or loses a priority,
-such as a spaceflight program, a military, or navy, STO, space defense and nuclear options, the
-preset is applied again for the new set of priorities, within a day.
+**Nations keep their preset when priorities change.** When a nation gains or loses a priority, its
+preset is applied again within one day. Examples are a spaceflight program, a military, a navy,
+and the STO, space defense and nuclear options. The nation does not change to Custom.
 
-**Dividers between stations in the ship construction UI.** A line is drawn between the shipyards
-of one station and the next. It follows the vanilla location filter.
+**Dividers between stations in the ship construction screen.** The list shows a line between the
+shipyards of one station and the shipyards of the next station. The line follows the standard
+location filter.
 
-**Fleet detections name the orbit or body.** Detection notices include the hab's orbit, and the
-body for a landed fleet.
+**Fleet detections name the orbit or body.** A fleet detection notice gives the orbit and the body
+of the hab. For a landed fleet it gives the body.
 
-**Nation picker on the nation panel.** The nation's name becomes a dropdown of the nations you
-hold a control point in, with a previous and a next arrow either side. The list is in name order
-and the arrows wrap at either end. A nation you hold nothing in is shown as its own entry at the
-top of the list, and the arrows lead from it into the list.
+**Nation picker on the nation panel.** The nation name becomes a dropdown. The dropdown lists the
+nations where you hold a control point, in name order. A previous arrow and a next arrow are on
+each side, and they continue from the last nation to the first. A nation where you hold no control
+point is at the top of the list, and the arrows lead from it into the list.
 
 ## Gameplay
 
 **Solar mirrors boost orbital stations.** The solar modules of an orbital station receive the
-solar mirror bonus. A mirror lights targets that orbit inward of it, so a mirror in high Mars
-orbit boosts medium and low orbit, one in medium orbit boosts low orbit, and a mirror level with
-its target does nothing for it. Mirrors at Lagrange points light what they light in the vanilla
-game. Surface bases are unchanged. Power management is refreshed for affected stations when
-mirror numbers change. Off by default.
+solar mirror bonus. A mirror lights the stations that orbit inward of it. A mirror in high Mars
+orbit lights medium orbit and low orbit, and a mirror in medium orbit lights low orbit. A mirror
+at the same level as a station does not light it. A mirror at a Lagrange point lights the same
+stations as in the standard game. Surface bases do not change. Power management is refreshed for
+the affected stations when the number of mirrors changes. Off by default.
 
-**Solar mirror orbital boost cap.** The maximum output of a mirror-lit station's solar modules,
-as a multiple of their unlit output, from 2 to 8. The vanilla ceiling is 8. Stations only.
+**Solar mirror orbital boost cap.** The maximum output of the solar modules of a mirror-lit
+station, as a multiple of their unlit output, from 2 to 8. This applies to orbital stations only.
+The standard limit is 8.
 
-**Project review favors the expensive project.** Review Failed Projects weights each candidate by
-availability chance multiplied by research cost, rather than divided by it.
+**Project review favors the expensive project.** Review Failed Projects weights each project by
+its availability chance multiplied by its research cost. An expensive project is more likely to be
+selected.
 
-**Launch facilities prefer better sites.** A completed Launch Facilities priority can build at the
-nation's best available site - the region nearest the equator, which earns the most boost - rather
-than almost always adding to a site the nation already has, which is what the vanilla weighting
-does. Regions under occupation stop being eligible, for this and for the first site a new space
-program builds; the vanilla game filters them out and then drops the filtered list on the floor.
-The priority's tooltip reads from the eligible regions too, instead of offering a range that
-includes regions nothing can be built in.
+**Boost priority prefers better launch sites.** A completed Boost priority can build its launch
+facilities in the best available region of the nation. The best region is the eligible region
+nearest the equator. A region under occupation is not eligible. This applies to the Boost priority
+and to the first launch facilities of a new spaceflight program. The Boost priority tooltip shows
+the range of the eligible regions, and one figure when the result is certain.
 
-The AI also stops reading a southern nation's latitude as a distance from the equator. It took the
-signed figure, so a nation at 60S scored better than one on the equator, every southern nation
-passed its test for a useful launch site, and the event that grants a space program picked the most
-southerly nation rather than the most equatorial one.
+The AI also reads a southern latitude as a distance from the equator. This applies to its score
+for a nation, to its test for a useful launch site, and to the event that grants a spaceflight
+program.
 
-**Launch site focus.** How often that priority goes to the best site rather than rolling as the
-vanilla game does, from 0% to 100%. At 0% the roll is vanilla's, which is settled almost entirely
-by where the nation already launches. At 100% the nation always builds at its best site. 50% by
-default.
+**Launch site focus.** How often the Boost priority builds in the best available region, from 0%
+to 100%. At 0% the game selects the region as the standard game does, which almost always adds to
+a region that already has launch facilities. At 100% the nation always builds in the best region.
+50% by default.
 
-**Demand Claim ignores the target's other wars.** Demand Claim is blocked only by a war between
-the two nations involved, rather than by the target being at war with anyone. Every other
-condition is unchanged.
+**Any faction can go dormant, and can come back.** The campaign option Allow AI Factions To Be
+Disabled spares five factions. Two of them are the aliens and your own faction, and they still
+cannot go dormant. The other three are spared for their part in the story, and they can now go
+dormant on the same terms as the others: no fleets, habs, councilors or control points on one day,
+from campaign year 15. In a game with all factions the three are the Servants, the Protectorate
+and Humanity First. Humanity First is spared only while you play a faction that is not Humanity
+First or the Resistance.
 
-**Holding a capital borrows that nation's claims.** While you hold a dormant nation's original
-capital, and your claim on that capital is not hostile, you may use that nation's claims. Losing
-the capital, or that claim turning hostile, removes them. A claim the other nation held as
-hostile stays hostile for you. Nations that still hold territory are excluded. Save files are
-unchanged.
+A dormant faction also comes back when it holds two control points again. The aliens continue to
+give control points to the Servants and the Protectorate with the Enthrall Elites and Terrorize
+missions, and you can trade a control point to a dormant faction. A faction that comes back has no
+money, no orgs and no income from its founding or from events, and runs on what its control points
+give it. The game shows no notification when a faction comes back.
+
+This setting does nothing unless the campaign option is on. Off by default.
+
+**Demand Claim ignores the target's other wars.** A war blocks Demand Claim only if it is a war
+between the two nations in the claim. The other conditions do not change.
+
+**Holding a capital borrows that nation's claims.** While you hold the original capital of a
+dormant nation, you can use the claims of that nation. Your claim on the capital must not be
+hostile. You lose the borrowed claims when you lose the capital, or when your claim on it becomes
+hostile. A claim that the other nation held as hostile stays hostile for you. A nation that still
+holds territory is excluded. Save files do not change.
 
 **Repeatable management project scaling.** Each repeat of Management Research, Audience Research,
-Commercial Research and Operations Research pays its base reward plus this percentage for every
-repeat already completed. The slider runs from 0% to 20%, and 0% is the vanilla flat reward.
-Alien factions are not affected.
+Commercial Research and Operations Research pays its base reward plus this percentage, for each
+repeat you have already completed. The slider is from 0% to 20%. At 0% each repeat pays the
+standard flat reward. Alien factions are not affected.
 
-The capacity bonus is calculated from the number of repeats, so it covers repeats completed
-before installing the mod. Resources already granted are not topped up. Project descriptions show
-the scaled value and the next completion.
+The capacity bonus uses the number of repeats, so it includes repeats you completed before you
+installed the mod. Resources you have already received are not increased. Project descriptions
+show the scaled value and the next completion.
 
-**Control points can be traded.** Control points join orgs, habs and projects on the diplomacy
-table, under a tab of their own, grouped by nation. The AI values them: it asks a price for its
-own and pays for yours, and it offers seats in nations it has walked away from. Alien factions,
-and control points in alien nations, are excluded. On by default.
+**Control points can be traded.** Control points are on the diplomacy table with orgs, habs and
+projects, on a separate tab and grouped by nation. The AI gives them a value. It asks a price for
+its own control points, pays for yours, and offers control points in nations it has abandoned.
+Alien factions and control points in alien nations are excluded. On by default.
 
-**Control point base value.** How heavily the AI weighs a control point against everything else
-on the table, from 0.5x to 5x. The value under it is six months of the seat's income valued the
-way that faction values income, plus its investment points and the armies behind it, doubled for
-an executive. A seat in a nation its holder has abandoned is worth a tenth of that to them, so
-abandoned seats change hands cheaply while the faction across the table still counts them in full.
+**Control point base value.** How much the AI weights a control point against the other items on
+the table, from 0.5x to 5x. The value is six months of the income of the control point, as that
+faction values income, plus its investment points and the armies behind it. The value is doubled
+for an executive control point. A control point in a nation that its holder has abandoned is worth
+one tenth of that value to the holder. The faction on the other side of the table counts it in
+full.
 
-**Suppressed control points can be traded.** Seats under a crackdown can be put on the table,
-including seats in a nation their holder has abandoned, which are suppressed for the same reason.
-The crackdown goes with the seat: the new owner serves out exactly what was left of it, to the
-day, so trading a seat away and back is not a way to clear one. Off by default.
+**Suppressed control points can be traded.** You can put a control point that is under a crackdown
+on the diplomacy table. This includes a control point in a nation that its holder has abandoned.
+The crackdown moves with the control point, and the new owner completes the remaining time to the
+day. You cannot clear a crackdown with a trade. Off by default.
 
-**Purging a friendly control point does not break the pact.** Purging a suppressed control point
-held by a faction you have a non-aggression pact or a truce with does not hand them the hate that
-would end it. Purging anything else angers them as usual. Off by default.
+**Purging a friendly control point does not break the pact.** When you purge a suppressed control
+point of a faction that has a non-aggression pact or a truce with you, that faction does not
+become angry and the pact continues. A purge of any other control point makes the faction angry.
+Off by default.
 
-**Warn before a mission breaks a pact.** A mission aimed at a faction you have a non-aggression
-pact or a truce with marks the chosen target and asks for confirmation before the councilor is
-assigned. The vanilla game marks such a target while the list is open and then drops the mark from
-the line it writes for the target you picked, which is the moment it matters. On by default.
+**Warn before a mission breaks a pact.** A mission against a faction that has a non-aggression
+pact or a truce with you marks the selected target. The game asks you to confirm before it assigns
+the councilor. On by default.
 
 ## Campaign options
 
-Both of these are lightly tested. The code does what this section describes, and the projects and
-claim rows load without errors, but neither has been played through a campaign.
+Both of these options are lightly tested. The code does what this section describes, and the
+projects and claim rows load without errors. Neither option has been played through a full
+campaign.
 
-**Spy slots become councilor slots.** The eight slots on the council screen become one pool
-shared between your councilors and councilors you have turned in other factions. No spies seats
-eight councilors, one spy seats seven, and two spies seats six, as in the vanilla game. Turning
-is blocked when the pool is full.
+**Spy slots become councilor slots.** The eight slots on the council screen are one pool. The pool
+holds your councilors and the councilors you have turned in other factions. With no spies you have
+eight councilors, with one spy you have seven, and with two spies you have six, as in the standard
+game. You cannot turn a councilor while the pool is full.
 
-Seats seven and eight are researched. **Deep Cover Handlers** (2,400) follows Covert Operations
-and Applied Artificial Intelligence. **Shadow Cabinet** (4,800) follows Deep Cover Handlers and
-Administration Algorithms. Neither is guaranteed to be offered. With this option off, both
+Seats seven and eight are researched. Deep Cover Handlers (2,400) follows Covert Operations and
+Applied Artificial Intelligence. Shadow Cabinet (4,800) follows Deep Cover Handlers and
+Administration Algorithms. The game does not always offer them. With this option off, both
 projects are hidden.
 
-The AI obeys both caps and does not keep a slot free for a spy, so AI factions fill their
-councils and stop spying.
+The AI obeys both caps. It does not keep a slot free for a spy, so AI factions fill their councils
+and stop spying.
 
 **Restored Empires claims.** Claim chains and four projects for old powers. This was a separate
 mod and is now part of CataTweaks.
 
-- **The Sun Never Sets** (United Kingdom, 25,000) claims the Empire and Commonwealth beyond the
-  settler dominions. The vanilla project **Commonwealth Restored** also gains Delhi, Calcutta and
+- The Sun Never Sets (United Kingdom, 25,000) claims the Empire and the Commonwealth beyond the
+  settler dominions. The standard project Commonwealth Restored also gains Delhi, Calcutta and
   Ireland.
-- **New Liberia** (Liberia, 20,000) claims Sierra Leone, the Ivory Coast, Accra, Togo-Benin and
-  Libreville. The **Dominion of America** claims Liberia and Jamaica behind the vanilla project
-  Greater Dominion, which gives it a route to that coast by releasing Liberia, letting it grow,
-  and absorbing it again.
-- **Mare Nostrum** (Rome, 10,000) and **Imperium Sine Fine** (Rome, 25,000) claim the
-  Mediterranean world, the eastern roads, Aksum and both American seaboards. Both appear in
-  Broken Earth only, which is the one scenario the Roman Republic exists in.
 
-Claims on territories that fought their way out are hostile. Claims on small dependencies that
-left by agreement are peaceful. A hostile claim needs conquest, then a government push until the
-claim becomes peaceful, then release, regrowth and reabsorption.
+- New Liberia (Liberia, 20,000) claims Sierra Leone, the Ivory Coast, Accra, Togo-Benin and
+  Libreville. The Dominion of America claims Liberia and Jamaica behind the standard project
+  Greater Dominion. It reaches that coast when it releases Liberia, lets it grow, and absorbs it
+  again.
+
+- Mare Nostrum (Rome, 10,000) and Imperium Sine Fine (Rome, 25,000) claim the Mediterranean world,
+  the eastern roads, Aksum and both American seaboards. Both appear in Broken Earth only, which is
+  the one scenario that has the Roman Republic.
+
+A claim on a territory that fought for independence is hostile. A claim on a small dependency that
+left by agreement is peaceful. For a hostile claim you must conquer the territory, then use a
+government push until the claim becomes peaceful, then release the nation, let it grow, and absorb
+it again.
 
 Broken Earth has a dense claim web, so these chains reach much further there than in the intact
-starts. The scripts in `tools/` recompute the reach for each scenario from the game's own
-templates.
+starts. The scripts in tools/ recompute the reach for each scenario from the templates of the
+game.
 
 ## Notes
 
 A save made with this mod still loads without it.
 
-Settings are written to `CataTweaks.xml` in `Documents/My Games/TerraInvicta`, beside the folder
-the game keeps its own saves and options in. They are not kept in the mod folder: Terra Invicta
-resyncs a Workshop mod folder against the subscribed copy on every launch and deletes anything
-the Workshop item does not contain, which took the settings file with it. A `Settings.xml` left
-in the mod folder by an older version is carried over on the next start, and a `Settings.txt`
-from the version before that is read once and then renamed to `Settings.txt.migrated`.
+Settings are stored in `CataTweaks.xml` in `Documents/My Games/TerraInvicta`, beside the folder
+that holds the saves and options of the game. A `Settings.xml` left in the mod folder by an older
+version is copied over on the next start. A `Settings.txt` from the version before that is read
+once and then renamed to `Settings.txt.migrated`.
 
-If you still have the separate Restored Empires mod installed, remove it, or its claim rows will
-be duplicated.
+If you still have the separate Restored Empires mod installed, remove it. If you do not, its claim
+rows are duplicated.
 
 ---
 
