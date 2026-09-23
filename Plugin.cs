@@ -150,6 +150,11 @@ public class Settings : UnityModManager.ModSettings, IDrawable
     [Draw("Warn before a mission breaks a pact", Tooltip = "A mission against a faction that has a non-aggression pact or a truce with you marks the selected target. The game asks you to confirm before it assigns the councilor.")]
     public bool warnOnPactBreak = true;
 
+    // Show Triggered Projects is counted as a difficulty change by the Customize Campaign screen,
+    // which marks the campaign custom and costs it the three difficulty win achievements.
+    [Draw("Show Triggered Projects keeps achievements", Tooltip = "The Show Triggered Projects campaign option does not mark a campaign as custom difficulty. The Normal, Veteran and Brutal victory achievements stay available in that campaign. Every other campaign option still marks a campaign as custom difficulty.")]
+    public bool triggeredProjectsKeepAchievements = true;
+
     // Only the default the Customize Campaign screen starts from. The campaign's own answer is
     // stored in its save, so changing this never reaches a campaign already under way.
     [Draw("New campaigns: unused spy slots become councilor slots", Tooltip = "Sets the default for the Customize Campaign option with the same name.")]
@@ -3774,6 +3779,45 @@ internal static class DormancyCanBeUndone
             // no longer answers to Defeated() either, so it is not put straight back down.
             __instance.defeated = false;
         }
+    }
+}
+
+// Tweak 18: Show Triggered Projects stops counting as a difficulty change.
+//
+// StartMenuController.ValidateCustomDifficultySettings compares every campaign option against its
+// default in one long condition, and ends it with "&& !showtriggeredProjectsToggle.isOn". So the
+// option that only displays which projects have been triggered or missed puts the campaign in
+// custom difficulty, next to the sliders for research speed and alien progression. The campaign
+// then carries scenarioCustomizations.customDifficulty for good, and at a victory that flag is
+// what holds back normalWin, veteranWin and brutalWin. No other achievement reads it, and playing
+// with mods does not gate achievements at all.
+//
+// The condition is not copied here. The toggle is turned off for the length of the call and put
+// back afterwards, so the vanilla test runs as though the option were unset and every other term
+// in it goes on deciding the answer as it always did. The restore is a finalizer rather than a
+// postfix: a postfix is skipped when the original throws, which would leave the toggle reading
+// off, and the screen writes that toggle straight into the campaign a moment later.
+[HarmonyPatch(typeof(StartMenuController), "ValidateCustomDifficultySettings")]
+internal static class TriggeredProjectsKeepAchievements
+{
+    private static void Prefix(StartMenuController __instance, out bool __state)
+    {
+        Toggle toggle = __instance.showtriggeredProjectsToggle;
+        __state = Main.settings.triggeredProjectsKeepAchievements && toggle != null && toggle.isOn;
+        if (__state)
+        {
+            toggle.SetIsOnWithoutNotify(false);
+        }
+    }
+
+    private static Exception Finalizer(StartMenuController __instance, bool __state,
+        Exception __exception)
+    {
+        if (__state)
+        {
+            __instance.showtriggeredProjectsToggle.SetIsOnWithoutNotify(true);
+        }
+        return __exception;
     }
 }
 

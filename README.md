@@ -155,6 +155,11 @@ point of a faction that has a non-aggression pact or a truce with you, that fact
 become angry and the pact continues. A purge of any other control point makes the faction angry.
 Off by default.
 
+**Show Triggered Projects keeps achievements.** The Show Triggered Projects campaign option does
+not mark a campaign as custom difficulty. The Normal, Veteran and Brutal victory achievements stay
+available in that campaign. Every other campaign option still marks a campaign as custom
+difficulty, and a campaign that is already marked does not change. On by default.
+
 **Warn before a mission breaks a pact.** A mission against a faction that has a non-aggression
 pact or a truce with you marks the selected target. The game asks you to confirm before it assigns
 the councilor. On by default.
