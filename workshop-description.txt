@@ -16,6 +16,7 @@ Two settings are added to the 'Customize Campaign' dialogue - Spy slots become c
 [*][b]Nations keep their preset when their priorities change[/b], such as when they gain a spaceflight program or a military.
 [*][b]Dividers between stations[/b] in the ship construction list.
 [*][b]Fleet detection notices name the orbit or body[/b], not just the hab.
+[*][b]Nation picker on the nation panel.[/b] The nation's name becomes a dropdown of every nation you hold a control point in, with previous and next arrows either side.
 [/list]
 
 [h2]Gameplay[/h2]
@@ -26,6 +27,10 @@ Two settings are added to the 'Customize Campaign' dialogue - Spy slots become c
 [*][b]Demand Claim ignores the target's other wars.[/b] The game asks whether the target is at war at all, not whether it is at war with you, so one endless alien war freezes peaceful border changes for the rest of the campaign.
 [*][b]Holding a capital borrows that nation's claims.[/b] Absorbing a nation moves everything except its claims, which is what forces unification to be worked from the outside in. While you hold a dormant nation's original capital with a non-hostile claim on it, its claims are yours to use. Lose the capital and they go with it. Hostile claims stay hostile, and living nations are excluded.
 [*][b]Repeatable management project scaling.[/b] Management, Audience, Commercial and Operations Research cost more on each repeat but pay the same flat amount. Each repeat now pays more in step with its cost. Set it to 0% for vanilla.
+[*][b]Trade control points.[/b] Control points go on the diplomacy table alongside orgs, habs and projects, under a tab of their own, by nation. The AI values them, asks a price for its own, and offers up seats in nations it has walked away from. A slider sets how heavily it weighs them. On by default.
+[*][b]Trade suppressed control points.[/b] Seats under a crackdown can change hands, and the crackdown goes with them - the new owner serves out what is left of it. Off by default.
+[*][b]Purging a friendly control point does not break the pact.[/b] Purge a suppressed seat held by a faction you have a NAP or truce with without handing them the hate that ends it. Off by default.
+[*][b]Warn before a mission breaks a pact.[/b] A mission aimed at a faction you have a NAP or truce with marks the target and asks before the councilor is assigned. The vanilla game marks it in the list and then drops the mark once you pick it.
 [/list]
 
 [h2]Campaign options[/h2]

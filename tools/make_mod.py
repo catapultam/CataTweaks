@@ -8,7 +8,7 @@ projects are emitted there alone; the British and Liberian lines exist everywher
 import json, os
 from names import SCENARIOS, region_map, nations
 
-OUT = r'C:\Users\alex\GitHub\RestoredEmpires'
+OUT = r'C:\Users\alex\Documents\GitHub\RestoredEmpires'
 SUN, MARE, FAR, LIBERIA = ('Project_TheSunNeverSets', 'Project_MareNostrum',
                            'Project_ImperiumSineFine', 'Project_NewLiberia')
 COMMONWEALTH, DOMINION = 'Project_CommonwealthRestored', 'Project_GreaterDominion'   # vanilla

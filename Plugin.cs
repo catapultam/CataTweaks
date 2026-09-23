@@ -9,6 +9,7 @@ using ModelShark;
 using TMPro;
 using PavonisInteractive.TerraInvicta;
 using PavonisInteractive.TerraInvicta.Actions;
+using PavonisInteractive.TerraInvicta.Audio;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityModManagerNet;
@@ -16,7 +17,8 @@ using UnityModManagerNet;
 namespace CataTweaks;
 
 // Settings live in the Unity Mod Manager window (Ctrl+F10 by default), under this mod's entry.
-// UMM draws one control per [Draw] field, writes Settings.xml into the mod folder on Save, and
+// UMM draws one control per [Draw] field, writes the settings file on Save (see GetPath: not
+// in the mod folder, because the game empties that of anything the Workshop item lacks), and
 // calls OnChange the moment a control moves - so every toggle takes effect immediately, with no
 // restart. Each patch reads its setting when it runs rather than gating at patch time, which is
 // what makes that possible; the cost is that a disabled patch still runs one comparison.
@@ -56,6 +58,11 @@ public class Settings : UnityModManager.ModSettings, IDrawable
     [Draw("Fleet detections name the orbit or body", Tooltip = "Fleet detection notices name the hab's orbit and body, and the body for a landed fleet.")]
     public bool fleetDetectionLocation = true;
 
+    // The nation panel's name becomes a dropdown of the nations we hold a control point in,
+    // with the map mode picker's arrows either side of it.
+    [Draw("Nation picker on the nation panel", Tooltip = "The nation's name on its panel becomes a dropdown of the nations we hold a control point in, with previous and next arrows either side, in name order, wrapping at either end.")]
+    public bool nationCycleButtons = true;
+
     // Solar mirrors boost orbital stations inward of them, not just surface bases.
     [Draw("Solar mirrors boost orbital stations", Tooltip = "Solar mirrors add power to orbital stations as well as surface bases. A mirror lights targets orbiting inward of it, and Lagrange point mirrors light everything they already credit. Surface bases are unchanged.")]
     public bool solarMirrorsBoostStations = false;
@@ -89,6 +96,41 @@ public class Settings : UnityModManager.ModSettings, IDrawable
     [Draw("Repeatable Management Project Scaling", DrawType.Slider, Min = 0f, Max = 0.2f, Tooltip = "Management Research, Audience Research, Commercial Research and Operations Research pay this much more of their base reward on each repeat. Management Research grants control point capacity; the other three grant Influence, Money and Operations. At 0% every repeat pays the flat vanilla amount.")]
     public float repeatableProjectScaling = 0.03f;
 
+    // Control points join orgs, habs and projects on the diplomacy table, and the AI values
+    // them: it asks a price for its own and pays for yours. On by default while it is new.
+    [Draw("Allow trading control points", Tooltip = "Control points can be put on the diplomacy table alongside orgs, habs and projects, under a tab of their own, by nation. The AI values them and will refuse a deal it does not like.")]
+    public bool tradeControlPoints = true;
+
+    // How heavily the AI weighs a control point against everything else on the table. The
+    // arithmetic under it - income, investment points, armies, an executive multiplier, and a
+    // tenth of the value to a holder that has abandoned the nation - is in ControlPointTrade
+    // .Value. This is the one knob over the top of it, because that arithmetic has no vanilla
+    // scale to be calibrated against.
+    [Draw("Control point base value", DrawType.Slider, Min = 0.5f, Max = 5f, Tooltip = "How much the AI values a control point in a trade, against orgs, habs, projects and resources. Higher means it asks more for its own and pays more for yours. A seat is worth a tenth of this to a holder that has abandoned the nation, so abandoned seats change hands cheaply.")]
+    public float controlPointTradeValue = 2f;
+
+    // Why a seat is suppressed is not written down anywhere: a crackdown mission and the
+    // holder's own Disable Control Points button both end at ResolveCrackdownEffect and set the
+    // same two fields, and the voluntary one does not touch permaAbandonedNations either. So
+    // this is one switch over both rather than a guess at which is which. Suppression travels
+    // with the seat whatever it is set to, so a trade and a trade back cannot clear one. It
+    // covers abandoned seats too: abandoning a nation suppresses its seats, and the toggle that
+    // marks a nation abandoned is an automation switch a player can flip at will, so gating on
+    // it would be gating on nothing.
+    [Draw("Allow trading suppressed control points", Tooltip = "Control points under a crackdown can be put on the table, including seats in a nation their holder has abandoned, which are suppressed for the same reason. The crackdown goes with them: the new owner serves out what is left of it.")]
+    public bool tradeSuppressedControlPoints = false;
+
+    // A pact is not a rule the game enforces: what ends one is the hate a hostile mission hands
+    // the other side, so leaving a pact standing means not handing over that hate.
+    [Draw("Allow purge of friendly control points", Tooltip = "Purging a suppressed control point held by a faction we have a non-aggression pact or a truce with does not anger them, so the pact survives it. Purging anything else angers them as usual.")]
+    public bool friendlyPurge = false;
+
+    // Vanilla marks a target whose faction has a pact with an inline icon in the target list and
+    // then drops it from the line it writes for the target actually chosen, which is the moment
+    // it matters.
+    [Draw("Warn before a mission breaks a pact", Tooltip = "A mission aimed at a faction we have a non-aggression pact or a truce with marks the chosen target and asks for confirmation before the councilor is assigned.")]
+    public bool warnOnPactBreak = true;
+
     // Only the default the Customize Campaign screen starts from. The campaign's own answer is
     // stored in its save, so changing this never reaches a campaign already under way.
     [Draw("New campaigns: unused spy slots become councilor slots", Tooltip = "Default for the Customize Campaign option of the same name.")]
@@ -101,7 +143,55 @@ public class Settings : UnityModManager.ModSettings, IDrawable
     // Remembered per faction, so a name written for one never follows you to another.
     public List<FactionNames> savedFactionNames = new List<FactionNames>();
 
-    public override void Save(UnityModManager.ModEntry modEntry) => Save(this, modEntry);
+    // Where the settings file lives, for both the load and the save: UMM asks this for each.
+    //
+    // Not the mod folder. Terra Invicta resyncs a Workshop mod folder against the subscribed
+    // copy on every launch - "CataTweaks: need to check for update" in the player log - and
+    // deletes every file the Workshop item does not contain, Settings.xml with them. A setting
+    // written there therefore lasts until the next start and no longer, which is to say that
+    // nobody who installs from the Workshop can keep a setting at all.
+    //
+    // The game's own folder under My Games is where PlayerOptions.TIProfile sits, one level
+    // down in Saves, and nothing sweeps it. MyDocuments is asked for rather than assumed,
+    // because the folder moves under OneDrive redirection. The game's own GetSaveFolderPath
+    // would be the more faithful answer, since a player can point the game somewhere else
+    // entirely, but it caches what it computes and it is called here long before the game has
+    // read that preference - so calling it now would cache the wrong folder for the game too.
+    public override string GetPath(UnityModManager.ModEntry modEntry)
+    {
+        try
+        {
+            string documents = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            if (!string.IsNullOrEmpty(documents))
+            {
+                return Path.Combine(documents, "My Games", "TerraInvicta", "CataTweaks.xml");
+            }
+        }
+        catch (Exception)
+        {
+            // Fall through to the mod folder, which is better than not saving at all.
+        }
+        return Path.Combine(modEntry.Path, "Settings.xml");
+    }
+
+    // StreamWriter will not create the folder, and a player who has never launched the game
+    // does not have one.
+    public override void Save(UnityModManager.ModEntry modEntry)
+    {
+        try
+        {
+            string folder = Path.GetDirectoryName(GetPath(modEntry));
+            if (!string.IsNullOrEmpty(folder))
+            {
+                Directory.CreateDirectory(folder);
+            }
+        }
+        catch (Exception e)
+        {
+            modEntry.Logger.Error("Could not prepare the settings folder - " + e.Message);
+        }
+        Save(this, modEntry);
+    }
 
     // UMM calls this the moment a control moves, so this is where a live toggle takes hold for
     // the patches that hold state of their own. Nothing here may throw: it runs from the GUI, and
@@ -119,13 +209,42 @@ public class Settings : UnityModManager.ModSettings, IDrawable
         }
     }
 
+    // Settings written by an earlier version sit in the mod folder, where the game deletes them
+    // on its next Workshop sync. Anything still there is carried over before the first load,
+    // while it is still there to carry. The original is left where it is: the sync will take it.
+    internal static void MigrateModFolderFile(UnityModManager.ModEntry modEntry)
+    {
+        try
+        {
+            string old = Path.Combine(modEntry.Path, "Settings.xml");
+            string current = new Settings().GetPath(modEntry);
+            if (!File.Exists(old) || File.Exists(current) || old == current)
+            {
+                return;
+            }
+            string folder = Path.GetDirectoryName(current);
+            if (!string.IsNullOrEmpty(folder))
+            {
+                Directory.CreateDirectory(folder);
+            }
+            File.Copy(old, current);
+        }
+        catch (Exception e)
+        {
+            modEntry.Logger.Error("Could not move the old settings file - " + e.Message);
+        }
+    }
+
     // One-time move from the pre-GUI Settings.txt. FromJsonOverwrite fills the fields it
     // recognizes and ignores the rest, so the old file's values survive the change of format;
     // the original is kept under a new name rather than deleted.
     internal static void MigrateLegacyFile(Settings target, UnityModManager.ModEntry modEntry)
     {
+        // Against the file that is actually in use, not the mod folder's: settings now live
+        // outside the mod folder, and a Settings.txt that turns up beside a reinstalled mod
+        // would otherwise be read over the top of them and saved.
         string legacy = Path.Combine(modEntry.Path, "Settings.txt");
-        if (!File.Exists(legacy) || File.Exists(Path.Combine(modEntry.Path, "Settings.xml")))
+        if (!File.Exists(legacy) || File.Exists(target.GetPath(modEntry)))
         {
             return;
         }
@@ -150,6 +269,7 @@ public static class Main
     public static bool Load(UnityModManager.ModEntry modEntry)
     {
         mod = modEntry;
+        Settings.MigrateModFolderFile(modEntry);
         settings = UnityModManager.ModSettings.Load<Settings>(modEntry);
         Settings.MigrateLegacyFile(settings, modEntry);
         // No OnGUI: every setting has a row on the game's own Settings screen, under the
@@ -750,6 +870,24 @@ internal static class StationSolarMirrorOutput
 [HarmonyPatch(typeof(TISpaceBodyState), nameof(TISpaceBodyState.ChangeSolarMirrorBonus))]
 internal static class StationSolarMirrorRefresh
 {
+    // A sweep is only ever run by the outermost call, because the sweep re-enters the method it
+    // is a postfix on. A mirror is a Station module and a power consumer, so refreshing a
+    // station's power grid can power one up or, in the deficit loop, shut one down - and either
+    // toggle runs SetPowerStatus, which calls ChangeSolarMirrorBonus, which lands here again and
+    // starts another sweep before the first has returned. Since each toggle really does change
+    // the module's state, SetPowerStatus does not stop it at its own no-change guard: a mirror
+    // turned on at one depth and off at the next goes round for as long as the stack holds.
+    //
+    // That is why the crash had nothing to say for itself. A stack overflow in Mono is not an
+    // exception anything can catch - not the try/catch in OnChange, not Harmony, not Unity's
+    // logger. The process simply ends.
+    //
+    // Vanilla cannot reach this: ChangeSolarMirrorBonus refreshes surfaceBases, and every solar
+    // mirror module in TIHabModuleTemplate.json is habType Station, so a surface base can never
+    // hold the module whose toggle would call back in. Pointing the same refresh at stations is
+    // what closes the loop, so the guard belongs here rather than in the tweak that reads it.
+    private static bool refreshing;
+
     private static void Postfix(TISpaceBodyState __instance, int changeBy, TIFactionState faction)
     {
         if (!StationSolarMirrors.Enabled)
@@ -760,16 +898,32 @@ internal static class StationSolarMirrorRefresh
         {
             return;
         }
+        // Above the guard: a nested toggle still has to drop the cache, or the sweep that is
+        // already running would go on handing out the bonus as it stood before the toggle.
         StationSolarMirrors.Invalidate();
-        foreach (TIOrbitState orbit in StationOrbits(__instance))
+        if (refreshing)
         {
-            foreach (TIHabState station in orbit.stationsInOrbit)
+            return;
+        }
+        refreshing = true;
+        try
+        {
+            foreach (TIOrbitState orbit in StationOrbits(__instance))
             {
-                if (station.faction == faction)
+                // stationsInOrbit builds a fresh list on every read, so the loop is already
+                // reading a copy and a refresh that moves a station cannot disturb it.
+                foreach (TIHabState station in orbit.stationsInOrbit)
                 {
-                    station.UpdatePowerManagement(changeBy > 0, null, faction.player.isAI);
+                    if (station != null && station.faction == faction)
+                    {
+                        station.UpdatePowerManagement(changeBy > 0, null, faction.player.isAI);
+                    }
                 }
             }
+        }
+        finally
+        {
+            refreshing = false;
         }
     }
 
@@ -1336,8 +1490,20 @@ internal static class InheritedCapitalClaims
 
     // Called when the setting moves in the UMM window: hand every borrowed claim back on the way
     // off, so turning the tweak off mid-campaign leaves the map exactly as vanilla had it.
+    // UMM calls OnChange for whichever control moved, and OnChange calls this without knowing
+    // which one that was - so a walk over every nation, with a claim change and its event on
+    // each, was running whenever any setting in the mod was touched. Only this setting's own
+    // change can need it. Null to start with rather than the field's default, because the file
+    // is read before anything asks, and the first answer has to be the loaded value's.
+    private static bool? applied;
+
     internal static void OnSettingChanged()
     {
+        if (applied == Main.settings.inheritedCapitalClaims)
+        {
+            return;
+        }
+        applied = Main.settings.inheritedCapitalClaims;
         if (Main.settings.inheritedCapitalClaims)
         {
             RecomputeAll();
@@ -1679,6 +1845,1640 @@ internal static class CouncilSlotPool
     }
 }
 
+// Tweak 13: control points can be put on the diplomacy table, next to orgs, habs and projects.
+//
+// Most of this exists in the game already and was never wired up. TradeOffer carries a
+// controlPoints list, ProcessTrade hands each entry over through ChangeControlPointOwner under a
+// ControlPointChangeCause.Trade of its own, DiplomacyController holds serialized playerCPsTab and
+// aiCPsTab fields, and the shipped localization has UI.Notifications.Diplomacy.TabCPs. What is
+// missing is the UI that fills the list - EvaluateTrade even clears it - and any valuation:
+// TradeAI's categories are orgs, resources, projects, habs and treaties, so a control point
+// scores zero for both sides of a deal.
+//
+// The valuation is the category TradeAI never had, added over the top of ScoreAgreement rather
+// than inside it, and the verdict EvaluateTrade reached before a control point was in the offer
+// is worked out again once one is. A seat in a nation its holder has abandoned is worth a tenth
+// to that holder and full value to everyone else, so abandoned seats go cheaply and a faction
+// pushes its own into the offers it builds.
+// ponytail: the arithmetic in Value is not calibrated against anything vanilla, so there is a
+// slider over it rather than a constant to argue about.
+internal static class ControlPointTrade
+{
+    // TradeItemType has no control point member and an enum cannot be extended, so these rows
+    // carry values from outside it. That is what makes them safe to add: every vanilla switch
+    // on itemType falls through to its default and every comparison against it misses, so the
+    // table scan in EvaluateTrade, the tab toggles and the row cleanup all pass our rows by. We
+    // do those three jobs ourselves below. The second value marks a nation heading.
+    private const TradeItemType CPItem = (TradeItemType)100;
+
+    private const TradeItemType CPGroupItem = (TradeItemType)101;
+
+    private const string TabKey = "UI.Notifications.Diplomacy.TabCPs";
+
+    // Which control point a table row stands for. DiplomacyTableListItem has a field for an org,
+    // a hab and a project, and none for a control point. Rows are destroyed and rebuilt whenever
+    // the screen reloads its banks, and this map goes with them.
+    private static readonly Dictionary<GameObject, TIControlPoint> rows =
+        new Dictionary<GameObject, TIControlPoint>();
+
+    // The other direction, for an offer that names a control point the player did not pick.
+    private static readonly Dictionary<TIControlPoint, DiplomacyBankListItem> banks =
+        new Dictionary<TIControlPoint, DiplomacyBankListItem>();
+
+    // One per nation per side: a heading that opens and closes that nation's control points.
+    private sealed class Group
+    {
+        internal bool player;
+        internal DiplomacyBankListItem heading;
+        internal readonly List<GameObject> bankRows = new List<GameObject>();
+        internal bool open;
+    }
+
+    private static readonly List<Group> groups = new List<Group>();
+
+    private static readonly FieldInfo playerOffer =
+        AccessTools.Field(typeof(DiplomacyController), "playerTradeOffer");
+
+    private static readonly FieldInfo aiOffer =
+        AccessTools.Field(typeof(DiplomacyController), "aiTradeOffer");
+
+    // Whether each side's list is open. Vanilla keeps a pair of bools per category and its
+    // ToggleTradeItems switches on the item type, returning at the default it cannot name, so
+    // the control point tab needs both halves of that here.
+    private static bool playerVisible;
+
+    private static bool aiVisible;
+
+    // Aliens take control points by enthralling rather than by deal, and a control point inside
+    // an alien nation is forced back to the alien faction the moment it changes hands. A
+    // suppressed one is left out because the handover re-enables its benefits, which would make
+    // a trade and a trade back a way to shrug off a crackdown.
+    private static bool Tradeable(TIControlPoint point)
+    {
+        if (point == null || point.nation == null || point.nation.alienNation)
+        {
+            return false;
+        }
+        return !point.benefitsDisabled || Main.settings.tradeSuppressedControlPoints;
+    }
+
+    // Abandoning a nation self-disables the holder's seats there, so an abandoned seat reads as
+    // suppressed like any other. This says nothing about whether a seat can be traded - the
+    // toggle behind it is free to flip, so it would gate nothing - and only sets what the holder
+    // thinks the seat is still worth.
+    internal static bool Abandoned(TIControlPoint point, TIFactionState faction)
+    {
+        List<TINationState> abandoned = faction?.permaAbandonedNations;
+        return point?.nation != null && abandoned != null && abandoned.Contains(point.nation);
+    }
+
+    internal static void Build(DiplomacyController ui)
+    {
+        playerVisible = false;
+        aiVisible = false;
+        TIFactionState player = GameControl.control?.activePlayer;
+        TIFactionState other = ui.tradingFaction;
+        if (player == null || other == null || player.IsAlienFaction || other.IsAlienFaction)
+        {
+            return;
+        }
+        Side(ui, player.controlPoints, ui.playerCPsTab,
+            ui.playerBankItemsContent, ui.playerTableItemsContent, true);
+        Side(ui, other.controlPoints, ui.aiCPsTab,
+            ui.aiBankItemsContent, ui.aiTableItemsContent, false);
+    }
+
+    // The tab is already in the prefab and nothing in the game ever shows or wires it. Vanilla
+    // positions a tab by moving it to the end of the bank list and appending its rows after it,
+    // which is why this runs before the rows are added. A side with nothing to offer keeps its
+    // tab hidden, as the hab and project tabs do.
+    private static void Side(DiplomacyController ui, List<TIControlPoint> points,
+        DiplomacyBankListItem tab, GameObject bank, GameObject table, bool player)
+    {
+        if (bank == null || tab == null)
+        {
+            return;
+        }
+        tab.transform.SetSiblingIndex(bank.transform.childCount - 1);
+        int added = Add(ui, points, tab, bank, table, player);
+        tab.gameObject.SetActive(added > 0);
+        if (added == 0)
+        {
+            return;
+        }
+        if (tab.tabText != null)
+        {
+            tab.tabText.text = "+";
+        }
+        // The tab was duplicated from the projects tab in the editor and its localizer still
+        // carries the projects key, which is why it reads "Projects". Writing the text is not
+        // enough: UITextLocalizer.Start runs on the first activation and puts the key's string
+        // back. The key itself has to change, and UI.Notifications.Diplomacy.TabCPs is already
+        // in every shipped language.
+        Relabel(tab, TabKey, Loc.T(TabKey));
+        Wire(tab, () => ToggleTab(ui, tab, player));
+    }
+
+    // One heading per nation, then that nation's control points under it, all closed. Vanilla's
+    // rows carry the item's own name; here the nation is on the heading, so a row only needs to
+    // say which control point of that nation it is.
+    private static int Add(DiplomacyController ui, List<TIControlPoint> points,
+        DiplomacyBankListItem tab, GameObject bank, GameObject table, bool player)
+    {
+        int added = 0;
+        if (points == null || table == null || ui.bankItemPrefab == null
+            || ui.tableItemPrefab == null)
+        {
+            return 0;
+        }
+        foreach (IGrouping<TINationState, TIControlPoint> nation in points
+            .Where(Tradeable)
+            .GroupBy(point => point.nation)
+            .OrderBy(group => group.Key.displayName))
+        {
+            Group group = Heading(ui, tab, bank, nation.Key, player);
+            foreach (TIControlPoint point in nation.OrderBy(x => x.positionInNation))
+            {
+                TIControlPoint captured = point;
+
+                GameObject tableRow =
+                    UnityEngine.Object.Instantiate(ui.tableItemPrefab, table.transform);
+                Loc.SwapFonts(tableRow);
+                DiplomacyTableListItem tableItem = tableRow.GetComponent<DiplomacyTableListItem>();
+                tableItem.itemType = CPItem;
+                tableItem.itemDescription.text = captured.displayName;
+                tableItem.itemIcon.sprite = captured.GetIcon(true, false);
+                tableItem.diplomacyController = ui;
+                tableItem.HideOrgData();
+                tableItem.tooltipTrigger.enabled = true;
+                tableItem.tooltipTrigger.SetDelegate("BodyText", () => captured.displayName);
+                tableItem.DisableGameobject();
+
+                GameObject bankRow =
+                    UnityEngine.Object.Instantiate(ui.bankItemPrefab, bank.transform);
+                Loc.SwapFonts(bankRow);
+                DiplomacyBankListItem bankItem = bankRow.GetComponent<DiplomacyBankListItem>();
+                bankItem.itemType = CPItem;
+                bankItem.quantityText.text = captured.controlPointTypeDisplayName;
+                bankItem.itemIcon.sprite = captured.GetIcon(true, false);
+                bankItem.diplomacyController = ui;
+                bankItem.HideOrgData();
+                bankItem.tooltipTrigger.enabled = true;
+                bankItem.tooltipTrigger.SetDelegate("BodyText", () => captured.displayName);
+                bankItem.tooltipTrigger.tipPosition = TipPosition.MouseLeftMiddle;
+                bankItem.dealTableLink = tableRow;
+                // Closed until its nation is opened, as vanilla leaves its own rows closed
+                // until their tab is.
+                bankRow.SetActive(false);
+
+                if (captured.benefitsDisabled)
+                {
+                    MarkSuppressed(tableItem.itemIcon);
+                    MarkSuppressed(bankItem.itemIcon);
+                }
+
+                rows[tableRow] = captured;
+                banks[captured] = bankItem;
+                group?.bankRows.Add(bankRow);
+                added++;
+            }
+            // The same mark on the flag, so a nation holding something suppressed says so while
+            // it is closed. One suppressed seat is enough to earn it.
+            if (group?.heading != null && nation.Any(point => point.benefitsDisabled))
+            {
+                MarkSuppressed(group.heading.itemIcon);
+            }
+        }
+        return added;
+    }
+
+    // The crackdown decal is an editor-wired Image on the nation screen's control point grid
+    // item and exists nowhere else: there is no path for it in the globals and nothing for it in
+    // AssetCacheManager, so it cannot be loaded, only borrowed. The nation screen is built with
+    // the campaign and keeps its grid items in the scene while they are inactive, which is what
+    // FindObjectsOfTypeAll reaches and GameObject.Find would not. Held until it is destroyed
+    // with the campaign, which Unity's own == reports as null.
+    private static GameObject decal;
+
+    // As a fraction of the icon it sits on, anchored at the corner.
+    private const float DecalSize = 0.5f;
+
+    private static GameObject DecalSource()
+    {
+        if (decal == null)
+        {
+            foreach (ControlPointGridItemController item in
+                Resources.FindObjectsOfTypeAll<ControlPointGridItemController>())
+            {
+                if (item != null && item.crackdownStatusPanel != null
+                    && item.crackdownStatusPanel.sprite != null)
+                {
+                    decal = item.crackdownStatusPanel.gameObject;
+                    break;
+                }
+            }
+        }
+        return decal;
+    }
+
+    // The decal is cut for a grid cell and lands here on a row icon, so it is anchored rather
+    // than left at the size it came with: a quarter of the icon, in the lower left corner.
+    private static void MarkSuppressed(Image icon)
+    {
+        GameObject source = DecalSource();
+        if (icon == null || source == null)
+        {
+            return;
+        }
+        GameObject mark = UnityEngine.Object.Instantiate(source, icon.transform);
+        mark.name = "CataTweaksSuppressed";
+        RectTransform rect = mark.transform as RectTransform;
+        if (rect != null)
+        {
+            rect.localScale = Vector3.one;
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = new Vector2(DecalSize, DecalSize);
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+            rect.pivot = Vector2.zero;
+        }
+        Image image = mark.GetComponent<Image>();
+        if (image != null)
+        {
+            // The source sits on the prefab with its Image disabled until a crackdown turns it
+            // on, and a click on a row must still reach the row.
+            image.enabled = true;
+            image.raycastTarget = false;
+        }
+        mark.SetActive(true);
+    }
+
+    // A clone of the tab, which is the only object to hand that looks like a heading and has a
+    // button and a +/- on it. The flag stands in for the tab's icon.
+    private static Group Heading(DiplomacyController ui, DiplomacyBankListItem tab, GameObject bank,
+        TINationState nation, bool player)
+    {
+        GameObject clone = UnityEngine.Object.Instantiate(tab.gameObject, bank.transform);
+        Loc.SwapFonts(clone);
+        DiplomacyBankListItem item = clone.GetComponent<DiplomacyBankListItem>();
+        if (item == null)
+        {
+            UnityEngine.Object.Destroy(clone);
+            return null;
+        }
+        item.itemType = CPGroupItem;
+        item.diplomacyController = ui;
+        // A heading is not something to put on the table, and a clone arrives with the link its
+        // source had.
+        item.dealTableLink = null;
+        if (item.tabText != null)
+        {
+            item.tabText.text = "+";
+        }
+        if (item.itemIcon != null && nation.flag != null)
+        {
+            item.itemIcon.sprite = nation.flag;
+            // The slot was cut for a square tab icon; a flag is not square.
+            item.itemIcon.preserveAspect = true;
+            item.itemIcon.gameObject.SetActive(true);
+        }
+        // A nation's name is not a localization key, so the localizer has to go rather than be
+        // repointed, or it would overwrite the name on its first frame.
+        Relabel(item, null, nation.displayName);
+        if (item.tooltipTrigger != null)
+        {
+            // The clone brings a trigger whose delegate could not survive Instantiate.
+            item.tooltipTrigger.enabled = false;
+        }
+        clone.SetActive(false);
+        Group group = new Group { player = player, heading = item };
+        Wire(item, () => ToggleGroup(group));
+        groups.Add(group);
+        return group;
+    }
+
+    // UITextLocalizer overwrites the text it sits on from a key, on its first frame and again
+    // whenever the language changes. Repointing it at another key is the only way to make a new
+    // label stick; where there is no key for the text, the localizer goes.
+    private static void Relabel(DiplomacyBankListItem item, string key, string text)
+    {
+        foreach (UITextLocalizer localizer in item.GetComponentsInChildren<UITextLocalizer>(true))
+        {
+            if (item.tabText != null && localizer.gameObject == item.tabText.gameObject)
+            {
+                continue;
+            }
+            if (key == null)
+            {
+                UnityEngine.Object.Destroy(localizer);
+            }
+            else
+            {
+                localizer.displayText = key;
+                localizer.LocalizeText(key);
+            }
+        }
+        foreach (TMP_Text label in item.GetComponentsInChildren<TMP_Text>(true))
+        {
+            if (item.tabText == null || label != item.tabText)
+            {
+                label.text = text;
+            }
+        }
+    }
+
+    // A tab button arrives with whatever the editor wired to it, and a clone brings that along:
+    // RemoveAllListeners does not clear a persistent listener, and a fresh event does. Setup
+    // runs once per negotiation, so re-assigning is idempotent.
+    private static void Wire(DiplomacyBankListItem item, UnityEngine.Events.UnityAction action)
+    {
+        Button button = item.button != null ? item.button : item.GetComponent<Button>();
+        if (button == null)
+        {
+            return;
+        }
+        button.onClick = new Button.ButtonClickedEvent();
+        button.onClick.AddListener(action);
+        button.interactable = true;
+    }
+
+    // The tab shows and hides the nation headings. Closing it closes every nation with it, so
+    // reopening starts from the headings rather than from whatever was left open.
+    private static void ToggleTab(DiplomacyController ui, DiplomacyBankListItem tab, bool player)
+    {
+        try
+        {
+            bool show = !(player ? playerVisible : aiVisible);
+            if (player)
+            {
+                playerVisible = show;
+            }
+            else
+            {
+                aiVisible = show;
+            }
+            if (tab != null && tab.tabText != null)
+            {
+                tab.tabText.text = show ? "-" : "+";
+            }
+            foreach (Group group in groups)
+            {
+                if (group.player != player)
+                {
+                    continue;
+                }
+                if (!show)
+                {
+                    Open(group, false);
+                }
+                if (group.heading != null)
+                {
+                    group.heading.gameObject.SetActive(show);
+                }
+            }
+            Click(show);
+        }
+        catch (Exception e)
+        {
+            Main.mod?.Logger.Error("Could not open the control point list - " + e.Message);
+        }
+    }
+
+    private static void ToggleGroup(Group group)
+    {
+        try
+        {
+            Open(group, !group.open);
+            Click(group.open);
+        }
+        catch (Exception e)
+        {
+            Main.mod?.Logger.Error("Could not open a nation's control points - " + e.Message);
+        }
+    }
+
+    private static void Open(Group group, bool open)
+    {
+        group.open = open;
+        if (group.heading != null && group.heading.tabText != null)
+        {
+            group.heading.tabText.text = open ? "-" : "+";
+        }
+        foreach (GameObject row in group.bankRows)
+        {
+            if (row != null)
+            {
+                row.SetActive(open);
+            }
+        }
+    }
+
+    private static void Click(bool opening)
+    {
+        AudioManager.PlayOneShot(opening
+            ? "event:/SFX/UI_SFX/trig_SFX_CycleForward"
+            : "event:/SFX/UI_SFX/trig_SFX_CycleBack");
+    }
+
+    // Read the deal table back into the offer vanilla has just built. EvaluateTrade clears
+    // controlPoints on both offers and never refills them, so this is the only writer.
+    private static int Collect(GameObject content, TradeOffer offer)
+    {
+        int added = 0;
+        if (content == null || offer == null || offer.controlPoints == null)
+        {
+            return 0;
+        }
+        for (int i = 0; i < content.transform.childCount; i++)
+        {
+            GameObject row = content.transform.GetChild(i).gameObject;
+            TIControlPoint point;
+            if (row.activeSelf && rows.TryGetValue(row, out point) && point != null
+                && !offer.controlPoints.Contains(point))
+            {
+                offer.controlPoints.Add(point);
+                added++;
+            }
+        }
+        return added;
+    }
+
+    // EvaluateTrade reads the table, scores what it found and only then stores the two offers,
+    // so by the time a control point joins them the verdict on screen was reached without it.
+    // The tail of that method therefore has to be run again here, which is also the moment the
+    // AI's answer stops being a foregone conclusion.
+    private static readonly FieldInfo hate =
+        AccessTools.Field(typeof(DiplomacyController), "hateModifier");
+
+    internal static void Fill(DiplomacyController ui)
+    {
+        TradeOffer fromPlayer = playerOffer.GetValue(ui) as TradeOffer;
+        TradeOffer fromAI = aiOffer.GetValue(ui) as TradeOffer;
+        int onTable = Collect(ui.playerTableItemsContent, fromPlayer)
+            + Collect(ui.aiTableItemsContent, fromAI);
+        TIFactionState player = GameControl.control?.activePlayer;
+        // An offer the player has not touched is the AI's own, and vanilla leaves that one
+        // acceptable by definition.
+        if (onTable == 0 || fromPlayer == null || fromAI == null || player == null
+            || ui.tradingFaction == null || !ui.touchedAIOffer)
+        {
+            return;
+        }
+        TradeOffer.TradeAgreement agreement = (A: fromPlayer, B: fromAI);
+        float favorability;
+        bool acceptable = TradeAI.IsAgreementAcceptable(agreement, ui.tradingFaction, player,
+            out favorability);
+        if (acceptable)
+        {
+            bool meaningful = TradeAI.ScoreAgreement(agreement, ui.tradingFaction)
+                >= TemplateManager.global.meaningfulTradeThreshold;
+            bool good = favorability >= 1f
+                || favorability - TradeAI.GetMinimumAgreementFavorability(ui.tradingFaction, player)
+                    >= TemplateManager.global.goodTradeThreshold;
+            Say(ui, (meaningful && good) ? "TradeValueHigh" : "TradeValueEqual");
+            hate?.SetValue(ui, (meaningful && good) ? 2f : 1f);
+        }
+        else
+        {
+            Say(ui, (favorability != 0f) ? "TradeValueLow" : "TradeValueVeryLow");
+        }
+        ui.executeTradeButton.interactable = acceptable;
+    }
+
+    private static void Say(DiplomacyController ui, string key)
+    {
+        if (ui.aiFeedbackDialogText != null)
+        {
+            ui.aiFeedbackDialogText.text = Loc.T("UI.Notifications.Diplomacy." + key);
+        }
+    }
+
+    // What one control point is worth to one faction, on the scale TradeAI already uses for
+    // orgs and habs: six months of the income it carries, valued the way that faction values
+    // income, plus what the investment points and the armies behind it are worth. The executive
+    // is worth more than a seat because it carries the nation, which is the same call vanilla's
+    // own unused EvaluateControlPoint makes.
+    //
+    // A nation the faction has walked away from is worth a tenth, which is what makes a faction
+    // hand its abandoned seats over for almost nothing while the faction across the table, which
+    // has not abandoned that nation, still counts them at full value.
+    private const float InvestmentPointValue = 100f;
+
+    private const float ArmyValue = 200f;
+
+    private const float ExecutiveMultiplier = 2f;
+
+    private const float AbandonedDiscount = 0.1f;
+
+    // A suppressed seat pays nothing until the suppression runs out, and it runs out on whoever
+    // holds it by then, so both sides of the table should want it less.
+    private const float SuppressedDiscount = 0.5f;
+
+    // How many abandoned seats a faction will push across the table in one of its own offers.
+    private const int MaxDumped = 2;
+
+    internal static float Value(TIControlPoint point, TIFactionState faction)
+    {
+        if (point == null || point.nation == null || faction == null)
+        {
+            return 0f;
+        }
+        TINationState nation = point.nation;
+        float value = AIEvaluators.EvaluateMonthlyResourceIncome_Trade(faction, FactionResource.Money,
+            nation.GetMonthlyMoneyIncomeFromControlPoint(faction));
+        value += AIEvaluators.EvaluateMonthlyResourceIncome_Trade(faction, FactionResource.Research,
+            nation.GetMonthlyResearchFromControlPoint(faction));
+        value += nation.GetInvestmentFromControlPoint() * InvestmentPointValue;
+        value += nation.GetNumArmiesAtControlPoint(point.positionInNation) * ArmyValue;
+        value *= point.executive ? ExecutiveMultiplier : 1f;
+        // Only the faction that holds the seat gets the discount for having abandoned it. Read
+        // for anyone, the auto-abandon toggle would be a way to talk down the value of what the
+        // other side is handing over, and it costs nothing to flip.
+        if (point.faction == faction && Abandoned(point, faction))
+        {
+            value *= AbandonedDiscount;
+        }
+        else if (point.benefitsDisabled)
+        {
+            value *= SuppressedDiscount;
+        }
+        return Mathf.Max(0f, value) * Main.settings.controlPointTradeValue;
+    }
+
+    // The same shape as vanilla's hab category: what is received counts once, what is given up
+    // counts against distrust, and ScoreAgreement weights a negative category three times over.
+    internal static float Score(TradeOffer.TradeAgreement agreement, TIFactionState scorer)
+    {
+        TIFactionState other = agreement.Factions.FirstOrDefault(x => x != scorer);
+        TradeOffer mine = agreement.GetOffer(scorer);
+        TradeOffer theirs = agreement.GetOtherPartysOffer(scorer);
+        if (mine?.controlPoints == null || theirs?.controlPoints == null
+            || (mine.controlPoints.Count == 0 && theirs.controlPoints.Count == 0))
+        {
+            return 0f;
+        }
+        float received = theirs.controlPoints.Sum(point => Value(point, scorer));
+        float given = mine.controlPoints.Sum(point => Value(point, scorer))
+            * (0f - Distrust(scorer, other) * 1.09f);
+        float category = received + given;
+        return (category > 0f) ? category : (3f * category);
+    }
+
+    // TradeAI.GetDistrust is private and there is no public stand-in. A permanent ally sits at
+    // 1.025 and an ordinary rival somewhere above 1, so that is what the fallback answers with.
+    private static readonly MethodInfo distrust =
+        AccessTools.Method(typeof(TradeAI), "GetDistrust");
+
+    private static float Distrust(TIFactionState judge, TIFactionState other)
+    {
+        if (distrust == null || judge == null || other == null)
+        {
+            return 1.1f;
+        }
+        return (float)distrust.Invoke(null, new object[] { judge, other });
+    }
+
+    // A faction pushes the seats it has given up on across the table in its own offers, which is
+    // the only way a control point reaches a table the player did not build: TradeAI cannot be
+    // taught a new category, so nothing else would ever put one in an AI offer.
+    internal static void Dump(TIFactionState creator, TIFactionState recipient,
+        TradeOffer.TradeAgreement agreement)
+    {
+        if (creator == null || recipient == null || creator.IsAlienFaction
+            || recipient.IsAlienFaction || creator.controlPoints == null)
+        {
+            return;
+        }
+        TradeOffer offer = agreement.GetOffer(creator);
+        if (offer?.controlPoints == null)
+        {
+            return;
+        }
+        foreach (TIControlPoint point in creator.controlPoints
+            .Where(x => Tradeable(x) && Abandoned(x, creator) && Value(x, recipient) > 0f)
+            .OrderByDescending(x => Value(x, recipient))
+            .Take(MaxDumped))
+        {
+            if (!offer.controlPoints.Contains(point))
+            {
+                offer.controlPoints.Add(point);
+            }
+        }
+    }
+
+    // ChangeControlPointOwner calls EnableBenefits on the way in, which clears a crackdown
+    // outright. Left alone, a trade and a trade back would be the cheapest way to shrug one off,
+    // so what is being served is written down before the handover and put back after it.
+    //
+    // The expiry date itself is put back rather than a fresh crackdown of the same length being
+    // served: ResolveCrackdownEffect counts in whole months and rounds its expiry on to a
+    // mission phase, so a seat with a day left would come out of the trade suppressed for
+    // another month and a seat traded twice would come out worse still. Both setters are
+    // private, which is what the reflection is for.
+    private static readonly MethodInfo setExpiry =
+        AccessTools.PropertySetter(typeof(TIControlPoint), "crackdownExpiration");
+
+    private static readonly MethodInfo setDisabled =
+        AccessTools.PropertySetter(typeof(TIControlPoint), "benefitsDisabled");
+
+    internal static Dictionary<TIControlPoint, TIDateTime> RecordSuppression(TradeOffer offer)
+    {
+        Dictionary<TIControlPoint, TIDateTime> until =
+            new Dictionary<TIControlPoint, TIDateTime>();
+        if (offer?.controlPoints == null)
+        {
+            return until;
+        }
+        foreach (TIControlPoint point in offer.controlPoints)
+        {
+            if (point != null && point.benefitsDisabled && point.crackdownExpiration != null
+                && point.crackdownExpiration.DifferenceInDays(TITimeState.Now()) > 0.0)
+            {
+                until[point] = point.crackdownExpiration;
+            }
+        }
+        return until;
+    }
+
+    internal static void RestoreSuppression(TIFactionState owner,
+        Dictionary<TIControlPoint, TIDateTime> until)
+    {
+        if (until == null || owner == null || setExpiry == null || setDisabled == null)
+        {
+            return;
+        }
+        foreach (KeyValuePair<TIControlPoint, TIDateTime> entry in until)
+        {
+            if (entry.Key != null && entry.Key.faction == owner)
+            {
+                setDisabled.Invoke(entry.Key, new object[] { true });
+                setExpiry.Invoke(entry.Key, new object[] { entry.Value });
+            }
+        }
+    }
+
+    // An offer the AI built names its control points; this puts them on the table, since
+    // vanilla's PreFillTable only knows how to place orgs, habs and projects.
+    internal static void Prefill(TradeOffer offer)
+    {
+        if (offer?.controlPoints == null)
+        {
+            return;
+        }
+        foreach (TIControlPoint point in offer.controlPoints)
+        {
+            DiplomacyBankListItem row;
+            if (banks.TryGetValue(point, out row) && row != null)
+            {
+                row.AddToTable(1f, playAudio: false);
+            }
+        }
+    }
+
+    // Vanilla's own cleanup only destroys org, hab and project rows, so ours would survive into
+    // the next negotiation and offer control points that had already changed hands. The tabs
+    // themselves belong to the screen and are only hidden again.
+    internal static void Clear(DiplomacyController ui)
+    {
+        rows.Clear();
+        banks.Clear();
+        groups.Clear();
+        Sweep(ui.playerBankItemsContent);
+        Sweep(ui.aiBankItemsContent);
+        Sweep(ui.playerTableItemsContent);
+        Sweep(ui.aiTableItemsContent);
+        Hide(ui.playerCPsTab);
+        Hide(ui.aiCPsTab);
+    }
+
+    private static void Hide(DiplomacyBankListItem tab)
+    {
+        if (tab != null)
+        {
+            tab.gameObject.SetActive(false);
+        }
+    }
+
+    private static void Sweep(GameObject content)
+    {
+        if (content == null)
+        {
+            return;
+        }
+        for (int i = 0; i < content.transform.childCount; i++)
+        {
+            GameObject row = content.transform.GetChild(i).gameObject;
+            DiplomacyBankListItem bankItem = row.GetComponent<DiplomacyBankListItem>();
+            DiplomacyTableListItem tableItem = row.GetComponent<DiplomacyTableListItem>();
+            if ((bankItem != null && (bankItem.itemType == CPItem
+                    || bankItem.itemType == CPGroupItem))
+                || (tableItem != null && tableItem.itemType == CPItem))
+            {
+                UnityEngine.Object.Destroy(row);
+            }
+        }
+    }
+}
+
+[HarmonyPatch(typeof(DiplomacyController), "LoadBankValues")]
+internal static class ControlPointTradeRows
+{
+    private static void Postfix(DiplomacyController __instance)
+    {
+        try
+        {
+            if (Main.settings.tradeControlPoints)
+            {
+                ControlPointTrade.Build(__instance);
+            }
+        }
+        catch (Exception e)
+        {
+            Main.mod?.Logger.Error("Could not list control points for trade - " + e.Message);
+        }
+    }
+}
+
+// Not gated on the setting: rows built while it was on still have to be cleaned up after it goes
+// off. LoadBankValues calls this before it rebuilds, so the map empties before it fills again.
+[HarmonyPatch(typeof(DiplomacyController), "CleanupOldTradeItems")]
+internal static class ControlPointTradeCleanup
+{
+    private static void Postfix(DiplomacyController __instance)
+    {
+        try
+        {
+            ControlPointTrade.Clear(__instance);
+        }
+        catch (Exception e)
+        {
+            Main.mod?.Logger.Error("Could not clear traded control points - " + e.Message);
+        }
+    }
+}
+
+// EvaluateTrade assigns the two offers on its way out, and OnClickTradeButton hands those same
+// objects to DiplomacyTradeAction, so adding to them here is all it takes for a trade to carry.
+[HarmonyPatch(typeof(DiplomacyController), nameof(DiplomacyController.EvaluateTrade))]
+internal static class ControlPointTradeOffer
+{
+    private static void Postfix(DiplomacyController __instance)
+    {
+        try
+        {
+            if (Main.settings.tradeControlPoints)
+            {
+                ControlPointTrade.Fill(__instance);
+            }
+        }
+        catch (Exception e)
+        {
+            Main.mod?.Logger.Error("Could not add control points to a trade - " + e.Message);
+        }
+    }
+}
+
+// A suppressed seat keeps its suppression when it changes hands. Not gated on the setting: if a
+// control point is in an offer at all it got there through this mod, and the suppression should
+// follow it whatever the setting says by the time the action runs.
+[HarmonyPatch(typeof(TIFactionState), nameof(TIFactionState.ProcessTrade))]
+internal static class ControlPointTradeSuppression
+{
+    private static void Prefix(TradeOffer acceptedOffer,
+        out Dictionary<TIControlPoint, TIDateTime> __state)
+    {
+        __state = null;
+        try
+        {
+            __state = ControlPointTrade.RecordSuppression(acceptedOffer);
+        }
+        catch (Exception e)
+        {
+            Main.mod?.Logger.Error("Could not read a traded crackdown - " + e.Message);
+        }
+    }
+
+    private static void Postfix(TIFactionState __instance,
+        Dictionary<TIControlPoint, TIDateTime> __state)
+    {
+        try
+        {
+            ControlPointTrade.RestoreSuppression(__instance, __state);
+        }
+        catch (Exception e)
+        {
+            Main.mod?.Logger.Error("Could not carry a crackdown over a trade - " + e.Message);
+        }
+    }
+}
+
+// TradeAI scores an agreement one category at a time and its categories are a private enum, so
+// the control points in an offer are worth nothing to it. This is the category it never had.
+[HarmonyPatch(typeof(TradeAI), nameof(TradeAI.ScoreAgreement))]
+internal static class ControlPointTradeValue
+{
+    private static void Postfix(TradeOffer.TradeAgreement agreement, TIFactionState scorer,
+        ref float __result)
+    {
+        try
+        {
+            if (Main.settings.tradeControlPoints)
+            {
+                __result += ControlPointTrade.Score(agreement, scorer);
+            }
+        }
+        catch (Exception e)
+        {
+            Main.mod?.Logger.Error("Could not value control points in a trade - " + e.Message);
+        }
+    }
+}
+
+// The AI's own offers, where it pushes the seats it has abandoned.
+[HarmonyPatch(typeof(TradeAI), nameof(TradeAI.CreateTradeAgreement))]
+internal static class ControlPointTradeDump
+{
+    private static void Postfix(TIFactionState agreementCreator, TIFactionState agreementRecipient,
+        ref TradeOffer.TradeAgreement __result)
+    {
+        try
+        {
+            if (Main.settings.tradeControlPoints)
+            {
+                ControlPointTrade.Dump(agreementCreator, agreementRecipient, __result);
+            }
+        }
+        catch (Exception e)
+        {
+            Main.mod?.Logger.Error("Could not offer abandoned control points - " + e.Message);
+        }
+    }
+}
+
+// PreFillTable places an offer's orgs, habs and projects on the table and knows nothing of
+// control points, so an offer carrying one would arrive invisible and be dropped by the next
+// read of the table.
+[HarmonyPatch(typeof(DiplomacyController), nameof(DiplomacyController.PreFillTable))]
+internal static class ControlPointTradePrefill
+{
+    private static void Postfix(TradeOffer aiOffer, TradeOffer playerOffer)
+    {
+        try
+        {
+            if (Main.settings.tradeControlPoints)
+            {
+                ControlPointTrade.Prefill(aiOffer);
+                ControlPointTrade.Prefill(playerOffer);
+            }
+        }
+        catch (Exception e)
+        {
+            Main.mod?.Logger.Error("Could not place offered control points - " + e.Message);
+        }
+    }
+}
+
+// Tweak 14: purging a suppressed seat does not break a pact, and a mission that would break one
+// says so on the target it is pointed at.
+//
+// A pact is not a rule the game enforces. A non-aggression pact is a faction goal, and what ends
+// it is hate: FactionGoal_NonAggressionPact checks each day whether the other side's hate has
+// risen since yesterday and runs BreakPactAction when it has, and the hate comes from the hate
+// array on the mission template, handed out in ResolveMission. So to leave a pact standing there
+// is nothing to suppress but that one gain of hate, from the seat's owner toward whoever purged
+// it, and only while that purge resolves.
+//
+// The warning is a gap rather than an invention. FillOutTargetDropdown already marks a target
+// whose faction has a pact with an inline sprite, and SetDropdownCaption then rewrites the line
+// for the selected target from scratch, without it. The mark is therefore visible while the list
+// is open and gone the moment a target is picked, which is when it matters.
+internal static class FriendlyPurge
+{
+    private static TIFactionState victim;
+
+    private static TIFactionState attacker;
+
+    // The pact this mission would break, or null: what is about to take hate, from a faction
+    // that has a pact with the one sending the councilor.
+    internal static TIFactionState Pact(TIMissionTemplate template, TIGameState target,
+        TIFactionState actor)
+    {
+        if (template == null || target == null || actor == null || template.hate == null
+            || !template.hate.Any(x => x > 0f) || Exempt(template, target, actor))
+        {
+            return null;
+        }
+        List<TIFactionState> harmed = target.ref_factions ?? new List<TIFactionState>();
+        if (target.ref_faction != null && !harmed.Contains(target.ref_faction))
+        {
+            harmed = harmed.Concat(new[] { target.ref_faction }).ToList();
+        }
+        return harmed.FirstOrDefault(x => x != null && x != actor
+            && (x.HasNAP(actor) || x.HasTruce(actor)));
+    }
+
+    // Purging a seat that is already suppressed, from a faction we have a pact with. Without a
+    // pact there is nothing to violate and the hate stands as vanilla wrote it.
+    internal static bool Exempt(TIMissionTemplate template, TIGameState target, TIFactionState actor)
+    {
+        if (!Main.settings.friendlyPurge || template == null || actor == null
+            || template != TIFactionState.purgeMission)
+        {
+            return false;
+        }
+        TIControlPoint point = target?.ref_controlPoint;
+        return point != null && point.benefitsDisabled && point.faction != null
+            && point.faction != actor
+            && (point.faction.HasNAP(actor) || point.faction.HasTruce(actor));
+    }
+
+    // Purging aborts the other councilors aimed at the same seat, and aborting resolves their
+    // missions, so a resolution can run inside a resolution. Each one puts back what it found.
+    internal static TIFactionState[] Begin(TIMissionState mission)
+    {
+        TIFactionState[] previous = new TIFactionState[2] { victim, attacker };
+        TICouncilorState councilor = mission?.councilor;
+        if (councilor?.faction != null
+            && Exempt(mission.missionTemplate, mission.target, councilor.faction))
+        {
+            victim = mission.target.ref_controlPoint.faction;
+            attacker = councilor.faction;
+        }
+        else
+        {
+            victim = null;
+            attacker = null;
+        }
+        return previous;
+    }
+
+    internal static void End(TIFactionState[] previous)
+    {
+        if (previous != null && previous.Length == 2)
+        {
+            victim = previous[0];
+            attacker = previous[1];
+        }
+    }
+
+    internal static bool Swallow(TIFactionState gaining, TIFactionState towards)
+    {
+        return victim != null && gaining == victim && towards == attacker;
+    }
+}
+
+[HarmonyPatch(typeof(TIMissionState), nameof(TIMissionState.ResolveMission))]
+internal static class FriendlyPurgeResolve
+{
+    private static void Prefix(TIMissionState __instance, out TIFactionState[] __state)
+    {
+        __state = null;
+        try
+        {
+            __state = FriendlyPurge.Begin(__instance);
+        }
+        catch (Exception e)
+        {
+            Main.mod?.Logger.Error("Could not check a purge against a pact - " + e.Message);
+        }
+    }
+
+    // A finalizer rather than a postfix: it runs even when the resolution throws, and hate held
+    // back is global while it is held, so a leak would go on swallowing hate between those two
+    // factions for the rest of the campaign. The exception is handed back untouched.
+    private static Exception Finalizer(TIFactionState[] __state, Exception __exception)
+    {
+        FriendlyPurge.End(__state);
+        return __exception;
+    }
+}
+
+[HarmonyPatch(typeof(TIFactionState), nameof(TIFactionState.GainFactionHate))]
+internal static class FriendlyPurgeHate
+{
+    private static bool Prefix(TIFactionState __instance, TIFactionState enemyCouncil)
+    {
+        try
+        {
+            return !FriendlyPurge.Swallow(__instance, enemyCouncil);
+        }
+        catch (Exception e)
+        {
+            Main.mod?.Logger.Error("Could not hold back hate for a purge - " + e.Message);
+            return true;
+        }
+    }
+}
+
+[HarmonyPatch(typeof(CouncilorMissionCanvasController), "SetDropdownCaption")]
+internal static class PactWarningOnTarget
+{
+    private static readonly FieldInfo target =
+        AccessTools.Field(typeof(CouncilorMissionCanvasController), "currentTarget");
+
+    private static readonly MethodInfo mission =
+        AccessTools.PropertyGetter(typeof(CouncilorMissionCanvasController), "missionTemplate");
+
+    private static void Postfix(CouncilorMissionCanvasController __instance)
+    {
+        try
+        {
+            if (!Main.settings.warnOnPactBreak || target == null || mission == null
+                || __instance.targetDropdown?.captionText == null)
+            {
+                return;
+            }
+            TIFactionState pact = FriendlyPurge.Pact(
+                mission.Invoke(__instance, null) as TIMissionTemplate,
+                target.GetValue(__instance) as TIGameState,
+                GameControl.control?.activePlayer);
+            if (pact == null)
+            {
+                return;
+            }
+            // Built out of strings the game already ships in every language rather than a new
+            // key of our own, which would need fourteen translations to avoid printing itself.
+            string treaty = Loc.T(pact.HasNAP(GameControl.control.activePlayer)
+                ? "UI.Notifications.Diplomacy.NAP"
+                : "UI.Notifications.Diplomacy.Truce");
+            __instance.targetDropdown.captionText.SetText(
+                TemplateManager.global.warningInlineSpritePath + " "
+                + __instance.targetDropdown.captionText.text
+                + Loc.T("UI.MissionPhase.TargetParen", treaty));
+        }
+        catch (Exception e)
+        {
+            Main.mod?.Logger.Error("Could not warn about a pact - " + e.Message);
+        }
+    }
+}
+
+// The confirmation itself. The screen already owns a yes/no panel - the one that asks whether to
+// end the phase with councilors still idle - so it is borrowed rather than built: its two labels
+// are rewritten, its two buttons are pointed somewhere else for as long as it is up, and both are
+// put back when it closes. The buttons carry listeners wired in the editor, which RemoveAllListeners
+// does not touch, so the original event object is kept and restored rather than emptied.
+[HarmonyPatch(typeof(CouncilorMissionCanvasController),
+    nameof(CouncilorMissionCanvasController.OnConfirmMissionClick))]
+internal static class PactConfirm
+{
+    private static readonly FieldInfo target =
+        AccessTools.Field(typeof(CouncilorMissionCanvasController), "currentTarget");
+
+    private static readonly MethodInfo mission =
+        AccessTools.PropertyGetter(typeof(CouncilorMissionCanvasController), "missionTemplate");
+
+    private static bool answered;
+
+    private static Button.ButtonClickedEvent yesWas;
+
+    private static Button.ButtonClickedEvent noWas;
+
+    private static string headerWas;
+
+    private static string promptWas;
+
+    private static bool Prefix(CouncilorMissionCanvasController __instance)
+    {
+        try
+        {
+            if (answered)
+            {
+                answered = false;
+                return true;
+            }
+            if (!Main.settings.warnOnPactBreak || target == null || mission == null
+                || __instance.unassignedWarningPanel == null)
+            {
+                return true;
+            }
+            TIFactionState pact = FriendlyPurge.Pact(
+                mission.Invoke(__instance, null) as TIMissionTemplate,
+                target.GetValue(__instance) as TIGameState,
+                GameControl.control?.activePlayer);
+            if (pact == null)
+            {
+                return true;
+            }
+            Ask(__instance, pact);
+            return false;
+        }
+        catch (Exception e)
+        {
+            Main.mod?.Logger.Error("Could not ask about a pact - " + e.Message);
+            return true;
+        }
+    }
+
+    private static Button Yes(CouncilorMissionCanvasController ui)
+    {
+        return ui.unassignedWarningConfirmButton?.GetComponentInParent<Button>();
+    }
+
+    private static Button No(CouncilorMissionCanvasController ui)
+    {
+        return ui.unassignedWarningDeclineButton?.GetComponentInParent<Button>();
+    }
+
+    private static void Ask(CouncilorMissionCanvasController ui, TIFactionState pact)
+    {
+        Button yes = Yes(ui);
+        Button no = No(ui);
+        if (yes == null || no == null)
+        {
+            return;
+        }
+        // The panel is only modal by convention, so it can be left up and walked away from -
+        // closing the screen with it open, say. Whatever was borrowed last time goes back before
+        // anything is borrowed again, or the second ask would save our own buttons as the
+        // originals and vanilla would never get its prompt back.
+        if (yesWas != null)
+        {
+            Close(ui);
+        }
+        // Which target the question is about. Vanilla still cycles the target behind the panel -
+        // Tab runs CycleTargetForward whether this is up or not - so an answer only stands for
+        // the target it was asked about.
+        TIGameState asked = target.GetValue(ui) as TIGameState;
+        yesWas = yes.onClick;
+        noWas = no.onClick;
+        headerWas = ui.unassignedWarningHeader != null ? ui.unassignedWarningHeader.text : null;
+        promptWas = ui.unassignedWarningPrompt != null ? ui.unassignedWarningPrompt.text : null;
+
+        // Both lines come out of strings the game already ships in every language. A key of our
+        // own would need fourteen translations or it would print itself back at the player.
+        string treaty = Loc.T(pact.HasNAP(GameControl.control.activePlayer)
+            ? "UI.Notifications.Diplomacy.NAP"
+            : "UI.Notifications.Diplomacy.Truce");
+        ui.unassignedWarningHeader?.SetText(TemplateManager.global.warningInlineSpritePath + " "
+            + pact.displayNameWithColor + Loc.T("UI.MissionPhase.TargetParen", treaty));
+        ui.unassignedWarningPrompt?.SetText(
+            Loc.T("UI.Intel.Faction.Relations.CancelTreaty_NAP"));
+
+        yes.onClick = new Button.ButtonClickedEvent();
+        yes.onClick.AddListener(delegate
+        {
+            Close(ui);
+            // A target that moved while the question was up goes back through the check rather
+            // than through the answer, which is to say it gets asked about in its own right.
+            answered = ReferenceEquals(target.GetValue(ui) as TIGameState, asked);
+            ui.OnConfirmMissionClick();
+        });
+        no.onClick = new Button.ButtonClickedEvent();
+        no.onClick.AddListener(delegate
+        {
+            AudioManager.PlayOneShot("event:/SFX/UI_SFX/trig_SFX_Decline");
+            Close(ui);
+        });
+        AudioManager.PlayOneShot("event:/SFX/UI_SFX/trig_SFX_BadUI");
+        ui.unassignedWarningPanel.SetActive(value: true);
+    }
+
+    // Vanilla writes those two labels once when the screen is built, so they have to go back as
+    // they were or its own prompt would ask about a pact the next time it opens.
+    private static void Close(CouncilorMissionCanvasController ui)
+    {
+        Button yes = Yes(ui);
+        Button no = No(ui);
+        if (yes != null && yesWas != null)
+        {
+            yes.onClick = yesWas;
+        }
+        if (no != null && noWas != null)
+        {
+            no.onClick = noWas;
+        }
+        if (headerWas != null)
+        {
+            ui.unassignedWarningHeader?.SetText(headerWas);
+        }
+        if (promptWas != null)
+        {
+            ui.unassignedWarningPrompt?.SetText(promptWas);
+        }
+        yesWas = null;
+        noWas = null;
+        ui.unassignedWarningPanel.SetActive(value: false);
+    }
+}
+
+// Tweak 15: the nation panel's name becomes a dropdown of the nations we hold a control point
+// in, with a previous and a next arrow either side, stepping through them by name and wrapping.
+//
+// The layout is the map mode picker's, lifted whole: the finder's mapModeDropdown sits between
+// two arrow buttons under one parent, and that parent is cloned into the nation header in the
+// name label's place. Everything in the clone the editor wired - the dropdown's change handler,
+// the arrows' clicks - is replaced with a fresh event, since RemoveAllListeners leaves a
+// persistent listener where it is. Navigation is the game's own path: GotoGameState fires
+// RegionStateSelected for the capital, ShowNationPanel listens for that, and the panel refreshes
+// itself, which is also what refills the dropdown.
+internal static class NationCycle
+{
+    private const string PickerName = "CataTweaksNationPicker";
+
+    private static GameObject picker;
+
+    private static TMP_Dropdown dropdown;
+
+    private static Button left;
+
+    private static Button right;
+
+    // Set while the dropdown is being refilled, so a value written by us is not read as a pick.
+    private static bool filling;
+
+    private static List<TINationState> shown = new List<TINationState>();
+
+    // Every nation we hold a seat in, in name order. Re-read each time rather than kept: seats
+    // come and go, and there is nothing to keep in sync.
+    private static List<TINationState> Ours()
+    {
+        TIFactionState player = GameControl.control?.activePlayer;
+        if (player?.controlPoints == null)
+        {
+            return new List<TINationState>();
+        }
+        return player.controlPoints
+            .Select(point => point?.nation)
+            .Where(nation => nation != null && nation.extant)
+            .Distinct()
+            .OrderBy(nation => nation.displayName)
+            .ToList();
+    }
+
+    private static void Go(TINationState nation, NationInfoController ui)
+    {
+        if (nation != null && nation != ui.nation)
+        {
+            AudioManager.PlayOneShot("event:/SFX/UI_SFX/trig_SFX_CycleForward");
+            TIUtilities.GotoGameState(nation);
+        }
+    }
+
+    // From a nation we hold nothing in, next is the first of ours and previous the last.
+    private static void Step(NationInfoController ui, int direction)
+    {
+        List<TINationState> ours = Ours();
+        if (ours.Count == 0)
+        {
+            return;
+        }
+        int at = ours.IndexOf(ui.nation);
+        int to = at < 0
+            ? (direction > 0 ? 0 : ours.Count - 1)
+            : (at + direction + ours.Count) % ours.Count;
+        Go(ours[to], ui);
+    }
+
+    // The label the collapsed dropdown writes its value to: one inside the dropdown for
+    // preference, otherwise any other in the clone, never the item template's own label (that
+    // one is the pattern the open list is stamped from) and never an arrow's.
+    private static TMP_Text Caption()
+    {
+        return picker.GetComponentsInChildren<TMP_Text>(true)
+            .Where(label => label != dropdown.itemText
+                && (dropdown.template == null || !label.transform.IsChildOf(dropdown.template))
+                && !label.transform.IsChildOf(left.transform)
+                && !label.transform.IsChildOf(right.transform))
+            .OrderByDescending(label => label.transform.IsChildOf(dropdown.transform))
+            .FirstOrDefault();
+    }
+
+    // Built once, the first time the panel is filled. Unity's == reports a destroyed picker as
+    // null, so a panel rebuilt between campaigns gets a fresh one.
+    internal static void Ensure(NationInfoController ui)
+    {
+        if (picker != null)
+        {
+            return;
+        }
+        TMP_Text name = ui.nationNameText;
+        TMP_Dropdown source = GeneralControlsController.Singleton?.mapModeDropdown;
+        if (name == null || name.transform.parent == null || source == null
+            || source.transform.parent == null)
+        {
+            return;
+        }
+        Transform header = name.transform.parent;
+        Transform old = header.Find(PickerName);
+        if (old != null)
+        {
+            UnityEngine.Object.Destroy(old.gameObject);
+        }
+        picker = UnityEngine.Object.Instantiate(source.transform.parent.gameObject, header);
+        picker.name = PickerName;
+        Loc.SwapFonts(picker);
+        dropdown = picker.GetComponentInChildren<TMP_Dropdown>(true);
+        // The arrows are the buttons that are not the dropdown's own, in the order they sit:
+        // the one before the dropdown steps back, the one after steps forward.
+        List<Button> arrows = picker.GetComponentsInChildren<Button>(true)
+            .Where(button => dropdown == null || !button.transform.IsChildOf(dropdown.transform))
+            .OrderBy(button => button.transform.GetSiblingIndex())
+            .ToList();
+        if (dropdown == null || arrows.Count < 2)
+        {
+            UnityEngine.Object.Destroy(picker);
+            picker = null;
+            return;
+        }
+        left = arrows.First();
+        right = arrows.Last();
+        // Anything else that shares the map picker's parent is not part of the layout wanted.
+        foreach (Transform child in picker.transform)
+        {
+            bool keep = child == dropdown.transform || child == left.transform
+                || child == right.transform || child.GetComponentInChildren<Button>(true) == left
+                || child.GetComponentInChildren<Button>(true) == right
+                || child.GetComponentInChildren<TMP_Dropdown>(true) == dropdown;
+            child.gameObject.SetActive(keep);
+        }
+        // The collapsed dropdown shows nothing but its caption label, and the map picker keeps
+        // that label beside the dropdown rather than inside it - so the sweep just above had
+        // hidden it, and a caption wired to something outside the cloned parent would still
+        // point at the original anyway, writing our nation's name onto the map mode picker. Take
+        // a label from inside the clone, and make sure it is on.
+        if (dropdown.captionText == null
+            || !dropdown.captionText.transform.IsChildOf(picker.transform))
+        {
+            dropdown.captionText = Caption();
+        }
+        if (dropdown.captionText != null)
+        {
+            dropdown.captionText.gameObject.SetActive(true);
+            for (Transform up = dropdown.captionText.transform; up != null && up != picker.transform;
+                up = up.parent)
+            {
+                up.gameObject.SetActive(true);
+            }
+        }
+        foreach (UITextLocalizer localizer in picker.GetComponentsInChildren<UITextLocalizer>(true))
+        {
+            UnityEngine.Object.Destroy(localizer);
+        }
+        foreach (TooltipTrigger tip in picker.GetComponentsInChildren<TooltipTrigger>(true))
+        {
+            tip.enabled = false;
+        }
+        left.onClick = new Button.ButtonClickedEvent();
+        left.onClick.AddListener(() => Step(ui, -1));
+        right.onClick = new Button.ButtonClickedEvent();
+        right.onClick.AddListener(() => Step(ui, 1));
+        dropdown.onValueChanged = new TMP_Dropdown.DropdownEvent();
+        dropdown.onValueChanged.AddListener(index =>
+        {
+            if (!filling && index >= 0 && index < shown.Count)
+            {
+                Go(shown[index], ui);
+            }
+        });
+        RectTransform slot = name.transform as RectTransform;
+        RectTransform rect = picker.transform as RectTransform;
+        if (slot != null && rect != null)
+        {
+            rect.SetSiblingIndex(slot.GetSiblingIndex());
+            rect.localScale = Vector3.one;
+        }
+        name.gameObject.SetActive(false);
+        picker.SetActive(true);
+        Place(ui);
+    }
+
+    // Where the picker's own panel starts, measured from the globe beside the flag. It moves
+    // the panel and everything in it together, so it sets where the assembly sits in the row and
+    // nothing about the spacing inside it.
+    private const float FlagGap = 4f;
+
+    // Between an arrow and the dropdown.
+    private const float ArrowGap = 6f;
+
+    // Between an arrow and the end of the panel it sits in - the dark ground behind the whole
+    // assembly. This is the margin that reads as breathing room at the arrow's point, because
+    // the point is the part nearest the end; the panel's own edges do not move with it.
+    private const float EdgeInset = 8f;
+
+    private static readonly Vector3[] corners = new Vector3[4];
+
+    // The picker takes the name's slot and is then pulled left until its back arrow sits against
+    // the flag, with the arrows at the two ends and the dropdown filling what is between them.
+    //
+    // Re-done on every refresh rather than once: the slot is not measurable until the header has
+    // been laid out, and the panel resizes with the window, so reading it again each time is
+    // both simpler than waiting for a first valid frame and correct afterwards. Everything is
+    // computed from the slot rather than from where the picker is now, so it does not drift.
+    private static void Place(NationInfoController ui)
+    {
+        RectTransform rect = picker.transform as RectTransform;
+        RectTransform slot = ui.nationNameText?.transform as RectTransform;
+        if (rect == null || slot == null || rect.parent == null)
+        {
+            return;
+        }
+        rect.anchorMin = slot.anchorMin;
+        rect.anchorMax = slot.anchorMax;
+        rect.pivot = slot.pivot;
+        rect.anchoredPosition = slot.anchoredPosition;
+        rect.sizeDelta = slot.sizeDelta;
+        float flag = LeftReach(rect);
+        if (!float.IsNegativeInfinity(flag))
+        {
+            // Either way, not only outward: the gap is measured from the flags, so the left edge
+            // goes wherever that puts it and the width takes up the difference, leaving the
+            // right edge where it was.
+            float shift = flag + FlagGap - Edge(rect, rect.parent, false);
+            rect.anchoredPosition += new Vector2(shift * (1f - rect.pivot.x), 0f);
+            rect.sizeDelta -= new Vector2(shift, 0f);
+        }
+        // And out to the right as far as the next thing along the header. The name's slot stops
+        // well short of the buttons on the end of the row, and stopping where it stopped left
+        // the forward arrow stranded in the middle of a gap.
+        RectTransform next = Neighbour(rect);
+        if (next != null)
+        {
+            float reach = Edge(next, rect.parent, false) - Edge(rect, rect.parent, true);
+            if (reach > 0f)
+            {
+                rect.anchoredPosition += new Vector2(reach * rect.pivot.x, 0f);
+                rect.sizeDelta += new Vector2(reach, 0f);
+            }
+        }
+        Layout(rect);
+    }
+
+    // Where the picker starts: the right edge of whatever the header has immediately to its
+    // left. Naming the flag was not enough - the globe beside it is a separate object, and that
+    // is the one the arrow ends up against - so nothing is named here. Anything that reaches
+    // past our own right edge is a background or a neighbour on the other side, not something
+    // we are sitting next to, and anything inside the picker is ours.
+    private static float LeftReach(RectTransform rect)
+    {
+        float mine = Edge(rect, rect.parent, false);
+        float right = Edge(rect, rect.parent, true);
+        float at = float.NegativeInfinity;
+        foreach (RectTransform other in rect.parent.GetComponentsInChildren<RectTransform>())
+        {
+            if (other == rect || other == rect.parent || other.IsChildOf(rect))
+            {
+                continue;
+            }
+            float edge = Edge(other, rect.parent, true);
+            if (edge <= right && edge > at && Edge(other, rect.parent, false) < mine)
+            {
+                at = edge;
+            }
+        }
+        return at;
+    }
+
+    // The nearest thing to the right of the picker in the header, which is where the picker
+    // stops. The name is inactive by now and the flag is behind us, so what is left is the row
+    // of buttons on the end.
+    private static RectTransform Neighbour(RectTransform rect)
+    {
+        float from = Edge(rect, rect.parent, true);
+        RectTransform nearest = null;
+        float at = float.MaxValue;
+        foreach (Transform child in rect.parent)
+        {
+            RectTransform other = child as RectTransform;
+            if (other == null || other == rect || !child.gameObject.activeSelf)
+            {
+                continue;
+            }
+            float left = Edge(other, rect.parent, false);
+            if (left >= from && left < at)
+            {
+                at = left;
+                nearest = other;
+            }
+        }
+        return nearest;
+    }
+
+    private static float Edge(RectTransform of, Transform space, bool right)
+    {
+        of.GetWorldCorners(corners);
+        return space.InverseTransformPoint(right ? corners[2] : corners[0]).x;
+    }
+
+    // The arrows against the two ends, the dropdown across the middle. The map picker's own
+    // layout group would undo all of it, so it is switched off rather than worked around.
+    private static void Layout(RectTransform rect)
+    {
+        RectTransform back = Slot(left.transform);
+        RectTransform forward = Slot(right.transform);
+        RectTransform list = Slot(dropdown.transform);
+        if (back == null || forward == null || list == null)
+        {
+            return;
+        }
+        foreach (LayoutGroup group in picker.GetComponents<LayoutGroup>())
+        {
+            group.enabled = false;
+        }
+        float height = list.rect.height;
+        End(back, 0f, EdgeInset);
+        End(forward, 1f, 0f - EdgeInset);
+        float before = back.rect.width + EdgeInset + ArrowGap;
+        float after = forward.rect.width + EdgeInset + ArrowGap;
+        list.anchorMin = new Vector2(0f, 0.5f);
+        list.anchorMax = new Vector2(1f, 0.5f);
+        list.pivot = new Vector2(0.5f, 0.5f);
+        list.sizeDelta = new Vector2(0f - (before + after), height);
+        list.anchoredPosition = new Vector2((before - after) / 2f, 0f);
+    }
+
+    // The arrows and the dropdown may each sit inside a wrapper of their own, and it is the
+    // wrapper that has to move.
+    private static RectTransform Slot(Transform inner)
+    {
+        Transform at = inner;
+        while (at != null && at.parent != picker.transform)
+        {
+            at = at.parent;
+        }
+        return at as RectTransform;
+    }
+
+    private static void End(RectTransform arrow, float edge, float inset)
+    {
+        Vector2 size = arrow.rect.size;
+        arrow.anchorMin = new Vector2(edge, 0.5f);
+        arrow.anchorMax = new Vector2(edge, 0.5f);
+        arrow.pivot = new Vector2(edge, 0.5f);
+        arrow.sizeDelta = size;
+        arrow.anchoredPosition = new Vector2(inset, 0f);
+    }
+
+    internal static void Show(NationInfoController ui, bool on)
+    {
+        if (picker != null)
+        {
+            picker.SetActive(on);
+        }
+        if (ui.nationNameText != null)
+        {
+            ui.nationNameText.gameObject.SetActive(!on || picker == null);
+        }
+    }
+
+    // The dropdown holds our nations, with the one on screen selected. A nation we hold nothing
+    // in is not in the list, so it is shown as an extra entry at the top that picking does
+    // nothing with; the arrows still lead into the list from it.
+    internal static void Refresh(NationInfoController ui)
+    {
+        if (picker == null || dropdown == null)
+        {
+            return;
+        }
+        shown = Ours();
+        int current = shown.IndexOf(ui.nation);
+        if (current < 0 && ui.nation != null)
+        {
+            shown.Insert(0, ui.nation);
+            current = 0;
+        }
+        filling = true;
+        try
+        {
+            dropdown.ClearOptions();
+            dropdown.AddOptions(shown.Select(nation => nation.displayName).ToList());
+            dropdown.SetValueWithoutNotify(Mathf.Max(0, current));
+            dropdown.RefreshShownValue();
+        }
+        finally
+        {
+            filling = false;
+        }
+        bool somewhere = shown.Count(nation => nation != ui.nation) > 0;
+        left.interactable = somewhere;
+        right.interactable = somewhere;
+        Place(ui);
+    }
+}
+
+[HarmonyPatch(typeof(NationInfoController), "UpdatePrimaryDisplayElements")]
+internal static class NationCycleButtons
+{
+    private static void Postfix(NationInfoController __instance)
+    {
+        try
+        {
+            if (!Main.settings.nationCycleButtons)
+            {
+                NationCycle.Show(__instance, false);
+                return;
+            }
+            NationCycle.Ensure(__instance);
+            NationCycle.Show(__instance, true);
+            NationCycle.Refresh(__instance);
+        }
+        catch (Exception e)
+        {
+            Main.mod?.Logger.Error("Could not place the nation picker - " + e.Message);
+        }
+    }
+}
+
 // Every [Draw] setting mirrored onto the vanilla Gameplay options tab, under a CataTweaks header.
 //
 // The tab is hand-wired - OptionsMenuController holds a serialized Toggle or Slider and a separate
@@ -1723,11 +3523,14 @@ internal static class VanillaOptionsRows
     private static readonly Dictionary<string, string> DependsOn = new Dictionary<string, string>
     {
         { "solarMirrorOutputCap", "solarMirrorsBoostStations" },
+        { "controlPointTradeValue", "tradeControlPoints" },
+        { "tradeSuppressedControlPoints", "tradeControlPoints" },
     };
 
     private static readonly Dictionary<string, string> Suffixes = new Dictionary<string, string>
     {
         { "solarMirrorOutputCap", "x" },
+        { "controlPointTradeValue", "x" },
     };
 
     // Stored as a fraction, read by a player as a percentage.

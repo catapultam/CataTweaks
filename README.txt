@@ -65,6 +65,13 @@ Quality of life and UI
 - Fleet detections name the orbit or body. Detection notices include the
   hab's orbit, and the body for a landed fleet.
 
+- Nation picker on the nation panel. The nation's name becomes a
+  dropdown of the nations you hold a control point in, with a previous
+  and a next arrow either side. The list is in name order and the arrows
+  wrap at either end. A nation you hold nothing in is shown as its own
+  entry at the top of the list, and the arrows lead from it into the
+  list.
+
 
 Gameplay
 
@@ -107,6 +114,36 @@ Gameplay
   covers repeats completed before installing the mod. Resources already
   granted are not topped up. Project descriptions show the scaled value
   and the next completion.
+
+- Control points can be traded. Control points join orgs, habs and
+  projects on the diplomacy table, under a tab of their own, grouped by
+  nation. The AI values them: it asks a price for its own and pays for
+  yours, and it offers seats in nations it has walked away from. Alien
+  factions, and control points in alien nations, are excluded. On by
+  default.
+
+- Control point base value. How heavily the AI weighs a control point
+  against everything else on the table, from 0.5x to 5x. The value under
+  it is six months of the seat's income, plus its investment points and
+  the armies behind it, doubled for an executive. A seat in a nation its
+  holder has abandoned is worth a tenth of that to them, so abandoned
+  seats change hands cheaply.
+
+- Suppressed control points can be traded. Seats under a crackdown can
+  be put on the table, including seats in a nation their holder has
+  abandoned, which are suppressed for the same reason. The crackdown
+  goes with the seat: the new owner serves out exactly what was left of
+  it, so trading a seat away and back is not a way to clear one. Off by
+  default.
+
+- Purging a friendly control point does not break the pact. Purging a
+  suppressed control point held by a faction you have a non-aggression
+  pact or a truce with does not hand them the hate that would end it.
+  Purging anything else angers them as usual. Off by default.
+
+- Warn before a mission breaks a pact. A mission aimed at a faction you
+  have a non-aggression pact or a truce with marks the chosen target and
+  asks for confirmation before the councilor is assigned. On by default.
 
 
 Campaign options (New Game / Customize Campaign)
@@ -161,8 +198,11 @@ Campaign options (New Game / Customize Campaign)
 
 Notes
 
-Settings are written to Settings.xml in the mod folder. A Settings.txt
-from an older version is read once and carried over, then left behind as
+Settings are written to CataTweaks.xml in Documents/My Games/TerraInvicta,
+beside the game's own saves and options, because the game empties the mod
+folder of anything the Workshop item does not contain on every launch. A
+Settings.xml left in the mod folder by an older version is carried over, and a
+Settings.txt from the version before that is read once and then left behind as
 Settings.txt.migrated.
 
 A save made with this mod still loads without it. Campaign options are

@@ -60,6 +60,11 @@ of one station and the next. It follows the vanilla location filter.
 **Fleet detections name the orbit or body.** Detection notices include the hab's orbit, and the
 body for a landed fleet.
 
+**Nation picker on the nation panel.** The nation's name becomes a dropdown of the nations you
+hold a control point in, with a previous and a next arrow either side. The list is in name order
+and the arrows wrap at either end. A nation you hold nothing in is shown as its own entry at the
+top of the list, and the arrows lead from it into the list.
+
 ## Gameplay
 
 **Solar mirrors boost orbital stations.** The solar modules of an orbital station receive the
@@ -93,6 +98,31 @@ Alien factions are not affected.
 The capacity bonus is calculated from the number of repeats, so it covers repeats completed
 before installing the mod. Resources already granted are not topped up. Project descriptions show
 the scaled value and the next completion.
+
+**Control points can be traded.** Control points join orgs, habs and projects on the diplomacy
+table, under a tab of their own, grouped by nation. The AI values them: it asks a price for its
+own and pays for yours, and it offers seats in nations it has walked away from. Alien factions,
+and control points in alien nations, are excluded. On by default.
+
+**Control point base value.** How heavily the AI weighs a control point against everything else
+on the table, from 0.5x to 5x. The value under it is six months of the seat's income valued the
+way that faction values income, plus its investment points and the armies behind it, doubled for
+an executive. A seat in a nation its holder has abandoned is worth a tenth of that to them, so
+abandoned seats change hands cheaply while the faction across the table still counts them in full.
+
+**Suppressed control points can be traded.** Seats under a crackdown can be put on the table,
+including seats in a nation their holder has abandoned, which are suppressed for the same reason.
+The crackdown goes with the seat: the new owner serves out exactly what was left of it, to the
+day, so trading a seat away and back is not a way to clear one. Off by default.
+
+**Purging a friendly control point does not break the pact.** Purging a suppressed control point
+held by a faction you have a non-aggression pact or a truce with does not hand them the hate that
+would end it. Purging anything else angers them as usual. Off by default.
+
+**Warn before a mission breaks a pact.** A mission aimed at a faction you have a non-aggression
+pact or a truce with marks the chosen target and asks for confirmation before the councilor is
+assigned. The vanilla game marks such a target while the list is open and then drops the mark from
+the line it writes for the target you picked, which is the moment it matters. On by default.
 
 ## Campaign options
 
@@ -138,8 +168,12 @@ templates.
 
 A save made with this mod still loads without it.
 
-Settings are written to `Settings.xml` in the mod folder. A `Settings.txt` from an older version
-is read once and then renamed to `Settings.txt.migrated`.
+Settings are written to `CataTweaks.xml` in `Documents/My Games/TerraInvicta`, beside the folder
+the game keeps its own saves and options in. They are not kept in the mod folder: Terra Invicta
+resyncs a Workshop mod folder against the subscribed copy on every launch and deletes anything
+the Workshop item does not contain, which took the settings file with it. A `Settings.xml` left
+in the mod folder by an older version is carried over on the next start, and a `Settings.txt`
+from the version before that is read once and then renamed to `Settings.txt.migrated`.
 
 If you still have the separate Restored Empires mod installed, remove it, or its claim rows will
 be duplicated.
