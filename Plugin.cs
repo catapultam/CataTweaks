@@ -78,6 +78,20 @@ public class Settings : UnityModManager.ModSettings, IDrawable
     [Draw("Project review favors the expensive project", Tooltip = "Review Failed Projects weights each candidate by availability chance times research cost rather than divided by it.")]
     public bool expensiveFirstProjectReview = true;
 
+    // Launch facility priorities pick their region properly: vanilla drops the filter that was
+    // meant to keep occupied regions out, and then weights the roll by existing boost times
+    // 500000, so a region that already launches outdraws the equator by three orders of
+    // magnitude and the nation never opens a better site.
+    [Draw("Launch facilities prefer better sites", Tooltip = "A completed Launch Facilities priority can favor the nation's best available launch site - the one nearest the equator, which earns the most boost - instead of almost always adding to a site it already has. Occupied regions stop being eligible, and the priority's tooltip shows the range those eligible regions can actually pay.")]
+    public bool betterLaunchSites = true;
+
+    // How much of the roll is taken away from vanilla's weighting and handed to the best site.
+    // A straight mix of the two distributions, so the number means what it says: at 40%, two
+    // completions in five go to the best site and the other three roll as vanilla does. 0 is
+    // vanilla's weighting, kept for the bug fixes alone; 100% always builds at the best site.
+    [Draw("Launch site focus", DrawType.Slider, Min = 0f, Max = 1f, Tooltip = "How often a completed Launch Facilities priority goes to the best available site rather than rolling as vanilla does. At 0% the roll is vanilla's, which almost always adds to an existing site. At 100% the nation always builds at its best site.")]
+    public float launchSiteFocus = 0.5f;
+
     // "Demand Claim" only blocks when the two nations are at war with each other, instead of
     // when the target is at war with anyone at all.
     [Draw("Demand Claim ignores the target's other wars", Tooltip = "Demand Claim is blocked only by a war between the two nations involved, rather than by the target being at war with anyone.")]
@@ -3479,6 +3493,206 @@ internal static class NationCycleButtons
     }
 }
 
+// Tweak 16: launch facilities get built at the best site the nation has, and the region picker's
+// dropped filters are put back.
+//
+// TINationState.OnBoostPriorityComplete chooses the region a completed Launch Facilities priority
+// builds in, and that region's latitude alone decides what it pays: BoostIncrease is
+// (boostPriorityIncreaseAtEquator - |boostLatitude| / boostLatitudeDivisor) * spaceResourceToTons,
+// which on stock globals is (4 - |lat| / 25) * 0.1 a year - ten times as much at the equator as at
+// a pole. boostLatitude is authored per region as its best launch latitude, not its centroid.
+//
+// Vanilla has two paths through that choice and both are bent:
+//
+//   - With no launch capacity anywhere, it narrows the regions to the ones not under occupation
+//     and then throws that list away: the next line re-filters from the full list instead of from
+//     the narrowed one, so the filter never reaches the result. GrantSpaceFlightProgram carries
+//     the same copy-paste for a nation's first pad.
+//   - With capacity somewhere, it weights a random roll by boostPerMonth * 500000 plus
+//     sqrt(90.1 - |boostLatitude|), over every region - the unoccupied list it builds first is
+//     never read at all. The latitude term spans 9.5 at the equator to 0.3 at a pole; a single
+//     completed priority is worth about 16000 of the same units. So latitude decides nothing, the
+//     roll goes back to whichever region got there first, and that region may be one an enemy is
+//     sitting on.
+//
+// The weighting is kept and the best site mixed into it: launchSiteFocus is the share of
+// completions that skip the roll and build at the best site, and the rest roll as vanilla does.
+// 0% is therefore vanilla's own distribution over a correctly filtered list, and 100% always
+// builds at the best site.
+internal static class LaunchSites
+{
+    internal static bool Enabled => Main.settings.betterLaunchSites;
+
+    // Vanilla's filter, this time applied. Falling back to the full list when nothing qualifies
+    // is vanilla's idiom too: a nation occupied everywhere still has to build somewhere. Nothing
+    // downstream writes to the list, so the fallback hands back the nation's own.
+    internal static List<TIRegionState> Candidates(TINationState nation)
+    {
+        List<TIRegionState> open = nation.regions
+            .Where(region => region.NoOccupationUnderwayOrComplete()).ToList();
+        return open.Count > 0 ? open : nation.regions;
+    }
+
+    // Vanilla's own tie-breaking chain, lifted from the no-capacity path: nearest the equator,
+    // then coastal, then not a colony, then easternmost. Vanilla walks it as four filters; sorted
+    // by the same four keys it is the same answer, since false sorts before true.
+    internal static TIRegionState BestSite(List<TIRegionState> candidates) =>
+        candidates
+            .OrderBy(region => Mathf.Abs(region.boostLatitude))
+            .ThenByDescending(region => region.isCoastal)
+            .ThenBy(region => region.colonyRegion)
+            .ThenByDescending(region => region.longitude)
+            .FirstOrDefault();
+
+    // Whether the nation has anywhere to add to, which is what decides between a roll and a
+    // certainty. The picker and the tooltip have to agree on it or the tooltip offers a range
+    // that nothing can produce.
+    internal static bool Launching(List<TIRegionState> candidates) =>
+        candidates.Any(region => region.boostPerYear_dekatons > 0f);
+
+    // One end of the priority tooltip's range: what a completed priority pays at the best, or at
+    // the worst, of the eligible regions. Sometimes there is no worst - at full focus, and for a
+    // nation with nothing to add to, every completion goes to the best site - and the range then
+    // collapses to the single figure vanilla already prints when its two ends agree. The return
+    // is Harmony's own "run the original", so the patches below are one line each.
+    internal static bool Gain(TINationState nation, bool best, ref float gain)
+    {
+        if (!Enabled || nation.regions.Count == 0)
+        {
+            return true;
+        }
+        List<TIRegionState> candidates = Candidates(nation);
+        bool equatorial = best || Main.settings.launchSiteFocus >= 1f || !Launching(candidates);
+        gain = nation.BoostIncrease(equatorial
+            ? candidates.Min(region => Mathf.Abs(region.boostLatitude))
+            : candidates.Max(region => Mathf.Abs(region.boostLatitude)));
+        return false;
+    }
+}
+
+[HarmonyPatch(typeof(TINationState), "OnBoostPriorityComplete")]
+internal static class LaunchSitePicker
+{
+    private static bool Prefix(TINationState __instance)
+    {
+        if (!LaunchSites.Enabled)
+        {
+            return true;
+        }
+        List<TIRegionState> candidates = LaunchSites.Candidates(__instance);
+        if (candidates.Count == 0)
+        {
+            // A nation with no regions left. Vanilla throws here; there is nothing to build.
+            return false;
+        }
+        TIRegionState region = Pick(candidates);
+        region.ChangeSpaceFacilityValue(SpaceFacilityType.launchFacility,
+            __instance.BoostIncrease(region.boostLatitude));
+        return false;
+    }
+
+    private static TIRegionState Pick(List<TIRegionState> candidates)
+    {
+        // Nothing to add to, or the focus roll came up: build at the best site. Vanilla takes its
+        // own deterministic path on the same first condition.
+        if (!LaunchSites.Launching(candidates)
+            || TIUtilities.RandomFloatValue() < Main.settings.launchSiteFocus)
+        {
+            return LaunchSites.BestSite(candidates);
+        }
+        // Vanilla's weighting verbatim, over the regions that are actually eligible.
+        return candidates.SelectRandomWeightedItem(region =>
+            region.boostPerMonth_dekatons * 500000f
+            + Mathf.Sqrt(90.1f - Mathf.Abs(region.boostLatitude)));
+    }
+}
+
+// A nation's first pad, from GrantSpaceFlightProgram, where the same filter is dropped the same
+// way. The pad is moved afterwards rather than the method replaced, because the pick is only the
+// first half of it: the rest moves every control point's spaceflight priority onto Launch
+// Facilities and Mission Control, tells the federation, and files the notification. That is
+// fifteen lines of vanilla to keep in step forever for the sake of one region.
+//
+// __state is what every region produced before the call, so the pad is found by whichever region
+// went up. Vanilla's pick is deterministic and could be recomputed instead, but that would make
+// BestSite stand for two things at once - this mod's choice of site and a model of vanilla's -
+// and the day they stopped agreeing the boost would be taken off a region that never got it,
+// where ChangeSpaceFacilityValue's clamp at zero would swallow the difference in silence. A
+// nation that already had a program returns early and builds nothing, so there is nothing to find.
+[HarmonyPatch(typeof(TINationState), "GrantSpaceFlightProgram")]
+internal static class FirstLaunchSite
+{
+    private static void Prefix(TINationState __instance, out float[] __state) =>
+        __state = __instance.spaceFlightProgram || !LaunchSites.Enabled
+            ? null
+            : __instance.regions.Select(region => region.boostPerYear_dekatons).ToArray();
+
+    private static void Postfix(TINationState __instance, float[] __state)
+    {
+        if (__state == null)
+        {
+            return;
+        }
+        List<TIRegionState> regions = __instance.regions;
+        TIRegionState built = null;
+        float pad = 0f;
+        for (int i = 0; i < __state.Length && i < regions.Count; i++)
+        {
+            float gained = regions[i].boostPerYear_dekatons - __state[i];
+            if (gained > pad)
+            {
+                built = regions[i];
+                pad = gained;
+            }
+        }
+        TIRegionState wanted = LaunchSites.BestSite(LaunchSites.Candidates(__instance));
+        if (built == null || built == wanted)
+        {
+            return;
+        }
+        // Exactly what vanilla just added, so a region that already launched keeps what it had.
+        // A pad this small is under maxSTOFighters' one-dekaton threshold at either end of the
+        // move, so no fighter is stranded by it.
+        built.ChangeSpaceFacilityValue(SpaceFacilityType.launchFacility, -pad);
+        wanted.ChangeSpaceFacilityValue(SpaceFacilityType.launchFacility, pad);
+    }
+}
+
+// The priority's tooltip offers the range between the worst and the best region the nation has,
+// including regions under occupation, which cannot be built in at all. Both ends now come from
+// the eligible list, and from the focus setting.
+[HarmonyPatch(typeof(TINationState), "BoostGainLow")]
+internal static class LaunchSiteGainLow
+{
+    private static bool Prefix(TINationState __instance, ref float __result) =>
+        LaunchSites.Gain(__instance, best: false, ref __result);
+}
+
+[HarmonyPatch(typeof(TINationState), "BoostGainHigh")]
+internal static class LaunchSiteGainHigh
+{
+    private static bool Prefix(TINationState __instance, ref float __result) =>
+        LaunchSites.Gain(__instance, best: true, ref __result);
+}
+
+// BestBoostLatitude finds the region nearest the equator by |latitude| and then returns the signed
+// figure, which every one of its three readers treats as a distance from the equator: the AI's
+// nation score pays (90 - latitude) / 3, so a nation at 60S scores as though it sat past the north
+// pole; IsUsefulForBoost's "<= 25" is true of every southern nation, Chile included; and the event
+// that hands a faction a space program takes MinBy of it, which finds the most southerly nation
+// rather than the most equatorial one. The magnitude is what all three meant.
+[HarmonyPatch(typeof(TINationState), "BestBoostLatitude", MethodType.Getter)]
+internal static class BestBoostLatitudeMagnitude
+{
+    private static void Postfix(ref float __result)
+    {
+        if (LaunchSites.Enabled)
+        {
+            __result = Mathf.Abs(__result);
+        }
+    }
+}
+
 // Every [Draw] setting mirrored onto the vanilla Gameplay options tab, under a CataTweaks header.
 //
 // The tab is hand-wired - OptionsMenuController holds a serialized Toggle or Slider and a separate
@@ -3523,6 +3737,7 @@ internal static class VanillaOptionsRows
     private static readonly Dictionary<string, string> DependsOn = new Dictionary<string, string>
     {
         { "solarMirrorOutputCap", "solarMirrorsBoostStations" },
+        { "launchSiteFocus", "betterLaunchSites" },
         { "controlPointTradeValue", "tradeControlPoints" },
         { "tradeSuppressedControlPoints", "tradeControlPoints" },
     };
@@ -3537,6 +3752,7 @@ internal static class VanillaOptionsRows
     private static readonly HashSet<string> Percents = new HashSet<string>
     {
         "repeatableProjectScaling",
+        "launchSiteFocus",
     };
 
 

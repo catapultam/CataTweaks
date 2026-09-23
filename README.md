@@ -80,6 +80,24 @@ as a multiple of their unlit output, from 2 to 8. The vanilla ceiling is 8. Stat
 **Project review favors the expensive project.** Review Failed Projects weights each candidate by
 availability chance multiplied by research cost, rather than divided by it.
 
+**Launch facilities prefer better sites.** A completed Launch Facilities priority can build at the
+nation's best available site - the region nearest the equator, which earns the most boost - rather
+than almost always adding to a site the nation already has, which is what the vanilla weighting
+does. Regions under occupation stop being eligible, for this and for the first site a new space
+program builds; the vanilla game filters them out and then drops the filtered list on the floor.
+The priority's tooltip reads from the eligible regions too, instead of offering a range that
+includes regions nothing can be built in.
+
+The AI also stops reading a southern nation's latitude as a distance from the equator. It took the
+signed figure, so a nation at 60S scored better than one on the equator, every southern nation
+passed its test for a useful launch site, and the event that grants a space program picked the most
+southerly nation rather than the most equatorial one.
+
+**Launch site focus.** How often that priority goes to the best site rather than rolling as the
+vanilla game does, from 0% to 100%. At 0% the roll is vanilla's, which is settled almost entirely
+by where the nation already launches. At 100% the nation always builds at its best site. 50% by
+default.
+
 **Demand Claim ignores the target's other wars.** Demand Claim is blocked only by a war between
 the two nations involved, rather than by the target being at war with anyone. Every other
 condition is unchanged.
