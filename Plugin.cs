@@ -63,6 +63,11 @@ public class Settings : UnityModManager.ModSettings, IDrawable
     [Draw("Nation picker on the nation panel", Tooltip = "The nation name on the nation panel becomes a dropdown. The dropdown lists the nations where you hold a control point, in name order. Previous and next arrows are on each side of it, and they continue from the last nation to the first.")]
     public bool nationCycleButtons = true;
 
+    // Portraits stop tracking the age cut-off, so the customize screen stops offering what look
+    // like two different sets of art. Off by default: it changes how every councilor looks.
+    [Draw("Councilor portraits do not change with age", Tooltip = "A councilor keeps the same portrait, icon and video at every age, and the customize screen offers the same portraits for every councilor. A councilor over 55 no longer switches to a second, older version of the art.")]
+    public bool unagedCouncilorPortraits = false;
+
     // Solar mirrors boost orbital stations inward of them, not just surface bases.
     [Draw("Solar mirrors boost orbital stations", Tooltip = "Solar mirrors add power to orbital stations and to surface bases. A mirror lights the stations that orbit inward of it. A mirror at a Lagrange point lights the same stations as before. Surface bases do not change.")]
     public bool solarMirrorsBoostStations = false;
@@ -3818,6 +3823,36 @@ internal static class TriggeredProjectsKeepAchievements
             __instance.showtriggeredProjectsToggle.SetIsOnWithoutNotify(true);
         }
         return __exception;
+    }
+}
+
+// Tweak 19: councilor portraits stop changing with age, and the customize screen offers one set.
+//
+// Every appearance template carries two images, portraitYoung and portraitOld, and
+// TICouncilorState.useOldPortrait chooses between them at age > TICouncilorAppearanceTemplate
+// .ageCutPoint, which is 55. The customize screen caches its grid at twice the template count -
+// one young entry and one old entry for each - and then shows only the half that matches the
+// councilor in hand:
+//
+//     councilorAppearanceGrid.SetListSize<CouncilorAppearanceGridItem>(list.Count * 2);
+//     ...
+//     if (item.old == currentCouncilor.useOldPortrait && ...)
+//
+// So two councilors a year either side of 55 are offered what look like two different sets of
+// portraits with every filter set the same, and no control on that screen reaches it.
+//
+// The flag feeds the portrait, the icon, the idle video and that grid filter, and nothing else,
+// so holding it false is purely cosmetic. Every councilor keeps the young art, the screen offers
+// one selection, and a face no longer changes on a birthday. Aliens already answer false.
+[HarmonyPatch(typeof(TICouncilorState), "useOldPortrait", MethodType.Getter)]
+internal static class UnagedCouncilorPortraits
+{
+    private static void Postfix(ref bool __result)
+    {
+        if (Main.settings.unagedCouncilorPortraits)
+        {
+            __result = false;
+        }
     }
 }
 

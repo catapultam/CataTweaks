@@ -62,6 +62,12 @@ location filter.
 **Fleet detections name the orbit or body.** A fleet detection notice gives the orbit and the body
 of the hab. For a landed fleet it gives the body.
 
+**Councilor portraits do not change with age.** A councilor keeps the same portrait, icon and
+video at every age. The customize screen offers the same portraits for every councilor. In the
+standard game a councilor over 55 switches to a second, older version of the art, and the
+customize screen then offers only that version, so two councilors either side of 55 are shown what
+look like two different sets. Off by default.
+
 **Nation picker on the nation panel.** The nation name becomes a dropdown. The dropdown lists the
 nations where you hold a control point, in name order. A previous arrow and a next arrow are on
 each side, and they continue from the last nation to the first. A nation where you hold no control
