@@ -109,7 +109,7 @@ public class Settings : UnityModManager.ModSettings, IDrawable
 
     // A nation that holds another nation's original capital borrows that nation's claims for as
     // long as it holds it, so unification no longer has to be worked strictly from the outside in.
-    [Draw("Claiming a capital borrows that nation's claims", Tooltip = "While you hold a claim on the original capital of a dormant nation, you can use the claims of that nation. Holding the region is not required, but your claim on it must not be hostile. You lose the borrowed claims when that claim goes away or becomes hostile. A claim that the other nation held as hostile stays hostile for you. A nation that still holds territory is excluded. A claim borrowed this way is tagged [Borrowed] in the tooltip of its flag on the claims list.")]
+    [Draw("Holding a capital borrows that nation's claims", Tooltip = "While you hold the original capital of a dormant nation, you can use the claims of that nation. Your claim on the capital must not be hostile. You lose the borrowed claims when you lose the capital, or when your claim on it becomes hostile. A claim that the other nation held as hostile stays hostile for you. A nation that still holds territory is excluded. A claim borrowed this way is tagged [Borrowed] in the tooltip of its flag on the claims list.")]
     public bool inheritedCapitalClaims = true;
 
     // Repeatable projects granting control point capacity or resources (Management, Audience,
@@ -1558,26 +1558,15 @@ internal static class InheritedCapitalClaims
         recomputing = true;
         try
             {
-            if (!lent.TryGetValue(nation, out Dictionary<TIRegionState, bool> held))
-            {
-                held = lent[nation] = new Dictionary<TIRegionState, bool>();
-            }
             var want = new Dictionary<TIRegionState, bool>();      // region -> borrow it as hostile
-            // What makes a dormant nation answer to us is a peaceful claim on its original capital,
-            // not possession of it. Owning a region does not put you in that region's claim list, so
-            // a walk over nation.regions could never find one: in a Broken Earth census, ninety-nine
-            // nations sat on a dormant nation's capital and not one of them claimed it.
-            foreach (TIRegionState capital in nation.claims.ToList())
+            foreach (TIRegionState capital in nation.regions)
             {
-                // A borrowed claim is not a footing to borrow from, or one dormant capital would
-                // chain into the next and the ledger would never settle.
-                if (held.ContainsKey(capital))
-                {
-                    continue;
-                }
-                // ClaimedBy, not claims.Contains: a claim whose unlock project is unresearched sits in
-                // the list already and is only gated at query time, and an unearned claim is no claim.
-                if (!capital.ClaimedBy(nation) || nation.hostileClaims.Contains(capital))
+                // Holding it is the whole of it, short of holding it in anger. There is no claim to
+                // test: a region you own is not in your own claim list, so the ClaimedBy that stood
+                // here asked for something that can never be true of a region a nation holds. A
+                // census over a Broken Earth save found ninety-nine nations sitting on a dormant
+                // nation's original capital, every one of them failing it, and nothing ever lent.
+                if (nation.hostileClaims.Contains(capital))
                 {
                     continue;
                 }
@@ -1599,6 +1588,10 @@ internal static class InheritedCapitalClaims
                     // two sources disagreeing on hostility: the peaceful reading wins
                     want[claim] = want.TryGetValue(claim, out bool seen) ? (seen && hostile) : hostile;
                 }
+            }
+            if (!lent.TryGetValue(nation, out Dictionary<TIRegionState, bool> held))
+            {
+                held = lent[nation] = new Dictionary<TIRegionState, bool>();
             }
             foreach (TIRegionState region in held.Keys.ToList())
             {
