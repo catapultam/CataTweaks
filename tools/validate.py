@@ -55,6 +55,16 @@ def check_projects(projects):
     return seen
 
 
+def read_keys(path):
+    """The keys of a localization file: everything left of the first = on a line that has one."""
+    keys = set()
+    with open(path, encoding="utf-8") as handle:
+        for line in handle:
+            if "=" in line:
+                keys.add(line.split("=", 1)[0].strip())
+    return keys
+
+
 def check_localization(projects):
     """Every language, not only English.
 
@@ -75,18 +85,24 @@ def check_localization(projects):
         if not os.path.exists(path):
             fail(language + " has no TIProjectTemplate." + language)
             continue
-        keys = set()
-        with open(path, encoding="utf-8") as handle:
-            for line in handle:
-                if "=" in line:
-                    keys.add(line.split("=", 1)[0].strip())
+        keys = read_keys(path)
         for project in projects:
             name = project.get("dataName")
             for kind in ("displayName", "summary", "description"):
                 key = "TIProjectTemplate." + kind + "." + name
                 if key not in keys:
                     fail(language + " has no " + kind + " for " + name)
-    print(str(len(languages)) + " of 14 languages")
+    # Every UI key English has, in every language, for the same reason: a key the game cannot
+    # find prints itself, so a mod UI string missing one translation is fourteen ways to be wrong.
+    ui_keys = read_keys(os.path.join(root, "en", "UICataTweaks.en"))
+    for language in languages:
+        path = os.path.join(root, language, "UICataTweaks." + language)
+        if not os.path.exists(path):
+            fail(language + " has no UICataTweaks." + language)
+            continue
+        for key in sorted(ui_keys - read_keys(path)):
+            fail(language + " has no " + key)
+    print(str(len(languages)) + " of 14 languages, " + str(len(ui_keys)) + " UI keys")
     if len(languages) != 14:
         fail("Terra Invicta ships 14 languages and the game has no English fallback")
 

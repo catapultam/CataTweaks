@@ -3041,13 +3041,13 @@ internal static class PactConfirm
         // warning icons either side of it, and a header long enough to say anything runs under
         // them. The faction is named in the prompt instead, in its own colour.
         //
-        // English, where the rest of the screen is translated: the sentence has to say that the
-        // pact is only at risk, and nothing the game ships says that. One key of our own in
-        // Localization/ would fix it, at fourteen translations.
-        ui.unassignedWarningPrompt?.SetText(pact.HasNAP(GameControl.control.activePlayer)
-            ? "This action could break the mutual non-aggression pact with "
-                + pact.displayNameWithColor + "."
-            : "This action could break the truce with " + pact.displayNameWithColor + ".");
+        // Our own key, in all fourteen: nothing the game ships says that a pact is only at risk,
+        // and the game has no English fallback - a missing key prints itself at the player.
+        ui.unassignedWarningPrompt?.SetText(Loc.T(
+            pact.HasNAP(GameControl.control.activePlayer)
+                ? "UI.CataTweaks.PactWarning_NAP"
+                : "UI.CataTweaks.PactWarning_Truce",
+            pact.displayNameWithColor));
 
         AudioManager.PlayOneShot("event:/SFX/UI_SFX/trig_SFX_BadUI");
         ui.unassignedWarningPanel.SetActive(value: true);
