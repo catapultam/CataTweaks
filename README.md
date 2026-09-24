@@ -128,8 +128,8 @@ between the two nations in the claim. The other conditions do not change.
 dormant nation, you can use the claims of that nation. Your claim on the capital must not be
 hostile. You lose the borrowed claims when you lose the capital, or when your claim on it becomes
 hostile. A claim that the other nation held as hostile stays hostile for you. A nation that still
-holds territory is excluded. A claim borrowed this way is tagged [Borrowed] in the tooltip of its
-flag on the claims list. Save files do not change.
+holds territory is excluded. The region screen goes on crediting the claim to the nation it came
+from rather than to you, so which capital is carrying it stays visible. Save files do not change.
 
 **Repeatable management project scaling.** Each repeat of Management Research, Audience Research,
 Commercial Research and Operations Research pays its base reward plus this percentage, for each

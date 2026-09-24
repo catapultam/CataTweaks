@@ -109,7 +109,7 @@ public class Settings : UnityModManager.ModSettings, IDrawable
 
     // A nation that holds another nation's original capital borrows that nation's claims for as
     // long as it holds it, so unification no longer has to be worked strictly from the outside in.
-    [Draw("Holding a capital borrows that nation's claims", Tooltip = "While you hold the original capital of a dormant nation, you can use the claims of that nation. Your claim on the capital must not be hostile. You lose the borrowed claims when you lose the capital, or when your claim on it becomes hostile. A claim that the other nation held as hostile stays hostile for you. A nation that still holds territory is excluded. A claim borrowed this way is tagged [Borrowed] in the tooltip of its flag on the claims list.")]
+    [Draw("Holding a capital borrows that nation's claims", Tooltip = "While you hold the original capital of a dormant nation, you can use the claims of that nation. Your claim on the capital must not be hostile. You lose the borrowed claims when you lose the capital, or when your claim on it becomes hostile. A claim that the other nation held as hostile stays hostile for you. A nation that still holds territory is excluded. The region screen goes on crediting the claim to the nation it came from, so you can always see which capital is carrying it.")]
     public bool inheritedCapitalClaims = true;
 
     // Repeatable projects granting control point capacity or resources (Management, Audience,
@@ -1653,10 +1653,15 @@ internal static class InheritedCapitalClaims
         Recompute(newNation);
     }
 
-    // A load starts from vanilla claims - borrowed ones were never written - so lend them back.
-    [HarmonyPatch(typeof(GameStateManager), nameof(GameStateManager.LoadAllGameStates))]
+    // A save holds vanilla claims - borrowed ones are handed back before it is written - so they
+    // are lent again once the campaign is up. CompleteInit rather than LoadAllGameStates, which is
+    // only the deserialize: the numbered init stages run after it, one of them rebuilding every
+    // region's claimant list out of each nation's claims, and a lend made before that reached the
+    // player a day late, when the monthly backstop came round. This is also the one hook a new
+    // campaign passes through, so it no longer waits on that backstop either.
+    [HarmonyPatch(typeof(GameControl), nameof(GameControl.CompleteInit))]
     [HarmonyPostfix]
-    private static void OnLoad()
+    private static void OnCampaignReady()
     {
         lent.Clear();
         capitalOf = null;
@@ -1699,31 +1704,6 @@ internal static class InheritedCapitalClaims
             }
         }
         recomputing = false;
-    }
-
-    // A borrowed claim sits in the nation's claim list exactly like one it owns, so the claims
-    // panel gives no way to tell what leaves with the capital. The flag's tooltip is the claimant's
-    // name, written fresh by UpdateListItem on every call, so a tag appended here cannot stack up.
-    // Read back rather than rebuilt, because the name the game chose may be the union's, and may
-    // already carry the unrest sprite for a hostile claim.
-    [HarmonyPatch(typeof(ClaimListItemController), nameof(ClaimListItemController.UpdateListItem))]
-    [HarmonyPostfix]
-    private static void TagBorrowedClaim(ClaimListItemController __instance,
-                                         TINationState claimantNation, TIRegionState region)
-    {
-        if (!Main.settings.inheritedCapitalClaims || __instance.claimTTTrigger == null
-            || claimantNation == null || region == null
-            || !lent.TryGetValue(claimantNation, out Dictionary<TIRegionState, bool> held)
-            || !held.ContainsKey(region))
-        {
-            return;
-        }
-        ParameterizedTextField body = __instance.claimTTTrigger.parameterizedTextFields
-            ?.FirstOrDefault(field => field.name == "BodyText");
-        if (body != null)
-        {
-            __instance.claimTTTrigger.SetText("BodyText", body.value + " <color=yellow>[Borrowed]</color>");
-        }
     }
 }
 

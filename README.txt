@@ -157,8 +157,9 @@ Gameplay
   borrowed claims when you lose the capital, or when your claim on it
   becomes hostile. A claim that the other nation held as hostile stays
   hostile for you. A nation that still holds territory is excluded.
-  A claim borrowed this way is tagged [Borrowed] in the tooltip of
-  its flag on the claims list. Save files do not change.
+  The region screen goes on crediting the claim to the nation it
+  came from rather than to you, so which capital is carrying it stays
+  visible. Save files do not change.
 
 - Repeatable management project scaling. Each repeat of Management
   Research, Audience Research, Commercial Research and Operations
