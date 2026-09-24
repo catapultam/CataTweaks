@@ -2992,9 +2992,12 @@ internal static class PactWarningOnTarget
 
 // The confirmation itself. The screen already owns a yes/no panel - the one that asks whether to
 // end the phase with councilors still idle - so it is borrowed rather than built: its two labels
-// are rewritten, its two buttons are pointed somewhere else for as long as it is up, and both are
-// put back when it closes. The buttons carry listeners wired in the editor, which RemoveAllListeners
-// does not touch, so the original event object is kept and restored rather than emptied.
+// are rewritten for as long as the question is up and put back when it closes.
+//
+// The answer is taken at the two methods its buttons call - OnConfirmGoForwardClicked and
+// OnDeclineGoForwardClicked, wired to them in the editor - rather than by pointing the buttons
+// somewhere else. The panel sits inactive until it is asked for, and an inactive object has no
+// components to reach through, so there is nothing there to point anywhere until it is already up.
 [HarmonyPatch(typeof(CouncilorMissionCanvasController),
     nameof(CouncilorMissionCanvasController.OnConfirmMissionClick))]
 internal static class PactConfirm
@@ -3007,9 +3010,8 @@ internal static class PactConfirm
 
     private static bool answered;
 
-    private static Button.ButtonClickedEvent yesWas;
-
-    private static Button.ButtonClickedEvent noWas;
+    // Which target the question is about, and, by being set at all, that one is up.
+    private static TIGameState asked;
 
     private static string headerWas;
 
@@ -3047,38 +3049,19 @@ internal static class PactConfirm
         }
     }
 
-    private static Button Yes(CouncilorMissionCanvasController ui)
-    {
-        return ui.unassignedWarningConfirmButton?.GetComponentInParent<Button>();
-    }
-
-    private static Button No(CouncilorMissionCanvasController ui)
-    {
-        return ui.unassignedWarningDeclineButton?.GetComponentInParent<Button>();
-    }
-
     private static void Ask(CouncilorMissionCanvasController ui, TIFactionState pact)
     {
-        Button yes = Yes(ui);
-        Button no = No(ui);
-        if (yes == null || no == null)
-        {
-            return;
-        }
         // The panel is only modal by convention, so it can be left up and walked away from -
         // closing the screen with it open, say. Whatever was borrowed last time goes back before
-        // anything is borrowed again, or the second ask would save our own buttons as the
-        // originals and vanilla would never get its prompt back.
-        if (yesWas != null)
+        // anything is borrowed again, or the second ask would save our own lines as the originals
+        // and vanilla would never get its prompt back.
+        if (asked != null)
         {
             Close(ui);
         }
-        // Which target the question is about. Vanilla still cycles the target behind the panel -
-        // Tab runs CycleTargetForward whether this is up or not - so an answer only stands for
-        // the target it was asked about.
-        TIGameState asked = target.GetValue(ui) as TIGameState;
-        yesWas = yes.onClick;
-        noWas = no.onClick;
+        // Vanilla still cycles the target behind the panel - Tab runs CycleTargetForward whether
+        // this is up or not - so an answer only stands for the target it was asked about.
+        asked = target.GetValue(ui) as TIGameState;
         headerWas = ui.unassignedWarningHeader != null ? ui.unassignedWarningHeader.text : null;
         promptWas = ui.unassignedWarningPrompt != null ? ui.unassignedWarningPrompt.text : null;
 
@@ -3092,39 +3075,45 @@ internal static class PactConfirm
         ui.unassignedWarningPrompt?.SetText(
             Loc.T("UI.Intel.Faction.Relations.CancelTreaty_NAP"));
 
-        yes.onClick = new Button.ButtonClickedEvent();
-        yes.onClick.AddListener(delegate
-        {
-            Close(ui);
-            // A target that moved while the question was up goes back through the check rather
-            // than through the answer, which is to say it gets asked about in its own right.
-            answered = ReferenceEquals(target.GetValue(ui) as TIGameState, asked);
-            ui.OnConfirmMissionClick();
-        });
-        no.onClick = new Button.ButtonClickedEvent();
-        no.onClick.AddListener(delegate
-        {
-            AudioManager.PlayOneShot("event:/SFX/UI_SFX/trig_SFX_Decline");
-            Close(ui);
-        });
         AudioManager.PlayOneShot("event:/SFX/UI_SFX/trig_SFX_BadUI");
         ui.unassignedWarningPanel.SetActive(value: true);
+    }
+
+    // A click on one of the two buttons. True means the question was ours and vanilla's own
+    // handler - which would finalize the whole mission phase - does not run.
+    internal static bool Answer(CouncilorMissionCanvasController ui, bool yes)
+    {
+        try
+        {
+            if (asked == null || ui == null || ui.unassignedWarningPanel == null)
+            {
+                return false;
+            }
+            TIGameState was = asked;
+            TIGameState now = target.GetValue(ui) as TIGameState;
+            Close(ui);
+            if (!yes)
+            {
+                AudioManager.PlayOneShot("event:/SFX/UI_SFX/trig_SFX_Decline");
+                return true;
+            }
+            // A target that moved while the question was up goes back through the check rather
+            // than through the answer, which is to say it gets asked about in its own right.
+            answered = ReferenceEquals(now, was);
+            ui.OnConfirmMissionClick();
+            return true;
+        }
+        catch (Exception e)
+        {
+            Main.mod?.Logger.Error("Could not answer about a pact - " + e.Message);
+            return false;
+        }
     }
 
     // Vanilla writes those two labels once when the screen is built, so they have to go back as
     // they were or its own prompt would ask about a pact the next time it opens.
     private static void Close(CouncilorMissionCanvasController ui)
     {
-        Button yes = Yes(ui);
-        Button no = No(ui);
-        if (yes != null && yesWas != null)
-        {
-            yes.onClick = yesWas;
-        }
-        if (no != null && noWas != null)
-        {
-            no.onClick = noWas;
-        }
         if (headerWas != null)
         {
             ui.unassignedWarningHeader?.SetText(headerWas);
@@ -3133,9 +3122,30 @@ internal static class PactConfirm
         {
             ui.unassignedWarningPrompt?.SetText(promptWas);
         }
-        yesWas = null;
-        noWas = null;
+        headerWas = null;
+        promptWas = null;
+        asked = null;
         ui.unassignedWarningPanel.SetActive(value: false);
+    }
+}
+
+[HarmonyPatch(typeof(CouncilorMissionCanvasController),
+    nameof(CouncilorMissionCanvasController.OnConfirmGoForwardClicked))]
+internal static class PactConfirmYes
+{
+    private static bool Prefix(CouncilorMissionCanvasController __instance)
+    {
+        return !PactConfirm.Answer(__instance, yes: true);
+    }
+}
+
+[HarmonyPatch(typeof(CouncilorMissionCanvasController),
+    nameof(CouncilorMissionCanvasController.OnDeclineGoForwardClicked))]
+internal static class PactConfirmNo
+{
+    private static bool Prefix(CouncilorMissionCanvasController __instance)
+    {
+        return !PactConfirm.Answer(__instance, yes: false);
     }
 }
 
