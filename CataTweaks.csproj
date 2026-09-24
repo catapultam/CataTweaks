@@ -3,7 +3,7 @@
     <TargetFramework>net48</TargetFramework>
     <LangVersion>latest</LangVersion>
     <AssemblyTitle>CataTweaks</AssemblyTitle>
-    <Version>3.3.1</Version>
+    <Version>3.3.2</Version>
     <GameDir Condition="'$(GameDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Terra Invicta</GameDir>
   </PropertyGroup>
   <ItemGroup>
