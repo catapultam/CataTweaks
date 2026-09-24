@@ -1699,6 +1699,29 @@ internal static class InheritedCapitalClaims
         recomputing = false;
     }
 
+    // A borrowed claim never reaches the claims list on its own. NationsWithClaim, which fills it,
+    // skips any claimant with no Claim<nation><region> bilateral template behind it, and a borrowed
+    // claim has none - it was lent at runtime, not authored - so the flag was missing and the tag
+    // below had nothing to sit on. Put back here, where the list is built for the claims panel and
+    // nowhere else, rather than in NationsWithClaim, which the AI reads for secessions and war aims.
+    [HarmonyPatch(typeof(RegionListItem_Data), nameof(RegionListItem_Data.SetRegionData))]
+    [HarmonyPostfix]
+    private static void ListBorrowedClaims(RegionListItem_Data __instance, TIRegionState region)
+    {
+        if (!Main.settings.inheritedCapitalClaims || region == null
+            || __instance.claimsOnRegion == null)
+        {
+            return;
+        }
+        foreach (KeyValuePair<TINationState, Dictionary<TIRegionState, bool>> pair in lent)
+        {
+            if (pair.Value.ContainsKey(region) && !__instance.claimsOnRegion.Contains(pair.Key))
+            {
+                __instance.claimsOnRegion.Add(pair.Key);
+            }
+        }
+    }
+
     // A borrowed claim sits in the nation's claim list exactly like one it owns, so the claims
     // panel gives no way to tell what leaves with the capital. The flag's tooltip is the claimant's
     // name, written fresh by UpdateListItem on every call, so a tag appended here cannot stack up.
