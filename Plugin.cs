@@ -109,7 +109,7 @@ public class Settings : UnityModManager.ModSettings, IDrawable
 
     // A nation that holds another nation's original capital borrows that nation's claims for as
     // long as it holds it, so unification no longer has to be worked strictly from the outside in.
-    [Draw("Holding a capital borrows that nation's claims", Tooltip = "While you hold the original capital of a dormant nation, you can use the claims of that nation. Your claim on the capital must not be hostile. You lose the borrowed claims when you lose the capital, or when your claim on it becomes hostile. A claim that the other nation held as hostile stays hostile for you. A nation that still holds territory is excluded.")]
+    [Draw("Holding a capital borrows that nation's claims", Tooltip = "While you hold the original capital of a dormant nation, you can use the claims of that nation. Your claim on the capital must not be hostile. You lose the borrowed claims when you lose the capital, or when your claim on it becomes hostile. A claim that the other nation held as hostile stays hostile for you. A nation that still holds territory is excluded. A borrowed claim is marked [Inherited] in the tooltip of its flag on the claims list.")]
     public bool inheritedCapitalClaims = true;
 
     // Repeatable projects granting control point capacity or resources (Management, Audience,
@@ -1697,6 +1697,31 @@ internal static class InheritedCapitalClaims
             }
         }
         recomputing = false;
+    }
+
+    // A borrowed claim sits in the nation's claim list exactly like one it owns, so the claims
+    // panel gives no way to tell what leaves with the capital. The flag's tooltip is the claimant's
+    // name, written fresh by UpdateListItem on every call, so a tag appended here cannot stack up.
+    // Read back rather than rebuilt, because the name the game chose may be the union's, and may
+    // already carry the unrest sprite for a hostile claim.
+    [HarmonyPatch(typeof(ClaimListItemController), nameof(ClaimListItemController.UpdateListItem))]
+    [HarmonyPostfix]
+    private static void TagBorrowedClaim(ClaimListItemController __instance,
+                                         TINationState claimantNation, TIRegionState region)
+    {
+        if (!Main.settings.inheritedCapitalClaims || __instance.claimTTTrigger == null
+            || claimantNation == null || region == null
+            || !lent.TryGetValue(claimantNation, out Dictionary<TIRegionState, bool> held)
+            || !held.ContainsKey(region))
+        {
+            return;
+        }
+        ParameterizedTextField body = __instance.claimTTTrigger.parameterizedTextFields
+            ?.FirstOrDefault(field => field.name == "BodyText");
+        if (body != null)
+        {
+            __instance.claimTTTrigger.SetText("BodyText", body.value + " [Inherited]");
+        }
     }
 }
 
