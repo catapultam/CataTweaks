@@ -109,7 +109,7 @@ public class Settings : UnityModManager.ModSettings, IDrawable
 
     // A nation that holds another nation's original capital borrows that nation's claims for as
     // long as it holds it, so unification no longer has to be worked strictly from the outside in.
-    [Draw("Holding a capital borrows that nation's claims", Tooltip = "While you hold the original capital of a dormant nation, you can use the claims of that nation. Your claim on the capital must not be hostile. You lose the borrowed claims when you lose the capital, or when your claim on it becomes hostile. A claim that the other nation held as hostile stays hostile for you. A nation that still holds territory is excluded. A borrowed claim is marked [Inherited] in the tooltip of its flag on the claims list.")]
+    [Draw("Holding a capital borrows that nation's claims", Tooltip = "While you hold the original capital of a dormant nation, you can use the claims of that nation. Your claim on the capital must not be hostile. You lose the borrowed claims when you lose the capital, or when your claim on it becomes hostile. A claim that the other nation held as hostile stays hostile for you. A nation that still holds territory is excluded. A claim borrowed this way is tagged [Borrowed] in the tooltip of its flag on the claims list.")]
     public bool inheritedCapitalClaims = true;
 
     // Repeatable projects granting control point capacity or resources (Management, Audience,
@@ -1720,7 +1720,7 @@ internal static class InheritedCapitalClaims
             ?.FirstOrDefault(field => field.name == "BodyText");
         if (body != null)
         {
-            __instance.claimTTTrigger.SetText("BodyText", body.value + " [Inherited]");
+            __instance.claimTTTrigger.SetText("BodyText", body.value + " <color=yellow>[Borrowed]</color>");
         }
     }
 }
