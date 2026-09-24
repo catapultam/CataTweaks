@@ -124,10 +124,11 @@ This setting does nothing unless the campaign option is on. Off by default.
 **Demand Claim ignores the target's other wars.** A war blocks Demand Claim only if it is a war
 between the two nations in the claim. The other conditions do not change.
 
-**Holding a capital borrows that nation's claims.** While you hold the original capital of a
-dormant nation, you can use the claims of that nation. Your claim on the capital must not be
-hostile. You lose the borrowed claims when you lose the capital, or when your claim on it becomes
-hostile. A claim that the other nation held as hostile stays hostile for you. A nation that still
+**Claiming a capital borrows that nation's claims.** While you hold a claim on the original
+capital of a dormant nation, you can use the claims of that nation. Holding the region is not
+required, and would not be enough on its own: a region you own is not in your own claim list. Your
+claim on the capital must not be hostile. You lose the borrowed claims when that claim goes away or
+becomes hostile. A claim that the other nation held as hostile stays hostile for you. A nation that still
 holds territory is excluded. A claim borrowed this way is tagged [Borrowed] in the tooltip of its
 flag on the claims list. Save files do not change.
 
