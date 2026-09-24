@@ -2973,15 +2973,13 @@ internal static class PactWarningOnTarget
             {
                 return;
             }
-            // Built out of strings the game already ships in every language rather than a new
-            // key of our own, which would need fourteen translations to avoid printing itself.
-            string treaty = Loc.T(pact.HasNAP(GameControl.control.activePlayer)
-                ? "UI.Notifications.Diplomacy.NAP"
-                : "UI.Notifications.Diplomacy.Truce");
+            // The mark alone, prefixed. A contested mission's caption ends in UI.MissionPhase.ToHit,
+            // which is "<rcol>{0}</rcol>" - a right-column tag - so anything appended after it is
+            // laid out in that column and prints on top of the name. Which pact it is, and what
+            // breaking it would cost, is the confirmation's job anyway.
             __instance.targetDropdown.captionText.SetText(
                 TemplateManager.global.warningInlineSpritePath + " "
-                + __instance.targetDropdown.captionText.text
-                + Loc.T("UI.MissionPhase.TargetParen", treaty));
+                + __instance.targetDropdown.captionText.text);
         }
         catch (Exception e)
         {
@@ -3012,8 +3010,6 @@ internal static class PactConfirm
 
     // Which target the question is about, and, by being set at all, that one is up.
     private static TIGameState asked;
-
-    private static string headerWas;
 
     private static string promptWas;
 
@@ -3062,18 +3058,19 @@ internal static class PactConfirm
         // Vanilla still cycles the target behind the panel - Tab runs CycleTargetForward whether
         // this is up or not - so an answer only stands for the target it was asked about.
         asked = target.GetValue(ui) as TIGameState;
-        headerWas = ui.unassignedWarningHeader != null ? ui.unassignedWarningHeader.text : null;
         promptWas = ui.unassignedWarningPrompt != null ? ui.unassignedWarningPrompt.text : null;
 
-        // Both lines come out of strings the game already ships in every language. A key of our
-        // own would need fourteen translations or it would print itself back at the player.
-        string treaty = Loc.T(pact.HasNAP(GameControl.control.activePlayer)
-            ? "UI.Notifications.Diplomacy.NAP"
-            : "UI.Notifications.Diplomacy.Truce");
-        ui.unassignedWarningHeader?.SetText(TemplateManager.global.warningInlineSpritePath + " "
-            + pact.displayNameWithColor + Loc.T("UI.MissionPhase.TargetParen", treaty));
-        ui.unassignedWarningPrompt?.SetText(
-            Loc.T("UI.Intel.Faction.Relations.CancelTreaty_NAP"));
+        // The header is left as vanilla wrote it - "Warning!" - because the panel carries two
+        // warning icons either side of it, and a header long enough to say anything runs under
+        // them. The faction is named in the prompt instead, in its own colour.
+        //
+        // English, where the rest of the screen is translated: the sentence has to say that the
+        // pact is only at risk, and nothing the game ships says that. One key of our own in
+        // Localization/ would fix it, at fourteen translations.
+        ui.unassignedWarningPrompt?.SetText(pact.HasNAP(GameControl.control.activePlayer)
+            ? "This action could break the mutual non-aggression pact with "
+                + pact.displayNameWithColor + "."
+            : "This action could break the truce with " + pact.displayNameWithColor + ".");
 
         AudioManager.PlayOneShot("event:/SFX/UI_SFX/trig_SFX_BadUI");
         ui.unassignedWarningPanel.SetActive(value: true);
@@ -3110,19 +3107,14 @@ internal static class PactConfirm
         }
     }
 
-    // Vanilla writes those two labels once when the screen is built, so they have to go back as
-    // they were or its own prompt would ask about a pact the next time it opens.
+    // Vanilla writes that label once when the screen is built, so it has to go back as it was or
+    // its own prompt would ask about a pact the next time it opens.
     private static void Close(CouncilorMissionCanvasController ui)
     {
-        if (headerWas != null)
-        {
-            ui.unassignedWarningHeader?.SetText(headerWas);
-        }
         if (promptWas != null)
         {
             ui.unassignedWarningPrompt?.SetText(promptWas);
         }
-        headerWas = null;
         promptWas = null;
         asked = null;
         ui.unassignedWarningPanel.SetActive(value: false);
