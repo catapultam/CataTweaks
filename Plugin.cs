@@ -1584,6 +1584,11 @@ internal static class InheritedCapitalClaims
                 {
                     continue;
                 }
+                // A capital not yet taken lends only what it is owed outright: nothing hostile, and
+                // nothing the source was itself borrowing from a merger. Those still come, once the
+                // capital is actually held - they just do not decide what the conquest hands over.
+                bool ahead = !nation.regions.Contains(capital);
+                lent.TryGetValue(source, out Dictionary<TIRegionState, bool> sourceBorrowed);
                 foreach (TIRegionState claim in source.claims)
                 {
                     if (claim == null || claim.nation == nation || !claim.ClaimedBy(source))
@@ -1591,6 +1596,10 @@ internal static class InheritedCapitalClaims
                         continue;                    // gated behind a project nobody has finished
                     }
                     bool hostile = source.hostileClaims.Contains(claim);
+                    if (ahead && (hostile || (sourceBorrowed != null && sourceBorrowed.ContainsKey(claim))))
+                    {
+                        continue;
+                    }
                     // two sources disagreeing on hostility: the peaceful reading wins
                     want[claim] = want.TryGetValue(claim, out bool seen) ? (seen && hostile) : hostile;
                 }
@@ -1683,9 +1692,10 @@ internal static class InheritedCapitalClaims
 
     // What the winner will hold is what it claims of the loser, and what it claims depends on the
     // capitals among that, so this runs to a fixed point. It first assumes the loser goes dormant -
-    // the loser's own claims cover its own regions, so borrowing them is what takes the lot - and
-    // keeps that only if it comes true: every region the loser has is claimed by the winner or by
-    // an ally at war with it, which is exactly when vanilla leaves the loser with nothing.
+    // the loser's own peaceful claims cover its own core, so borrowing them is what takes the lot -
+    // and keeps that only if it comes true: every region the loser has is claimed by the winner or
+    // by an ally at war with it, which is exactly when vanilla leaves the loser with nothing. Land
+    // the loser holds by a hostile claim or through a merger is not owed, so it stays behind.
     private static void LendAhead(TINationState winner, TINationState loser, List<TINationState> alliance)
     {
         foreach (bool dormant in new[] { true, false })
