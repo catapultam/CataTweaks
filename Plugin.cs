@@ -1470,7 +1470,8 @@ internal static class FleetDetectedLocationExpand
 // nation held hostilely stays hostile for you, because the point is to skip the merge dance, not
 // to launder a grievance into a peaceful merger.
 //
-// Recomputed when a nation is absorbed, when regions change hands, when a hostile claim turns
+// Lent ahead of time when a capital falls, so the conquest itself counts them. Recomputed when a
+// nation is absorbed, when regions change hands, when a hostile claim turns
 // peaceful, when any project completes (claims can be gated behind one), monthly as a backstop, and
 // for every nation on load - a load starts from vanilla claims, since borrowed ones are never written.
 // Borrowed claims never reach a save file: SaveAllGameStates is bracketed so they are handed back
@@ -1548,7 +1549,10 @@ internal static class InheritedCapitalClaims
         lent.Clear();
     }
 
-    internal static void Recompute(TINationState nation)
+    // incoming and goingDormant ask what the nation would borrow a moment from now: holding those
+    // regions as well as its own, with that nation's last region gone. Only LendAhead asks.
+    internal static void Recompute(TINationState nation, ICollection<TIRegionState> incoming = null,
+        TINationState goingDormant = null)
     {
         if (!Main.settings.inheritedCapitalClaims || recomputing
             || nation == null || nation.alienNation || nation.claims == null)
@@ -1559,7 +1563,9 @@ internal static class InheritedCapitalClaims
         try
             {
             var want = new Dictionary<TIRegionState, bool>();      // region -> borrow it as hostile
-            foreach (TIRegionState capital in nation.regions)
+            IEnumerable<TIRegionState> holding = incoming == null ? nation.regions
+                : nation.regions.Concat(incoming.Where(r => !nation.regions.Contains(r)));
+            foreach (TIRegionState capital in holding)
             {
                 // Holding it is the whole of it, short of holding it in anger. There is no claim to
                 // test: a region you own is not in your own claim list, so the ClaimedBy that stood
@@ -1574,7 +1580,7 @@ internal static class InheritedCapitalClaims
                 // Dormant nations only. A living nation that moved its capital still speaks for itself,
                 // and borrowing from it would be leeching rather than skipping the merge dance.
                 if (source == null || source == nation || source.alienNation || source.claims == null
-                    || source.extant)
+                    || (source.extant && source != goingDormant))
                 {
                     continue;
                 }
@@ -1651,6 +1657,56 @@ internal static class InheritedCapitalClaims
     {
         Recompute(__instance);
         Recompute(newNation);
+    }
+
+    // Taking a capital hands the conqueror every region of the loser it claims, and that list is
+    // drawn up once, from the claims it holds the moment the capital falls. The transfer hook above
+    // lends only after the regions have moved, so the claims that come with the capital arrived one
+    // conquest late: take the capital of a nation you hold a peaceful claim on and you got only
+    // what you already claimed, then its claims, with nothing left to spend them on. So the claims
+    // are lent ahead of the list, as they will stand once the transfer is done - the same
+    // condition vanilla tests, so a lend made here is always followed by the transfer it assumed.
+    [HarmonyPatch(typeof(TIRegionState), "CompleteOccupationofRegion")]
+    [HarmonyPrefix]
+    private static void BeforeCapture(TIRegionState __instance, TIArmyState army)
+    {
+        TINationState loser = __instance.nation;
+        TINationState winner = __instance.leadOccupier ?? army?.homeNation;
+        if (!Main.settings.inheritedCapitalClaims || loser == null || winner == null || winner == loser
+            || !((__instance == loser.capital && (!loser.alienNation || loser.regions.Count == 1))
+                 || loser.regions.All(r => r.IsFullyOccupied())))
+        {
+            return;
+        }
+        LendAhead(winner, loser, __instance.GetOccupyingAlliance(ordered: true));
+    }
+
+    // What the winner will hold is what it claims of the loser, and what it claims depends on the
+    // capitals among that, so this runs to a fixed point. It first assumes the loser goes dormant -
+    // the loser's own claims cover its own regions, so borrowing them is what takes the lot - and
+    // keeps that only if it comes true: every region the loser has is claimed by the winner or by
+    // an ally at war with it, which is exactly when vanilla leaves the loser with nothing.
+    private static void LendAhead(TINationState winner, TINationState loser, List<TINationState> alliance)
+    {
+        foreach (bool dormant in new[] { true, false })
+        {
+            var incoming = new HashSet<TIRegionState>();
+            for (int pass = 0; pass < 8; pass++)          // each pass can only add capitals; 8 is plenty
+            {
+                var next = new HashSet<TIRegionState>(loser.regions.Where(r => winner.claims.Contains(r)));
+                if (pass > 0 && next.SetEquals(incoming))
+                {
+                    break;
+                }
+                incoming = next;
+                Recompute(winner, incoming, dormant ? loser : null);
+            }
+            if (!dormant || loser.regions.All(r => incoming.Contains(r)
+                || alliance.Any(x => x != winner && x.IsAtWarWith(loser) && x.claims.Contains(r))))
+            {
+                return;
+            }
+        }
     }
 
     // A save holds vanilla claims - borrowed ones are handed back before it is written - so they
