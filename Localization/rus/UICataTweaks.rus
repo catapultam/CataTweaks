@@ -1,3 +1,4 @@
 UI.CataTweaks.PactWarning_NAP=Это действие может нарушить взаимный договор о ненападении с {0}.
 UI.CataTweaks.PactWarning_Truce=Это действие может нарушить перемирие с {0}.
 UI.CataTweaks.LegitimizeBorrowedClaims=При достаточных инвестициях в приоритеты "Правительство" и "Единство" претензии, заимствованные этой страной через регион {0}, станут её собственными и сохранятся даже при потере региона {0}. Текущий прогресс: {1}/{2} <color=#FFFFFFFF><sprite name="investments"></color>.
+UI.CataTweaks.CouncilPoolYieldsToExpandedCouncil=Установлен Expanded Council, и советом управляет он, поэтому этот параметр отключён и не может быть включён, пока этот мод активен.

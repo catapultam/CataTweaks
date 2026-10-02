@@ -4920,7 +4920,10 @@ internal static class CampaignFlags
     // falls back to the default in Settings.xml rather than to a hardcoded one.
     // Read per claim row per claim query, so the key is a compile-time constant rather than a
     // concatenation, and nothing here allocates.
-    internal static bool CouncilPool => Get(CouncilPoolKey, Main.settings.spySlotsAsCouncilSlots);
+    // Expanded Council runs the council when it is installed, so the pool stands aside: the flag
+    // stays in the save, and the pool comes back if that mod is removed.
+    internal static bool CouncilPool =>
+        !OtherMods.ExpandedCouncil && Get(CouncilPoolKey, Main.settings.spySlotsAsCouncilSlots);
 
     internal static bool RestoredEmpires => Get(RestoredEmpiresKey, Main.settings.restoredEmpires);
 
@@ -4958,7 +4961,7 @@ internal static class CampaignFlags
             ScenarioCustomizations startup = GameControl.control?.scenarioCustomizationsStartup;
             foreach (CampaignOptionsRows.Option option in CampaignOptionsRows.Options)
             {
-                Write(startup, option.Name, option.Chosen);
+                Write(startup, option.Name, option.Chosen && !option.Locked());
             }
         }
     }
@@ -5053,6 +5056,52 @@ internal static class RestoredEmpires
     }
 }
 
+// Other mods CataTweaks makes room for. Each is recognised by what it has actually patched, under
+// the Harmony id it registers, never by its version: any release that takes over the same methods
+// is recognised, one that stops touching them is left alone, and a failed check means not there.
+//
+// Checked afresh when the start menu comes up and again when a campaign is ready, both after Unity
+// Mod Manager has loaded every mod; readers in between take the last answer. Before the first
+// check the answer is no, and nothing reads it that early.
+[HarmonyPatch]
+internal static class OtherMods
+{
+    // Expanded Council (Workshop 3810239494) raises the council to ten and lays out a twelve-seat
+    // council screen of its own, with the two spy seats fixed at the end. The spy slot pool would
+    // fight it over both - which cap wins would come down to patch order - so it stands aside.
+    internal static bool ExpandedCouncil { get; private set; }
+
+    [HarmonyPatch(typeof(GameControl), nameof(GameControl.CompleteInit))]
+    [HarmonyPostfix]
+    private static void OnCampaignReady() => Detect();
+
+    internal static void Detect()
+    {
+        bool was = ExpandedCouncil;
+        ExpandedCouncil = Patched("ExpandedCouncil",
+            AccessTools.PropertyGetter(typeof(TIFactionState), nameof(TIFactionState.maxCouncilSize)),
+            AccessTools.Method(typeof(CouncilGridController), nameof(CouncilGridController.UpdateCouncilorGrid)));
+        if (ExpandedCouncil && !was)
+        {
+            Main.mod?.Logger.Log("Expanded Council is installed; the spy slot pool stands aside for it.");
+        }
+    }
+
+    private static bool Patched(string owner, params MethodBase[] methods)
+    {
+        try
+        {
+            return methods.Any(method => method != null
+                && Harmony.GetPatchInfo(method)?.Owners.Contains(owner) == true);
+        }
+        catch (Exception e)
+        {
+            Main.mod?.Logger.Error("Could not check for " + owner + " - " + e.Message);
+            return false;
+        }
+    }
+}
+
 // The per-campaign toggles, at the bottom of Customize Campaign under a header of their own.
 [HarmonyPatch(typeof(StartMenuController), "Initialize")]
 internal static class CampaignOptionsRows
@@ -5063,6 +5112,8 @@ internal static class CampaignOptionsRows
         internal string Label;
         internal string Tip;
         internal Func<bool> Default;
+        // True when another mod has taken over what the option does: it is held off and greyed out.
+        internal Func<bool> Locked = () => false;
         internal bool Chosen;
     }
 
@@ -5079,6 +5130,7 @@ internal static class CampaignOptionsRows
                 + "Shadow Cabinet, which continue the chain after Covert Operations. With this "
                 + "off, both projects are hidden.",
             Default = () => Main.settings.spySlotsAsCouncilSlots,
+            Locked = () => OtherMods.ExpandedCouncil,
         },
         new Option
         {
@@ -5104,6 +5156,7 @@ internal static class CampaignOptionsRows
 
     private static void Postfix(StartMenuController __instance)
     {
+        OtherMods.Detect();
         try
         {
             Toggle template = __instance.variableProjectUnlocksToggle;
@@ -5128,7 +5181,7 @@ internal static class CampaignOptionsRows
 
             foreach (Option option in Options)
             {
-                option.Chosen = option.Default();
+                option.Chosen = !option.Locked() && option.Default();
             }
 
             if (list.Find(HeaderName) == null)
@@ -5202,13 +5255,17 @@ internal static class CampaignOptionsRows
             label.SetText(option.Label);
         }
 
-        VanillaOptionsRows.Tooltip(cell, option.Tip);
+        bool locked = option.Locked();
+        VanillaOptionsRows.Tooltip(cell, locked && option.Name == "councilPool"
+            ? option.Tip + "\n\n" + Loc.T("UI.CataTweaks.CouncilPoolYieldsToExpandedCouncil")
+            : option.Tip);
 
         Toggle toggle = cell.GetComponentInChildren<Toggle>(true);
         // A fresh event drops the editor-wired call to OnToggleVariableProjectUnlocks.
         toggle.onValueChanged = new Toggle.ToggleEvent();
-        toggle.isOn = option.Chosen;
-        toggle.onValueChanged.AddListener(on => option.Chosen = on);
+        toggle.isOn = option.Chosen && !locked;
+        toggle.interactable = !locked;
+        toggle.onValueChanged.AddListener(on => option.Chosen = on && !option.Locked());
     }
 
 }

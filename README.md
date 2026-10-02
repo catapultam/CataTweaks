@@ -209,6 +209,11 @@ projects are hidden.
 The AI obeys both caps. It does not keep a slot free for a spy, so AI factions fill their councils
 and stop spying.
 
+With Expanded Council installed, this option is off and cannot be turned on, because that mod runs
+the council size and the council screen. The option's tooltip says so. A campaign started with the
+pool before you installed Expanded Council keeps the setting in its save: the pool stands aside
+while Expanded Council is there and comes back if you remove it.
+
 **Restored Empires claims.** Claim chains and four projects for old powers. This was a separate
 mod and is now part of CataTweaks.
 
@@ -245,6 +250,18 @@ once and then renamed to `Settings.txt.migrated`.
 
 If you still have the separate Restored Empires mod installed, remove it. If you do not, its claim
 rows are duplicated.
+
+### Other mods
+
+- [Expanded Council](https://steamcommunity.com/sharedfiles/filedetails/?id=3810239494): the spy
+  slot pool is off while it is installed, as described above. Everything else works with it.
+- [Alien Threat Analysis](https://steamcommunity.com/sharedfiles/filedetails/?id=3810805075) and
+  [Cooperative Missions](https://steamcommunity.com/sharedfiles/filedetails/?id=3810950621): no
+  overlap. The two mods patch nothing CataTweaks changes.
+
+None of them is required. CataTweaks recognises Expanded Council by the patches it has applied,
+not by its version. If that check fails, CataTweaks behaves as it does without Expanded Council,
+and the spy slot pool stays available.
 
 ---
 

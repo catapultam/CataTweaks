@@ -1,3 +1,4 @@
 UI.CataTweaks.PactWarning_NAP=此行動可能會破壞與{0}的互不侵犯條約。
 UI.CataTweaks.PactWarning_Truce=此行動可能會破壞與{0}的休戰。
 UI.CataTweaks.LegitimizeBorrowedClaims=在這個國家，充分投資對政府和團結優先計劃，就會使其透過{0}借用的主張成為其自身的主張，即使失去{0}也會保留。目前進展： {1}/{2} <color=#FFFFFFFF><sprite name="investments"></color> 。
+UI.CataTweaks.CouncilPoolYieldsToExpandedCouncil=已安裝 Expanded Council，特使團由其管理，因此在該模組啟用期間此選項保持關閉，無法開啟。

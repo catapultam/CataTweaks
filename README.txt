@@ -264,6 +264,12 @@ errors. Neither option has been played through a full campaign.
   The AI obeys both caps. It does not keep a slot free for a spy, so
   AI factions fill their councils and stop spying.
 
+  With Expanded Council installed, this option is off and cannot be
+  turned on, because that mod runs the council size and the council
+  screen. A campaign started with the pool before you installed
+  Expanded Council keeps it in its save: the pool stands aside while
+  Expanded Council is there and comes back if you remove it.
+
 - Restored Empires claims. Claim chains and four projects for old
   powers. This was a separate mod and is now part of CataTweaks.
 
@@ -308,6 +314,10 @@ Games/TerraInvicta, beside the saves and options of the game. A
 Settings.xml left in the mod folder by an older version is copied over
 on the next start. A Settings.txt from the version before that is read
 once and then renamed to Settings.txt.migrated.
+
+Works alongside Expanded Council (the spy slot pool is off while it
+is installed), Alien Threat Analysis and Cooperative Missions. None of them is
+required.
 
 If you still have the separate Restored Empires mod installed, remove
 it. If you do not, its claim rows are duplicated.

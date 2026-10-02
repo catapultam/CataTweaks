@@ -1,3 +1,4 @@
 UI.CataTweaks.PactWarning_NAP=Esta acción podría romper el pacto de no agresión mutuo con {0}.
 UI.CataTweaks.PactWarning_Truce=Esta acción podría romper la tregua con {0}.
 UI.CataTweaks.LegitimizeBorrowedClaims=Una inversión suficiente en la prioridad de gobierno y en la de unidad de esta nación hará que los reclamos que toma prestados a través de {0} pasen a ser propios, de modo que los conservará aunque pierda {0}. Progreso actual: {1}/{2} <color=#FFFFFFFF><sprite name="investments"></color>.
+UI.CataTweaks.CouncilPoolYieldsToExpandedCouncil=Expanded Council está instalado y gestiona el consejo, así que esta opción está desactivada y no se puede activar mientras ese mod esté activo.
