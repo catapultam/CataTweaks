@@ -33,6 +33,8 @@ which is English throughout.
 
 `python tools/package.py [destination ...]` builds, validates, writes `dist/`, and fills each
 destination given - the game's `Mods/Enabled/CataTweaks` is one.
+`python tools/workshop.py upload --changenote "..."` uploads to the Workshop through SteamCMD; it
+publishes to every subscriber, so it runs only when a release is asked for.
 
 ## Commits
 

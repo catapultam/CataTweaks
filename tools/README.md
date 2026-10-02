@@ -5,6 +5,11 @@
 `SyntaxCheck/` parses the C# sources with Roslyn. CI calls it too, because the mod itself
 cannot be compiled without the game assemblies.
 
+`package.py` builds, validates and writes the release zip. `workshop.py` stages the Workshop item
+in `dist/workshop/` and uploads it with SteamCMD's `workshop_build_item`, setting the page's
+description from `workshop-description.txt`. SteamCMD needs one interactive login first, for
+Steam Guard: `C:\steamcmd\steamcmd.exe +login NAME +quit`.
+
 The rest came from the Restored Empires mod when it merged into CataTweaks. They generate and
 analyse the claim rows.
 

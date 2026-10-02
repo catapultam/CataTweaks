@@ -3,11 +3,8 @@
     python tools/package.py [destination ...]
 
 Always writes dist/CataTweaks-<version>.zip. Each destination given is also filled with the same
-files, which is how a release reaches the game folder and the Steam upload staging folder.
-
-Terra Invicta uploads to the Workshop from inside the game and hands out a fresh
-DummyItemContentFolder<number> under AppData/LocalLow each time, so the staging path is an
-argument rather than a constant.
+files, which is how a release reaches the game folder. tools/workshop.py fills the Workshop
+staging folder through this.
 
 Files the player's own install writes, such as Settings.xml, are never part of the package.
 """
