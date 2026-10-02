@@ -51,6 +51,8 @@ Both of these options are in the 'Customize Campaign' dialogue, and are lightly 
 
 A save made with this mod still loads without it.
 
+Works alongside Expanded Council (the spy slot option is turned off while it is installed), Alien Threat Analysis and Cooperative Missions. None of them is required.
+
 Source, full documentation and issues: https://github.com/catapultam/CataTweaks
 
 MIT licensed.
