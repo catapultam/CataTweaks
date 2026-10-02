@@ -4,7 +4,7 @@ A collection of UI, quality of life and gameplay tweaks, built to my own tastes.
 
 [h2]Settings[/h2]
 
-CataTweaks adds its own tab to the game's Settings screen, in the main menu and in a campaign. Every setting has a tooltip, and changes apply the moment you click them, with no restart.
+CataTweaks adds its own tab to the game's Settings screen, in the main menu and in a campaign. Every setting has a tooltip and applies at once, with no restart.
 
 [h2]Quality of life and UI[/h2]
 [list]
@@ -12,9 +12,9 @@ CataTweaks adds its own tab to the game's Settings screen, in the main menu and 
 [*][b]Hab template naming.[/b] When you apply a hab template, the hab is renamed to Name (Template, Orbit, Body), for example Freeport (Mining, Low Earth Orbit 2, Earth). It takes the map icon of the template. Applying a template again changes only the text in brackets.
 [*][b]Priority presets overwrite in place.[/b] When you save a preset with the name of an existing custom preset, it replaces that preset, and control points that use the old preset move to the new one. It stays the default preset if the old one was. Built-in presets are not replaced.
 [*][b]Nations keep their preset when priorities change.[/b] When a nation gains or loses a priority, such as a spaceflight program or a military, its preset is applied again within one day. The nation does not change to Custom.
-[*][b]Dividers between stations in the ship construction screen.[/b] The list shows a line between the shipyards of one station and those of the next. The line follows the standard location filter.
+[*][b]Dividers between stations in the ship construction screen.[/b] The list shows a line between the shipyards of one station and those of the next.
 [*][b]Fleet detections name the orbit or body.[/b] A fleet detection notice gives the orbit and the body of the hab. For a landed fleet it gives the body.
-[*][b]Councilor portraits do not change with age.[/b] A councilor keeps the same portrait, icon and video at every age, and the customize screen offers the same portraits for every councilor. In the standard game a councilor over 55 switches to a second, older version of the art. Off by default.
+[*][b]Councilor portraits do not change with age.[/b] A councilor keeps the same portrait, icon and video at every age, and the customize screen offers the same portraits for every councilor. Off by default.
 [*][b]Nation picker on the nation panel.[/b] The nation name becomes a dropdown of the nations where you hold a control point, in name order, with a previous and a next arrow on each side.
 [/list]
 
@@ -24,21 +24,22 @@ CataTweaks adds its own tab to the game's Settings screen, in the main menu and 
 [*][b]Solar mirror orbital boost cap.[/b] The maximum output of the solar modules of a mirror-lit station, from 2 to 8 times their unlit output. The standard limit is 8.
 [*][b]Project review favors the expensive project.[/b] Review Failed Projects weights each project by its availability chance multiplied by its research cost. An expensive project is more likely to be selected.
 [*][b]Boost priority prefers better launch sites.[/b] A completed Boost priority can build its launch facilities in the eligible region of the nation nearest the equator. A region under occupation is not eligible. On by default, at 50%.
-[*][b]Launch site focus.[/b] How often the Boost priority builds in the best region, from 0% to 100%. At 0% the standard game's choice applies, which almost always adds to a region that already has launch facilities. 50% by default.
+[*][b]Launch site focus.[/b] How often the Boost priority builds in the best region, from 0% to 100%. At 0% the standard game's choice applies. 50% by default.
 [*][b]Any faction can go dormant, and can come back.[/b] The campaign option Allow AI Factions To Be Disabled spares the Servants, the Protectorate and Humanity First. They can now go dormant on the same terms as the others, so only the aliens and your own faction cannot. A dormant faction comes back when it holds two control points again, with no money, no orgs and no founding income. Off by default.
 [*][b]Demand Claim ignores the target's other wars.[/b] A war blocks Demand Claim only if it is a war between the two nations in the claim. The other conditions do not change.
-[*][b]Holding a capital borrows that nation's claims.[/b] While you hold the original capital of a dormant nation, and your claim on it is not hostile, you can use the claims of that nation. You lose them when you lose the capital. A claim held as hostile stays hostile, and a nation that still holds territory is excluded. The region screen credits the claim to the nation it came from, so which capital is carrying it stays visible.
+[*][b]Holding a capital borrows that nation's claims.[/b] While you hold the original capital of a dormant nation, and your claim on it is not hostile, you can use the claims of that nation. You lose them when you lose the capital. A claim held as hostile stays hostile until Government and Unity investment legitimizes it. A region you conquer through a borrowed claim is held hostile, and one that comes with a unification is not. A project that needs a nation, such as Greater Indonesia, stays available while that nation is dormant and its capital is held.
+[*][b]A nation left on a dormant nation's capital becomes that nation.[/b] If a war leaves a nation without its own capital, and its new capital is the original capital of a dormant nation that claims it, the dormant nation comes back with all its regions once there is peace. In Broken Earth, a Westralia that loses Perth and keeps Java becomes Indonesia.
 [*][b]Repeatable management project scaling.[/b] Each repeat of Management, Audience, Commercial and Operations Research pays its base reward plus this percentage, for each repeat you have already completed. Set it to 0% for the standard flat reward.
 [*][b]Control points can be traded.[/b] Control points are on the diplomacy table with orgs, habs and projects, on a separate tab and grouped by nation. The AI asks a price for its own, pays for yours, and offers control points in nations it has abandoned. Alien factions and control points in alien nations are excluded. On by default.
-[*][b]Control point base value.[/b] How much the AI weights a control point against the other items on the table, from 0.5x to 5x. The value is six months of the income of the control point, plus its investment points and the armies behind it, doubled for an executive control point. A control point in an abandoned nation is worth one tenth of that to its holder.
+[*][b]Control point base value.[/b] How much the AI weights a control point against the other items on the table, from 0.5x to 5x.
 [*][b]Suppressed control points can be traded.[/b] You can put a control point that is under a crackdown on the diplomacy table. The crackdown moves with the control point, and the new owner completes the remaining time to the day. You cannot clear a crackdown with a trade. Off by default.
 [*][b]Purging a friendly control point does not break the pact.[/b] When you purge a suppressed control point of a faction that has a non-aggression pact or a truce with you, that faction does not become angry and the pact continues. Off by default.
-[*][b]Show Triggered Projects keeps achievements.[/b] The Show Triggered Projects campaign option does not mark a campaign as custom difficulty, so the Normal, Veteran and Brutal victory achievements stay available. Every other campaign option still marks a campaign, and a campaign that is already marked does not change. On by default.
+[*][b]Show Triggered Projects keeps achievements.[/b] The Show Triggered Projects campaign option does not mark a campaign as custom difficulty, so the Normal, Veteran and Brutal victory achievements stay available. On by default.
 [*][b]Warn before a mission breaks a pact.[/b] A mission against a faction that has a non-aggression pact or a truce with you marks the selected target. The game asks you to confirm before it assigns the councilor. On by default.
 [/list]
 
 [h2]Campaign options[/h2]
-Both of these options are in the 'Customize Campaign' dialogue, and are lightly tested. The code does what this section describes, and the projects and claim rows load without errors. Neither option has been played through a full campaign.
+Both of these options are in the 'Customize Campaign' dialogue, and are lightly tested. Neither option has been played through a full campaign.
 [list]
 [*][b]Spy slots become councilor slots.[/b] The eight slots on the council screen become one pool, so an unused spy slot is another councilor. With no spies you have eight councilors, with two spies six. Seats seven and eight are unlocked by two new projects after Covert Operations. The AI uses the same caps.
 [*][b]Restored Empires claims.[/b] Claim chains and four projects that give old powers a route back to the map. The Sun Never Sets takes Britain past the settler dominions, Commonwealth Restored gains Delhi, Calcutta and Ireland, and New Liberia opens the West African coast for the Dominion of America. Mare Nostrum and Imperium Sine Fine give Rome the Mediterranean and both American seaboards, in Broken Earth only. A claim on a territory that fought for independence is hostile.
