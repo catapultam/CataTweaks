@@ -157,9 +157,33 @@ Gameplay
   borrowed claims when you lose the capital, or when your claim on it
   becomes hostile. A claim that the other nation held as hostile stays
   hostile for you. A nation that still holds territory is excluded.
+  A region you take through a borrowed claim is held by a hostile
+  claim, so you must legitimize a capital you take that way before
+  you can borrow its claims. Once no region is held by a hostile
+  claim, investment in Government and Unity also legitimizes the
+  claims you borrow as hostile, one at a time: the claim becomes
+  peaceful for the nation you borrow it from, so it stays peaceful
+  for whoever holds that capital. A project that needs a nation to
+  exist, such as Greater Indonesia, is also available while that
+  nation is dormant and its capital is held without a hostile claim:
+  its claims go to the dormant nation, and whoever holds the capital
+  borrows them.
   The region screen goes on crediting the claim to the nation it
   came from rather than to you, so which capital is carrying it stays
   visible. Save files do not change.
+
+- A nation left on a dormant nation's capital becomes that nation.
+  When a war ends and a nation has lost its original capital to an
+  enemy in that war, the nation looks at its new capital. If that
+  region is the original capital of a dormant nation, and the dormant
+  nation has a claim on it, the dormant nation comes back with all the
+  regions of the nation. In Broken Earth, if Australia takes Perth from
+  Westralia, Westralia keeps only Java, and becomes Indonesia. Each
+  faction keeps its control points and their priorities. Stats,
+  armies, nuclear weapons, space funding and accumulated investment
+  move across. Alliances, rivalries and federation membership do not.
+  The change happens on the next day after the nation is at peace
+  with everyone.
 
 - Repeatable management project scaling. Each repeat of Management
   Research, Audience Research, Commercial Research and Operations

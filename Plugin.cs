@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Text.RegularExpressions;
 using HarmonyLib;
 using ModelShark;
@@ -109,8 +110,13 @@ public class Settings : UnityModManager.ModSettings, IDrawable
 
     // A nation that holds another nation's original capital borrows that nation's claims for as
     // long as it holds it, so unification no longer has to be worked strictly from the outside in.
-    [Draw("Holding a capital borrows that nation's claims", Tooltip = "While you hold the original capital of a dormant nation, you can use the claims of that nation. Your claim on the capital must not be hostile. You lose the borrowed claims when you lose the capital, or when your claim on it becomes hostile. A claim that the other nation held as hostile stays hostile for you. A nation that still holds territory is excluded. The region screen goes on crediting the claim to the nation it came from, so you can always see which capital is carrying it.")]
+    [Draw("Holding a capital borrows that nation's claims", Tooltip = "While you hold the original capital of a dormant nation, you can use the claims of that nation. Your claim on the capital must not be hostile. You lose the borrowed claims when you lose the capital, or when your claim on it becomes hostile. A claim that the other nation held as hostile stays hostile for you. A nation that still holds territory is excluded. A region you take through a borrowed claim is held by a hostile claim, so you must legitimize a capital you take that way before you can borrow its claims. After any hostile regions, investment in Government and Unity also legitimizes the claims you borrow as hostile, one at a time: the claim becomes peaceful for the nation you borrow it from, so it stays peaceful for whoever holds that capital. A project that needs a nation to exist, such as Greater Indonesia, is also available while a dormant nation's capital is held without a hostile claim: its claims go to the dormant nation, and whoever holds the capital borrows them. The region screen goes on crediting the claim to the nation it came from, so you can always see which capital is carrying it.")]
     public bool inheritedCapitalClaims = true;
+
+    // A nation that comes out of a war without its own capital, sitting on the capital of a
+    // dormant nation instead, becomes that nation.
+    [Draw("A nation left on a dormant nation's capital becomes that nation", Tooltip = "When a war ends and a nation has lost its original capital to an enemy in that war, the nation looks at its new capital. If that region is the original capital of a dormant nation, and the dormant nation has a claim on it, the dormant nation comes back with all the regions of the nation. Each faction keeps its control points and their priorities. Stats, armies, nuclear weapons, space funding and accumulated investment move across. Alliances, rivalries and federation membership do not. The change happens on the next day after the nation is at peace with everyone.")]
+    public bool dormantCapitalIdentity = true;
 
     // Repeatable projects granting control point capacity or resources (Management, Audience,
     // Commercial, Operations Research) scale their payoff by this fraction of the base value per
@@ -230,7 +236,6 @@ public class Settings : UnityModManager.ModSettings, IDrawable
         try
         {
             StationSolarMirrors.Invalidate();
-            InheritedCapitalClaims.OnSettingChanged();
         }
         catch (Exception e)
         {
@@ -1466,32 +1471,39 @@ internal static class FleetDetectedLocationExpand
 // So the claims are borrowed, not granted. While you hold a dormant nation's original capital and
 // your claim on that capital is not hostile, its claims are yours; lose the capital, or have the
 // claim on it turn hostile, and they go again. A nation still holding territory of its own is
-// excluded - it can still speak for itself, and its claims are not going spare. Hostility carries across unchanged - a claim the other
-// nation held hostilely stays hostile for you, because the point is to skip the merge dance, not
-// to launder a grievance into a peaceful merger.
+// excluded - it can still speak for itself, and its claims are not going spare. Hostility carries
+// across unchanged - a claim the other nation held hostilely stays hostile for you, because the
+// point is to skip the merge dance, not to launder a grievance into a peaceful merger.
 //
-// Lent ahead of time when a capital falls, so the conquest itself counts them. Recomputed when a
-// nation is absorbed, when regions change hands, when a hostile claim turns
-// peaceful, when any project completes (claims can be gated behind one), monthly as a backstop, and
-// for every nation on load - a load starts from vanilla claims, since borrowed ones are never written.
-// Borrowed claims never reach a save file: SaveAllGameStates is bracketed so they are handed back
-// before serialization and lent again afterwards. A save written with this on is a vanilla save,
-// and turning the tweak off loses nothing.
+// Borrowed claims are never written anywhere. They are worked out afresh each time the game reads
+// a nation's claims: the getters of TINationState.claims and hostileClaims return the nation's own
+// list with the borrowed ones merged in. Every reader in the game goes through those two getters -
+// the AI, federations, effects, war and the UI alike - so nothing has to notice a capital changing
+// hands, a project ungating a claim or a nation coming back: the next read gives the new answer.
+// An earlier version wrote the borrowed claims into the real lists and kept them in step with a
+// hook for every event that could move them; each missed or mistimed event was a bug.
+//
+// Writes go the other way. Every place the game adds or removes a claim is one of a handful of
+// TINationState methods, and those are pointed at the backing fields, so a write lands in the
+// nation's own list and never in a merged copy that is thrown away. A claim the game hands out is
+// the nation's own outright - including the one it gives a nation on a region it conquers, which
+// vanilla makes hostile when the nation had no claim of its own. A conquest made on a borrowed
+// claim is therefore held hostile, and a capital held hostile lends nothing, so a run of conquests
+// has to stop and legitimize each capital before that capital's claims come along.
+//
+// Saves read the same getters, so while one is written they answer with the nation's own lists.
+// A save written with this on is a vanilla save, and turning the tweak off loses nothing.
 [HarmonyPatch]
 internal static class InheritedCapitalClaims
 {
-    // What we lent each nation, and whether we lent it hostile, so a recompute takes back exactly
-    // what it gave and never touches a claim the nation owns in its own right. RemoveClaim also
-    // clears the hostile flag, so the flag has to be remembered here rather than read back off the
-    // nation. ponytail: in-memory only - borrowed claims are rebuilt on the first tick after a
-    // load, so nothing needs to survive a reload.
-    private static readonly Dictionary<TINationState, Dictionary<TIRegionState, bool>> lent =
-        new Dictionary<TINationState, Dictionary<TIRegionState, bool>>();
+    private static readonly AccessTools.FieldRef<TINationState, List<TIRegionState>> ownClaims =
+        AccessTools.FieldRefAccess<TINationState, List<TIRegionState>>("<claims>k__BackingField");
+    private static readonly AccessTools.FieldRef<TINationState, List<TIRegionState>> ownHostileClaims =
+        AccessTools.FieldRefAccess<TINationState, List<TIRegionState>>("<hostileClaims>k__BackingField");
 
     // originalCapital is set during world init and never moves afterwards (SetCapital changes the
     // working capital, not this), so the region -> nation map is built once and only rebuilt if the
-    // nation count changes. Scanning every nation per region per day is otherwise millions of
-    // comparisons a turn.
+    // nation count changes. Scanning every nation per region on every read would be far too slow.
     private static Dictionary<TIRegionState, TINationState> capitalOf;
     private static int mappedNations = -1;
 
@@ -1513,172 +1525,358 @@ internal static class InheritedCapitalClaims
         return capitalOf.TryGetValue(region, out TINationState source) ? source : null;
     }
 
-    // SetClaim on a region already claimed calls RemoveHostileClaim, which is one of our triggers, so
-    // lending a claim would recurse back in here mid-lend. One flag, because recomputes are always
-    // sequential - RecomputeAll's loop sets and clears it once per nation.
-    private static bool recomputing;
+    // While a save is being written the getters answer with the nation's own lists only.
+    private static bool saving;
 
-    // Called when the setting moves in the UMM window: hand every borrowed claim back on the way
-    // off, so turning the tweak off mid-campaign leaves the map exactly as vanilla had it.
-    // UMM calls OnChange for whichever control moved, and OnChange calls this without knowing
-    // which one that was - so a walk over every nation, with a claim change and its event on
-    // each, was running whenever any setting in the mod was touched. Only this setting's own
-    // change can need it. Null to start with rather than the field's default, because the file
-    // is read before anything asks, and the first answer has to be the loaded value's.
-    private static bool? applied;
+    // Nothing is merged until the campaign is up. A load reads these getters while it is still
+    // filling the game states in, and two things go wrong if they answer then: the load can fill
+    // a merged copy instead of the real list, losing the claims, and CapitalHolder asks
+    // GameStateManager.AllNations, which caches its answer - asked mid-load it caches a list with
+    // no nations in it, and the load dies on the first Min over them.
+    private static bool ready;
 
-    internal static void OnSettingChanged()
+    [HarmonyPatch(typeof(GameStateManager), nameof(GameStateManager.LoadAllGameStates))]
+    [HarmonyPrefix]
+    private static void BeforeLoad() => ready = false;
+
+    [HarmonyPatch(typeof(GameStateManager), nameof(GameStateManager.ClearAllGameStates))]
+    [HarmonyPrefix]
+    private static void BeforeClear() => ready = false;
+
+    // A capital about to fall. CompleteOccupationofRegion draws up what the conqueror takes from
+    // the claims it holds the moment the capital falls, before it holds the capital - so the claims
+    // that capital brings would arrive one conquest late. For the length of that one call the
+    // conqueror is read as already holding what it is about to take, and the loser, if it is
+    // about to lose everything, as already dormant.
+    private sealed class Capture
     {
-        if (applied == Main.settings.inheritedCapitalClaims)
-        {
-            return;
-        }
-        applied = Main.settings.inheritedCapitalClaims;
-        if (Main.settings.inheritedCapitalClaims)
-        {
-            RecomputeAll();
-            return;
-        }
-        foreach (KeyValuePair<TINationState, Dictionary<TIRegionState, bool>> pair in lent)
-        {
-            foreach (TIRegionState region in pair.Value.Keys)
-            {
-                pair.Key.RemoveClaim(region);
-            }
-        }
-        lent.Clear();
+        internal TINationState winner;
+        internal TINationState goingDormant;
+        internal readonly HashSet<TIRegionState> incoming = new HashSet<TIRegionState>();
     }
 
-    // incoming and goingDormant ask what the nation would borrow a moment from now: holding those
-    // regions as well as its own, with that nation's last region gone. Only LendAhead asks.
-    internal static void Recompute(TINationState nation, ICollection<TIRegionState> incoming = null,
-        TINationState goingDormant = null)
+    private static Capture capture;
+
+    // What the nation borrows right now, as region -> borrowed as hostile. Null when nothing.
+    // Reads only the backing fields, never the patched getters, so it cannot recurse into itself.
+    private static Dictionary<TIRegionState, bool> Borrowed(TINationState nation)
     {
-        if (!Main.settings.inheritedCapitalClaims || recomputing
-            || nation == null || nation.alienNation || nation.claims == null)
+        if (!ready || !Main.settings.inheritedCapitalClaims || saving || nation == null || nation.alienNation)
         {
-            return;
+            return null;
         }
-        recomputing = true;
-        try
+        List<TIRegionState> own = ownClaims(nation);
+        List<TIRegionState> ownHostile = ownHostileClaims(nation);
+        if (own == null || ownHostile == null || nation.regions == null)
+        {
+            return null;                             // still being built
+        }
+        Capture pending = capture?.winner == nation ? capture : null;
+        IEnumerable<TIRegionState> holding = pending == null ? nation.regions
+            : nation.regions.Concat(pending.incoming.Where(r => !nation.regions.Contains(r)));
+        Dictionary<TIRegionState, bool> want = null;
+        foreach (TIRegionState capital in holding)
+        {
+            foreach (KeyValuePair<TIRegionState, bool> lent in LentThrough(nation, capital, pending))
             {
-            var want = new Dictionary<TIRegionState, bool>();      // region -> borrow it as hostile
-            IEnumerable<TIRegionState> holding = incoming == null ? nation.regions
-                : nation.regions.Concat(incoming.Where(r => !nation.regions.Contains(r)));
-            foreach (TIRegionState capital in holding)
-            {
-                // Holding it is the whole of it, short of holding it in anger. There is no claim to
-                // test: a region you own is not in your own claim list, so the ClaimedBy that stood
-                // here asked for something that can never be true of a region a nation holds. A
-                // census over a Broken Earth save found ninety-nine nations sitting on a dormant
-                // nation's original capital, every one of them failing it, and nothing ever lent.
-                if (nation.hostileClaims.Contains(capital))
-                {
-                    continue;
-                }
-                TINationState source = CapitalHolder(capital);
-                // Dormant nations only. A living nation that moved its capital still speaks for itself,
-                // and borrowing from it would be leeching rather than skipping the merge dance.
-                if (source == null || source == nation || source.alienNation || source.claims == null
-                    || (source.extant && source != goingDormant))
-                {
-                    continue;
-                }
-                // A capital not yet taken lends only what it is owed outright: nothing hostile, and
-                // nothing the source was itself borrowing from a merger. Those still come, once the
-                // capital is actually held - they just do not decide what the conquest hands over.
-                bool ahead = !nation.regions.Contains(capital);
-                lent.TryGetValue(source, out Dictionary<TIRegionState, bool> sourceBorrowed);
-                foreach (TIRegionState claim in source.claims)
-                {
-                    if (claim == null || claim.nation == nation || !claim.ClaimedBy(source))
-                    {
-                        continue;                    // gated behind a project nobody has finished
-                    }
-                    bool hostile = source.hostileClaims.Contains(claim);
-                    if (ahead && (hostile || (sourceBorrowed != null && sourceBorrowed.ContainsKey(claim))))
-                    {
-                        continue;
-                    }
-                    // two sources disagreeing on hostility: the peaceful reading wins
-                    want[claim] = want.TryGetValue(claim, out bool seen) ? (seen && hostile) : hostile;
-                }
-            }
-            if (!lent.TryGetValue(nation, out Dictionary<TIRegionState, bool> held))
-            {
-                held = lent[nation] = new Dictionary<TIRegionState, bool>();
-            }
-            foreach (TIRegionState region in held.Keys.ToList())
-            {
-                if (!want.ContainsKey(region) || want[region] != held[region])
-                {
-                    nation.RemoveClaim(region);       // gone, or its hostility changed: re-lend below
-                    held.Remove(region);
-                }
-            }
-            foreach (KeyValuePair<TIRegionState, bool> pair in want)
-            {
-                if (held.ContainsKey(pair.Key) || nation.claims.Contains(pair.Key))
-                {
-                    continue;                        // already lent, or theirs in their own right
-                }
-                nation.SetClaim(pair.Key, pair.Value, pair.Value);
-                held[pair.Key] = pair.Value;
+                want ??= new Dictionary<TIRegionState, bool>();
+                // two sources disagreeing on hostility: the peaceful reading wins
+                want[lent.Key] = want.TryGetValue(lent.Key, out bool seen) ? seen && lent.Value : lent.Value;
             }
         }
-        finally
+        return want;
+    }
+
+    // What one capital lends the nation, as claim -> hostile. Backing fields only, like Borrowed.
+    private static IEnumerable<KeyValuePair<TIRegionState, bool>> LentThrough(TINationState nation,
+        TIRegionState capital, Capture pending)
+    {
+        List<TIRegionState> own = ownClaims(nation);
+        // Holding it in anger lends nothing. A capital not yet taken counts only on a peaceful
+        // claim of our own: one we reach through a borrowed claim will be held hostile.
+        bool held = nation.regions.Contains(capital);
+        if (ownHostileClaims(nation).Contains(capital) || (!held && !own.Contains(capital)))
         {
-            recomputing = false;
+            yield break;
+        }
+        TINationState source = CapitalHolder(capital);
+        // Dormant nations only. A living nation that moved its capital still speaks for itself,
+        // and borrowing from it would be leeching rather than skipping the merge dance.
+        if (source == null || source == nation || source.alienNation
+            || (source.extant && source != pending?.goingDormant))
+        {
+            yield break;
+        }
+        List<TIRegionState> theirs = ownClaims(source);
+        List<TIRegionState> theirHostile = ownHostileClaims(source);
+        if (theirs == null || theirHostile == null)
+        {
+            yield break;
+        }
+        foreach (TIRegionState claim in theirs)
+        {
+            if (claim == null || claim.nation == nation || own.Contains(claim) || !claim.ClaimedBy(source))
+            {
+                continue;                            // ours already, or gated behind an unfinished project
+            }
+            bool hostile = theirHostile.Contains(claim);
+            if (!held && hostile)
+            {
+                continue;                            // a capital not yet taken hands over only what it is owed
+            }
+            yield return new KeyValuePair<TIRegionState, bool>(claim, hostile);
         }
     }
 
-    // Recompute the moment a merger or conquest changes who holds what, and once a day after that,
-    // so a capital that slips away takes its borrowed claims with it.
-    [HarmonyPatch(typeof(TINationState), nameof(TINationState.AbsorbNation))]
-    [HarmonyPostfix]
-    private static void OnAbsorb(TINationState __instance) => Recompute(__instance);
-
-    // A hostile claim turning peaceful is the one way a capital starts answering to us without any
-    // region changing hands.
-    [HarmonyPatch(typeof(TINationState), nameof(TINationState.RemoveHostileClaim))]
-    [HarmonyPostfix]
-    private static void OnClaimFlip(TINationState __instance) => Recompute(__instance);
-
-    // Finishing a project can ungate claims anywhere on the map, for any nation, so this one sweeps
-    // everybody. Research completion already stalls for a beat; a pass over the nation list is lost
-    // in it.
-    [HarmonyPatch(typeof(TIFactionState), "AddCompletedProject", typeof(TIProjectTemplate))]
-    [HarmonyPostfix]
-    private static void OnResearch() => RecomputeAll();
-
-    // Monthly, not daily: the event hooks catch every case where a capital changes hands, so this is
-    // only a backstop for claims that shift without one - research unlocking a claim on a capital we
-    // already hold, or a claim's hostility flipping. A month's lag on those is nothing.
-    [HarmonyPatch(typeof(TINationState), "MonthlyNationUpdate")]
-    [HarmonyPostfix]
-    private static void Monthly(TINationState __instance) => Recompute(__instance);
-
-    // Regions changing hands outside a merger - a peace deal, a seizure - can hand over or take
-    // away a capital, so recompute both sides rather than waiting for the next day.
-    [HarmonyPatch(typeof(TINationState), nameof(TINationState.TransferRegionsControlTo))]
-    [HarmonyPostfix]
-    private static void OnTransfer(TINationState __instance, TINationState newNation)
+    // Borrowed claims the nation can only borrow as hostile right now: what legitimizing works on.
+    private static List<TIRegionState> HostileBorrowed(TINationState nation)
     {
-        Recompute(__instance);
-        Recompute(newNation);
+        Dictionary<TIRegionState, bool> borrowed = Borrowed(nation);
+        return borrowed == null ? new List<TIRegionState>()
+            : borrowed.Where(pair => pair.Value).Select(pair => pair.Key).ToList();
+    }
+
+    // Legitimizing reaches the claims you borrow. Vanilla's counter - one tick for each Government
+    // or Unity priority completed, numPrioritiesForLegitimize to fill - normally runs only while
+    // the nation holds a region by a hostile claim, and each time it fills it makes one such
+    // region peaceful. Here it also runs while the nation borrows a hostile claim, and once no
+    // hostile region is left, filling it makes one borrowed claim peaceful at its source: the
+    // dormant nation's own claim loses its hostility. It is still borrowed - it goes with the
+    // capital - but it is peaceful for whoever holds that capital from then on.
+    [HarmonyPatch(typeof(TINationState), nameof(TINationState.canAccumulateLegitimizeClaimTriggers), MethodType.Getter)]
+    [HarmonyPostfix]
+    private static void CountsWhileBorrowingHostile(TINationState __instance, ref bool __result)
+    {
+        __result = __result || HostileBorrowed(__instance).Count > 0;
+    }
+
+    // Hostile regions first, as vanilla has it; hostile borrowed claims only once none are left,
+    // so the counter's target reads the same in vanilla's tooltip and in its completion.
+    [HarmonyPatch(typeof(TINationState), nameof(TINationState.CandidateLegitimizeClaimRegions))]
+    [HarmonyPostfix]
+    private static void HostileBorrowedAreCandidates(TINationState __instance, List<TIRegionState> __result)
+    {
+        if (__result.Count == 0)
+        {
+            __result.AddRange(HostileBorrowed(__instance));
+        }
+    }
+
+    [HarmonyPatch(typeof(TINationState), nameof(TINationState.OnLegitimizeClaimPriorityComplete))]
+    [HarmonyPrefix]
+    private static bool LegitimizeAtSource(TINationState __instance, ref bool __result)
+    {
+        TIRegionState claim = __instance.GetNextLegitimizeClaimRegion();
+        if (claim == null || claim.nation == __instance)
+        {
+            return true;                             // vanilla's own case: a region it holds
+        }
+        // Every capital lending it hostile, since a claim is only borrowed hostile when no source
+        // lends it peacefully.
+        bool changed = false;
+        foreach (TIRegionState capital in __instance.regions)
+        {
+            if (LentThrough(__instance, capital, null).Any(lent => lent.Key == claim && lent.Value))
+            {
+                CapitalHolder(capital).RemoveHostileClaim(claim);
+                changed = true;
+            }
+        }
+        if (!changed)
+        {
+            return true;
+        }
+        TINotificationQueueState.LogNationsGainClaims(new Dictionary<TINationState, List<TIRegionState>>
+        {
+            { __instance, new List<TIRegionState> { claim } }
+        }, null);
+        __result = true;
+        return false;
+    }
+
+    // Vanilla's tooltip line for the counter promises the region loses its hostile status and
+    // unrest falls. For a borrowed claim it says what will happen instead.
+    [HarmonyPatch(typeof(PriorityListItemController), nameof(PriorityListItemController.priorityTipStr))]
+    [HarmonyPostfix]
+    private static void DescribeBorrowedLegitimize(TINationState nation, PriorityType priority, ref string __result)
+    {
+        if ((priority != PriorityType.Government && priority != PriorityType.Unity) || __result == null)
+        {
+            return;
+        }
+        TIRegionState claim = nation?.GetNextLegitimizeClaimRegion();
+        if (claim == null || claim.nation == nation)
+        {
+            return;
+        }
+        object[] args =
+        {
+            claim.displayName, nation.accumulatedLegitimizeClaimTriggers,
+            TIGlobalConfig.globalConfig.numPrioritiesForLegitimize
+        };
+        __result = __result.Replace(Loc.T("UI.Nation.LegitimizeClaim", args),
+            Loc.T("UI.CataTweaks.LegitimizeBorrowedClaims", args));
+    }
+
+    // Forty-five projects - Greater Indonesia, Commonwealth Restored and the rest - name a nation
+    // that must exist, and do nothing but hand that nation claims. With its capital in someone's
+    // peaceful hands a dormant nation's claims are still in use, so such a project counts that
+    // nation as present: completing it gives the dormant nation the claims, and the holder
+    // borrows them.
+    internal static bool PresentThroughCapital(TINationState nation)
+    {
+        if (nation == null || nation.extant)
+        {
+            return nation != null;
+        }
+        if (!ready || !Main.settings.inheritedCapitalClaims || nation.alienNation)
+        {
+            return false;
+        }
+        TIRegionState capital = nation.originalCapital;
+        TINationState holder = capital?.nation;
+        return holder != null && holder != nation && !holder.alienNation
+            && ownHostileClaims(holder)?.Contains(capital) == false;
+    }
+
+    // The requirement is one extant test at the top of PrereqsSatisfied; it becomes this one.
+    [HarmonyPatch(typeof(TIProjectTemplate), nameof(TIProjectTemplate.PrereqsSatisfied))]
+    [HarmonyTranspiler]
+    private static IEnumerable<CodeInstruction> NationPresentThroughCapital(IEnumerable<CodeInstruction> code)
+    {
+        MethodInfo extant = AccessTools.PropertyGetter(typeof(TINationState), nameof(TINationState.extant));
+        MethodInfo present = AccessTools.Method(typeof(InheritedCapitalClaims), nameof(PresentThroughCapital));
+        foreach (CodeInstruction instruction in code)
+        {
+            if (instruction.Calls(extant))
+            {
+                instruction.opcode = OpCodes.Call;       // same stack shape: nation in, bool out
+                instruction.operand = present;
+            }
+            yield return instruction;
+        }
+    }
+
+    // A project is rolled for a faction when a prerequisite completes, and again for one gated on
+    // a nation when that nation gains independence. A gate that opens because a capital changed
+    // hands has no such moment, so these rolls are made here, on load and monthly: once per
+    // faction per project, as vanilla's own independence roll does, skipping any the faction has
+    // already triggered, missed, has available or has completed. A roll that fails files the
+    // project as missed, exactly like a vanilla one.
+    private static void RollOpenedProjects()
+    {
+        if (!ready || !Main.settings.inheritedCapitalClaims)
+        {
+            return;
+        }
+        List<TIProjectTemplate> opened = TIGlobalResearchState.GetAllProjects()
+            .Where(p => !string.IsNullOrEmpty(p.requiresNation))
+            .Where(p => { TINationState n = p.requiredNationState; return n != null && !n.extant && PresentThroughCapital(n); })
+            .ToList();
+        if (opened.Count == 0)
+        {
+            return;
+        }
+        foreach (TIFactionState faction in GameStateManager.AllFactions().Where(f => f.IsActiveHumanFaction))
+        {
+            foreach (TIProjectTemplate project in opened)
+            {
+                if (faction.missedProjects?.Contains(project.dataName) == true
+                    || faction.completedProjects.Contains(project) || faction.availableProjects.Contains(project)
+                    || faction.ProjectAlreadyTriggered(project))
+                {
+                    continue;
+                }
+                faction.RollToAddProjectTrigger(project);
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(PavonisInteractive.TerraInvicta.Systems.PeriodicUpdates.NationPeriodicUpdate), "OnMonthlyUpdate")]
+    [HarmonyPostfix]
+    private static void Monthly() => RollOpenedProjects();
+
+    [HarmonyPatch(typeof(TINationState), nameof(TINationState.claims), MethodType.Getter)]
+    [HarmonyPostfix]
+    private static void WithBorrowedClaims(TINationState __instance, ref List<TIRegionState> __result)
+    {
+        Dictionary<TIRegionState, bool> borrowed = Borrowed(__instance);
+        if (borrowed == null)
+        {
+            return;
+        }
+        var merged = new List<TIRegionState>(__result.Count + borrowed.Count);
+        merged.AddRange(__result);
+        merged.AddRange(borrowed.Keys);
+        __result = merged;
+    }
+
+    [HarmonyPatch(typeof(TINationState), nameof(TINationState.hostileClaims), MethodType.Getter)]
+    [HarmonyPostfix]
+    private static void WithBorrowedHostileClaims(TINationState __instance, ref List<TIRegionState> __result)
+    {
+        Dictionary<TIRegionState, bool> borrowed = Borrowed(__instance);
+        if (borrowed == null || !borrowed.ContainsValue(true))
+        {
+            return;
+        }
+        var merged = new List<TIRegionState>(__result);
+        merged.AddRange(borrowed.Where(pair => pair.Value).Select(pair => pair.Key));
+        __result = merged;
+    }
+
+    // Every method that writes to either list, read off the decompiled game: each reaches the list
+    // through its getter, which would hand it a merged copy. Pointing the getter call at the
+    // backing field keeps the write on the real list. A read inside these methods sees the
+    // nation's own claims too, which is what each of them means: SetClaim asks whether the claim
+    // is new to the nation, not whether it can currently be borrowed.
+    [HarmonyPatch]
+    private static class WritersUseOwnLists
+    {
+        private static readonly MethodInfo getClaims =
+            AccessTools.PropertyGetter(typeof(TINationState), nameof(TINationState.claims));
+        private static readonly MethodInfo getHostileClaims =
+            AccessTools.PropertyGetter(typeof(TINationState), nameof(TINationState.hostileClaims));
+
+        private static IEnumerable<MethodBase> TargetMethods() => new[]
+        {
+            nameof(TINationState.SetClaim), nameof(TINationState.RemoveClaim),
+            nameof(TINationState.RemoveHostileClaim), nameof(TINationState.SetCapital),
+            nameof(TINationState.TransferRegionsControlTo), nameof(TINationState.InitWithTemplate),
+            nameof(TINationState.SetAllBilaterals), nameof(TINationState.PostGlobalGameStateCreateInit_2),
+        }.Select(name => (MethodBase)AccessTools.Method(typeof(TINationState), name));
+
+        private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> code)
+        {
+            FieldInfo claimsField = AccessTools.Field(typeof(TINationState), "<claims>k__BackingField");
+            FieldInfo hostileField = AccessTools.Field(typeof(TINationState), "<hostileClaims>k__BackingField");
+            foreach (CodeInstruction instruction in code)
+            {
+                // Same stack shape: the getter and the field load both take the nation, leave the list.
+                if (instruction.Calls(getClaims))
+                {
+                    instruction.opcode = OpCodes.Ldfld;
+                    instruction.operand = claimsField;
+                }
+                else if (instruction.Calls(getHostileClaims))
+                {
+                    instruction.opcode = OpCodes.Ldfld;
+                    instruction.operand = hostileField;
+                }
+                yield return instruction;
+            }
+        }
     }
 
     // Taking a capital hands the conqueror every region of the loser it claims, and that list is
-    // drawn up once, from the claims it holds the moment the capital falls. The transfer hook above
-    // lends only after the regions have moved, so the claims that come with the capital arrived one
-    // conquest late: take the capital of a nation you hold a peaceful claim on and you got only
-    // what you already claimed, then its claims, with nothing left to spend them on. So the claims
-    // are lent ahead of the list, as they will stand once the transfer is done - the same
-    // condition vanilla tests, so a lend made here is always followed by the transfer it assumed.
+    // drawn up once, from the claims it holds the moment the capital falls. This decides what the
+    // conqueror is about to take, and leaves it in force until the capture is done - the same
+    // condition vanilla tests, so what it assumes is always what happens.
     [HarmonyPatch(typeof(TIRegionState), "CompleteOccupationofRegion")]
     [HarmonyPrefix]
-    private static void BeforeCapture(TIRegionState __instance, TIArmyState army)
+    private static void BeforeCapture(TIRegionState __instance, TIArmyState army, out Capture __state)
     {
+        __state = capture;
         TINationState loser = __instance.nation;
         TINationState winner = __instance.leadOccupier ?? army?.homeNation;
         if (!Main.settings.inheritedCapitalClaims || loser == null || winner == null || winner == loser
@@ -1687,89 +1885,62 @@ internal static class InheritedCapitalClaims
         {
             return;
         }
-        LendAhead(winner, loser, __instance.GetOccupyingAlliance(ordered: true));
+        capture = Plan(winner, loser, __instance.GetOccupyingAlliance(ordered: true));
     }
+
+    // Finalizer, not a postfix: a capture that throws must not leave its assumption behind.
+    [HarmonyPatch(typeof(TIRegionState), "CompleteOccupationofRegion")]
+    [HarmonyFinalizer]
+    private static void AfterCapture(Capture __state) => capture = __state;
 
     // What the winner will hold is what it claims of the loser, and what it claims depends on the
     // capitals among that, so this runs to a fixed point. It first assumes the loser goes dormant -
     // the loser's own peaceful claims cover its own core, so borrowing them is what takes the lot -
     // and keeps that only if it comes true: every region the loser has is claimed by the winner or
-    // by an ally at war with it, which is exactly when vanilla leaves the loser with nothing. Land
-    // the loser holds by a hostile claim or through a merger is not owed, so it stays behind.
-    private static void LendAhead(TINationState winner, TINationState loser, List<TINationState> alliance)
+    // by an ally at war with it, which is exactly when vanilla leaves the loser with nothing.
+    private static Capture Plan(TINationState winner, TINationState loser, List<TINationState> alliance)
     {
         foreach (bool dormant in new[] { true, false })
         {
-            var incoming = new HashSet<TIRegionState>();
+            capture = new Capture { winner = winner, goingDormant = dormant ? loser : null };
             for (int pass = 0; pass < 8; pass++)          // each pass can only add capitals; 8 is plenty
             {
                 var next = new HashSet<TIRegionState>(loser.regions.Where(r => winner.claims.Contains(r)));
-                if (pass > 0 && next.SetEquals(incoming))
+                if (next.SetEquals(capture.incoming))
                 {
                     break;
                 }
-                incoming = next;
-                Recompute(winner, incoming, dormant ? loser : null);
+                capture.incoming.Clear();
+                capture.incoming.UnionWith(next);
             }
-            if (!dormant || loser.regions.All(r => incoming.Contains(r)
+            if (!dormant || loser.regions.All(r => capture.incoming.Contains(r)
                 || alliance.Any(x => x != winner && x.IsAtWarWith(loser) && x.claims.Contains(r))))
             {
-                return;
+                return capture;
             }
         }
+        return capture;
     }
 
-    // A save holds vanilla claims - borrowed ones are handed back before it is written - so they
-    // are lent again once the campaign is up. CompleteInit rather than LoadAllGameStates, which is
-    // only the deserialize: the numbered init stages run after it, one of them rebuilding every
-    // region's claimant list out of each nation's claims, and a lend made before that reached the
-    // player a day late, when the monthly backstop came round. This is also the one hook a new
-    // campaign passes through, so it no longer waits on that backstop either.
+    [HarmonyPatch(typeof(GameStateManager), nameof(GameStateManager.SaveAllGameStates))]
+    [HarmonyPrefix]
+    private static void BeforeSave() => saving = true;
+
+    // Finalizer, not a postfix: a save that throws must not leave the getters stuck on own lists.
+    [HarmonyPatch(typeof(GameStateManager), nameof(GameStateManager.SaveAllGameStates))]
+    [HarmonyFinalizer]
+    private static void AfterSave() => saving = false;
+
+    // A new campaign or a load can bring a different set of nations.
     [HarmonyPatch(typeof(GameControl), nameof(GameControl.CompleteInit))]
     [HarmonyPostfix]
     private static void OnCampaignReady()
     {
-        lent.Clear();
         capitalOf = null;
-        RecomputeAll();
-    }
-
-    private static void RecomputeAll()
-    {
-        foreach (TINationState nation in GameStateManager.AllNations())
-        {
-            Recompute(nation);
-        }
-    }
-
-    // Saves stay vanilla: hand every borrowed claim back, let the game serialize, then lend again.
-    [HarmonyPatch(typeof(GameStateManager), nameof(GameStateManager.SaveAllGameStates))]
-    [HarmonyPrefix]
-    private static void BeforeSave()
-    {
-        recomputing = true;   // no trigger may re-lend while the claims are handed back
-        foreach (KeyValuePair<TINationState, Dictionary<TIRegionState, bool>> pair in lent)
-        {
-            foreach (TIRegionState region in pair.Value.Keys)
-            {
-                pair.Key.RemoveClaim(region);
-            }
-        }
-    }
-
-    // Finalizer, not a postfix: a save that throws still has to give the claims back.
-    [HarmonyPatch(typeof(GameStateManager), nameof(GameStateManager.SaveAllGameStates))]
-    [HarmonyFinalizer]
-    private static void AfterSave()
-    {
-        foreach (KeyValuePair<TINationState, Dictionary<TIRegionState, bool>> pair in lent)
-        {
-            foreach (KeyValuePair<TIRegionState, bool> claim in pair.Value)
-            {
-                pair.Key.SetClaim(claim.Key, claim.Value, claim.Value);
-            }
-        }
-        recomputing = false;
+        capture = null;
+        saving = false;
+        ready = true;
+        RollOpenedProjects();
     }
 }
 
@@ -3931,6 +4102,183 @@ internal static class UnagedCouncilorPortraits
     }
 }
 
+// Tweak 20: a nation that loses its capital in a war and is left seated on a dormant nation's
+// capital becomes that nation.
+//
+// Broken Earth's Westralia holds Perth and Java. Take Perth and vanilla leaves a rump Westralia
+// governing Jakarta, while Indonesia - whose capital Jakarta is, and which claims it - sits dormant.
+// So when the war ends, the rump takes the identity its new capital implies: Indonesia comes back
+// with every region the rump held, and the rump goes dormant in its place.
+//
+// Vanilla's revival path does the work - Independence, as a secession or release does - so the
+// dormant nation is reinitialized the way the game always does it, and the rump's wars, alliances,
+// rivalries, breakaways and federation seat are wound up by the transfer that empties it. Those
+// are deliberately not carried over: it is a different nation. What Independence leaves behind is
+// put across by hand, as AbsorbNation does for a merger: control point owners and their priorities,
+// nuclear weapons, space funding and accumulated investment.
+//
+// "Lost its capital in this war" is read off the map rather than tracked: at the moment a war
+// ends, the nation's original capital is held by the enemy it just made peace with. The swap waits
+// for the next daily update, and for the nation to be at peace with everyone - wars end inside
+// region transfers, which is no place to empty a nation. ponytail: the queue is in memory only, so
+// a reload between the peace and the next day drops it.
+[HarmonyPatch]
+internal static class DormantCapitalIdentity
+{
+    private static readonly HashSet<TINationState> pending = new HashSet<TINationState>();
+
+    private static readonly MethodInfo independence = AccessTools.Method(typeof(TINationState), "Independence");
+    private static readonly MethodInfo nuclearProgram =
+        AccessTools.PropertySetter(typeof(TINationState), nameof(TINationState.nuclearProgram));
+
+    // Every peace - a full war's end, a separate peace, a nation knocked out - passes through here
+    // once per pair of enemies.
+    [HarmonyPatch(typeof(TINationState), "EndWarWithSingleEnemy")]
+    [HarmonyPostfix]
+    private static void OnPeace(TINationState __instance, TINationState otherNation)
+    {
+        if (!Main.settings.dormantCapitalIdentity)
+        {
+            return;
+        }
+        Mark(__instance, otherNation);
+        Mark(otherNation, __instance);
+    }
+
+    private static void Mark(TINationState nation, TINationState enemy)
+    {
+        if (nation?.originalCapital != null && enemy != null && nation.originalCapital.nation == enemy)
+        {
+            pending.Add(nation);
+        }
+    }
+
+    [HarmonyPatch(typeof(PavonisInteractive.TerraInvicta.Systems.PeriodicUpdates.NationPeriodicUpdate), "OnDailyUpdate")]
+    [HarmonyPostfix]
+    private static void Daily()
+    {
+        if (pending.Count == 0)
+        {
+            return;
+        }
+        foreach (TINationState nation in pending.ToList())
+        {
+            if (nation.extant && nation.wars.Count > 0)
+            {
+                continue;                          // still fighting someone: wait for that peace too
+            }
+            pending.Remove(nation);
+            if (Main.settings.dormantCapitalIdentity)
+            {
+                TryBecomeHeir(nation);
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(GameControl), nameof(GameControl.CompleteInit))]
+    [HarmonyPostfix]
+    private static void OnCampaignReady() => pending.Clear();
+
+    private static void TryBecomeHeir(TINationState rump)
+    {
+        TIRegionState seat = rump.capital;
+        if (!rump.extant || rump.alienNation || seat == null || rump.regions.Contains(rump.originalCapital))
+        {
+            return;
+        }
+        TINationState heir = GameStateManager.AllNations().FirstOrDefault(x => x.originalCapital == seat);
+        if (heir == null || heir == rump || heir.extant || heir.alienNation || !seat.ClaimedBy(heir))
+        {
+            return;
+        }
+
+        // Everything Independence would lose, read before the rump is emptied.
+        var owners = rump.controlPoints.OrderBy(cp => cp.positionInNation)
+            .Select(cp => (cp.faction, priorities: new Dictionary<PriorityType, int>(cp.controlPointPriorities)))
+            .ToList();
+        List<TIControlPoint> rumpPoints = rump.controlPoints.ToList();
+        TIFactionState executive = rump.executiveFaction;
+        int nukes = rump.numNuclearWeapons;
+        bool nuclear = rump.nuclearProgram;
+        float funding = rump.spaceFunding_year;
+        float fundingIncome = rump.spaceFundingIncome_year;
+        Dictionary<PriorityType, float> invested =
+            Enums.PriorityTypes.ToDictionary(p => p, p => rump.GetAccumulatedInvestmentPoints(p));
+
+        // Amicable, and with the executive as the acting faction for control points: the amicable
+        // branch otherwise reads the parent's executive faction after the parent has been emptied,
+        // and an empty nation has no executive control point to read. Reporting is suppressed and
+        // redone below, once the control points show their real owners.
+        independence.Invoke(heir, new object[]
+        {
+            executive, rump, rump, rump.regions.ToList(), true, true, true, ControlPointChangeCause.Independence
+        });
+
+        if (heir.regions.Contains(seat))
+        {
+            heir.SetCapital(seat);
+        }
+        // Lined up from the top, the way the game itself treats control points: the top one is the
+        // executive, a nation that grows gains new ones at the bottom and hands them to its highest
+        // owner, and a nation that shrinks sheds from the bottom. The revived nation's count is
+        // its own until the next control point update settles it from the GDP, so a mismatch here
+        // is filled and trimmed the same way.
+        TIFactionState grower = owners.LastOrDefault(o => o.faction != null).faction;
+        int offset = owners.Count - heir.numControlPoints;
+        for (int i = 0; i < heir.numControlPoints; i++)
+        {
+            TIControlPoint cp = heir.GetControlPoint(i);
+            if (cp == null)
+            {
+                break;
+            }
+            int from = i + offset;
+            if (from < 0)
+            {
+                heir.ChangeControlPointOwner(i, ControlPointChangeCause.Growth, grower);
+                continue;
+            }
+            heir.ChangeControlPointOwner(i, ControlPointChangeCause.Independence, owners[from].faction);
+            foreach (KeyValuePair<PriorityType, int> priority in owners[from].priorities)
+            {
+                cp.SetControlPointPriority(priority.Key, priority.Value, skipUpdate: true, bulkUpdate: true);
+            }
+            // One unbatched set flushes the batch, as ApplyInvestmentTemplateToControlPoint does.
+            if (owners[from].priorities.TryGetValue(PriorityType.Economy, out int economy))
+            {
+                cp.SetControlPointPriority(PriorityType.Economy, economy);
+            }
+        }
+        // AbsorbNation clears the joining nation's control points the same way, so no faction is
+        // left holding a seat in a nation with no regions.
+        foreach (TIControlPoint cp in rumpPoints)
+        {
+            rump.ChangeControlPointOwner(cp.positionInNation, ControlPointChangeCause.Annexation, null);
+        }
+
+        if (nuclear && !heir.nuclearProgram)
+        {
+            nuclearProgram.Invoke(heir, new object[] { true });
+        }
+        if (nukes > 0)
+        {
+            heir.ChangeNumNuclearWeapons(nukes);
+            rump.ChangeNumNuclearWeapons(-nukes);
+        }
+        heir.ChangeAnnualSpaceFundingValue(funding);
+        rump.ChangeAnnualSpaceFundingValue(-fundingIncome);
+        foreach (KeyValuePair<PriorityType, float> pair in invested)
+        {
+            if (pair.Value > 0f && heir.ValidPriority(pair.Key))
+            {
+                heir.ModifyAccumulatedInvestment(pair.Key, pair.Value, multiply: false, triggerUpdate: false);
+            }
+        }
+        heir.SetDataDirty();
+        TINotificationQueueState.LogIndependence(heir, rump);
+    }
+}
+
 // Every [Draw] setting mirrored onto the vanilla Gameplay options tab, under a CataTweaks header.
 //
 // The tab is hand-wired - OptionsMenuController holds a serialized Toggle or Slider and a separate
@@ -4130,9 +4478,9 @@ internal static class VanillaOptionsRows
         {
             field.SetValue(Main.settings, v);
             readout?.SetText(show(v));
-            // Not Commit: this fires every frame of a drag, and Commit writes Settings.xml and
-            // recomputes every nation's borrowed claims. The patches read the field directly, so
-            // the value is already live; the bookkeeping waits for the screen to close.
+            // Not Commit: this fires every frame of a drag, and Commit writes Settings.xml and runs
+            // OnChange. The patches read the field directly, so the value is already live; the
+            // bookkeeping waits for the screen to close.
             pendingSave = true;
         });
         return row;

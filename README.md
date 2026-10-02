@@ -128,8 +128,24 @@ between the two nations in the claim. The other conditions do not change.
 dormant nation, you can use the claims of that nation. Your claim on the capital must not be
 hostile. You lose the borrowed claims when you lose the capital, or when your claim on it becomes
 hostile. A claim that the other nation held as hostile stays hostile for you. A nation that still
-holds territory is excluded. The region screen goes on crediting the claim to the nation it came
+holds territory is excluded. A region you take through a borrowed claim is held by a hostile
+claim, so you must legitimize a capital you take that way before you can borrow its claims.
+Once no region is held by a hostile claim, investment in Government and Unity also legitimizes the
+claims you borrow as hostile, one at a time: the claim becomes peaceful for the nation you borrow
+it from, so it stays peaceful for whoever holds that capital. A project that needs a nation to
+exist, such as Greater Indonesia, is also available while that nation is dormant and its capital
+is held without a hostile claim: its claims go to the dormant nation, and whoever holds the
+capital borrows them. The region screen goes on crediting the claim to the nation it came
 from rather than to you, so which capital is carrying it stays visible. Save files do not change.
+
+**A nation left on a dormant nation's capital becomes that nation.** When a war ends and a nation
+has lost its original capital to an enemy in that war, the nation looks at its new capital. If
+that region is the original capital of a dormant nation, and the dormant nation has a claim on
+it, the dormant nation comes back with all the regions of the nation. In Broken Earth, if
+Australia takes Perth from Westralia, Westralia keeps only Java, and becomes Indonesia. Each
+faction keeps its control points and their priorities. Stats, armies, nuclear weapons, space
+funding and accumulated investment move across. Alliances, rivalries and federation membership
+do not. The change happens on the next day after the nation is at peace with everyone.
 
 **Repeatable management project scaling.** Each repeat of Management Research, Audience Research,
 Commercial Research and Operations Research pays its base reward plus this percentage, for each
@@ -288,9 +304,9 @@ had to clip anything until this tab made the list longer than the panel.
 
 Every setting applies immediately, which is only possible because no patch uses Harmony's
 `Prepare()`. Harmony evaluates that once at patch time, so a setting behind it could not change
-without a restart. Four patches hold state of their own: the solar mirror cache, the borrowed
-claim ledger, the preset validity cache and the repeatable capacity cache. The first two are
-released from `Settings.OnChange` when their setting is cleared.
+without a restart. Three patches hold state of their own: the solar mirror cache, the preset
+validity cache and the repeatable capacity cache. The first is released from `Settings.OnChange`
+when its setting is cleared.
 
 ## How the campaign options are stored
 
@@ -329,14 +345,47 @@ returns `projectUnlock?.SomeoneHasDoneIt() ?? true`.
 
 ## Borrowed capital claims
 
-`Recompute` reads `source.claims` and filters each entry through `TIRegionState.ClaimedBy`,
-because a claim whose unlock project is unresearched can be present without being usable. It
-recomputes when a nation is absorbed, when regions change hands, when a hostile claim turns
-peaceful, when any project completes, on load, and monthly as a backstop.
+Borrowed claims are never stored. The getters of `TINationState.claims` and `hostileClaims` are
+postfixed to return the nation's own list with its borrowed claims merged in, worked out on every
+read. Every reader in the game goes through those two getters, so there is nothing to keep in
+step: a capital changing hands, a project ungating a claim or a nation gaining independence shows
+up on the next read.
 
-Borrowed claims never reach a save file. `SaveAllGameStates` is bracketed so they are handed back
-before serialization and lent again afterwards, with the restore in a finalizer so a save that
-throws still returns them.
+The work is done by `Borrowed`, which reads only the backing fields, so it never recurses into the
+patched getters. It filters each of the source's claims through `TIRegionState.ClaimedBy`,
+because a claim whose unlock project is unresearched can be present without being usable.
+
+Every method that writes to either list reaches it through its getter, so those methods are
+transpiled to load the backing field instead: `SetClaim`, `RemoveClaim`, `RemoveHostileClaim`,
+`SetCapital`, `TransferRegionsControlTo`, `InitWithTemplate`, `SetAllBilaterals` and
+`PostGlobalGameStateCreateInit_2`. A new game version that writes a claim anywhere else would
+write into a merged copy and lose it, so that list has to be checked against each update.
+
+`SaveAllGameStates` sets a flag for its duration, in a finalizer so a failed save clears it, and
+the getters return the nation's own lists while it is set. The capital-capture list is the one
+place that needs a look ahead: `CompleteOccupationofRegion` builds the conqueror's haul from its
+claims before it holds the capital, so for the length of that one call the conqueror is read as
+already holding what it is about to take.
+
+Legitimizing reuses vanilla's counter: `canAccumulateLegitimizeClaimTriggers` also answers true
+while a claim is borrowed as hostile, `CandidateLegitimizeClaimRegions` falls back to those claims
+when no region is held by a hostile claim, and `OnLegitimizeClaimPriorityComplete` calls
+`RemoveHostileClaim` on each dormant nation lending the chosen claim hostile, then posts vanilla's
+new-claims notification. The priority tooltip's legitimize line is swapped for
+`UI.CataTweaks.LegitimizeBorrowedClaims` when its target is a borrowed claim.
+
+The 45 projects gated on a nation (`requiresNation`) have no effects of their own; they only
+unlock claims. `PrereqsSatisfied` is transpiled so its one `extant` test becomes
+`PresentThroughCapital`, which also accepts a dormant nation whose original capital is held
+without a hostile claim. Vanilla rolls such a project when a prerequisite completes and when the
+nation gains independence; a gate that opens because a capital changed hands has no such moment,
+so the missing roll is made on load and monthly, once per faction per project, skipping any the
+faction has triggered, missed, has available or has completed.
+
+The region side needs nothing. `NationsWithClaim` lists a nation only if a
+`Claim<nation><region>` template exists, which a borrower never has, and `SecessionCandidates`
+looks only at dormant nations. That is also why the region screen credits the claim to the
+nation it came from.
 
 ## Repeatable scaling arithmetic
 
