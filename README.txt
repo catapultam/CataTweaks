@@ -159,7 +159,10 @@ Gameplay
   hostile for you. A nation that still holds territory is excluded.
   A region you take through a borrowed claim is held by a hostile
   claim, so you must legitimize a capital you take that way before
-  you can borrow its claims. Once no region is held by a hostile
+  you can borrow its claims. A unification is not a conquest: a
+  region that comes with it, and that you then borrow a peaceful
+  claim on, is held peacefully, so a claim the joining nation
+  legitimized stays legitimized. Once no region is held by a hostile
   claim, investment in Government and Unity also legitimizes the
   claims you borrow as hostile, one at a time: the claim becomes
   peaceful for the nation you borrow it from, so it stays peaceful

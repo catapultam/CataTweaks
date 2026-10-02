@@ -130,6 +130,9 @@ hostile. You lose the borrowed claims when you lose the capital, or when your cl
 hostile. A claim that the other nation held as hostile stays hostile for you. A nation that still
 holds territory is excluded. A region you take through a borrowed claim is held by a hostile
 claim, so you must legitimize a capital you take that way before you can borrow its claims.
+A unification is not a conquest: a region that comes with it, and that you then borrow a
+peaceful claim on, is held peacefully, so a claim the joining nation legitimized stays
+legitimized.
 Once no region is held by a hostile claim, investment in Government and Unity also legitimizes the
 claims you borrow as hostile, one at a time: the claim becomes peaceful for the nation you borrow
 it from, so it stays peaceful for whoever holds that capital. A project that needs a nation to
@@ -360,6 +363,14 @@ transpiled to load the backing field instead: `SetClaim`, `RemoveClaim`, `Remove
 `SetCapital`, `TransferRegionsControlTo`, `InitWithTemplate`, `SetAllBilaterals` and
 `PostGlobalGameStateCreateInit_2`. A new game version that writes a claim anywhere else would
 write into a merged copy and lose it, so that list has to be checked against each update.
+
+Those writes still treat a region the nation does not claim on its own as seized, so a region
+it gains peacefully in a unification would come out hostile, and that hostile claim of its own
+hides a peaceful borrowed one. `AbsorbNation` is bracketed: it notes which of the joining
+nation's regions the absorber claimed before, and afterwards makes peaceful each new hostile
+claim on one of them that a dormant nation lends peacefully through a capital the absorber holds
+without a hostile claim, repeating until nothing changes. Vanilla calls `AbsorbNation` after a
+conquest only on a nation that is already dormant, so conquests are not affected.
 
 `SaveAllGameStates` sets a flag for its duration, in a finalizer so a failed save clears it, and
 the getters return the nation's own lists while it is set. The capital-capture list is the one

@@ -1922,6 +1922,81 @@ internal static class InheritedCapitalClaims
         return capture;
     }
 
+    // A merger. AbsorbNation moves the joining nation's regions with the same transfer a conquest
+    // uses, and that gives the absorber a claim of its own on every region it did not claim
+    // before - hostile, as a seizure. Vanilla does the same, but here the absorber now holds the
+    // joiner's capital and borrows its claims, and its own hostile claim on a region hides the
+    // peaceful one it borrows: a claim the joiner had legitimized would come out hostile again.
+    // So each region the merger seizes that way, and borrows peacefully once it is done, has its
+    // new claim made peaceful. Conquest never comes through here with regions to move - vanilla
+    // calls AbsorbNation on a loser that is already dormant - so conquests stay hostile.
+    private sealed class Merge
+    {
+        internal List<TIRegionState> moving;
+        internal HashSet<TIRegionState> claimedBefore;
+    }
+
+    [HarmonyPatch(typeof(TINationState), nameof(TINationState.AbsorbNation))]
+    [HarmonyPrefix]
+    private static void BeforeMerge(TINationState __instance, TINationState joiningNationState, out Merge __state)
+    {
+        __state = null;
+        // Vanilla's democracy rule makes the whole merger hostile, claimed or not; that stands.
+        if (!ready || !Main.settings.inheritedCapitalClaims || __instance.alienNation
+            || joiningNationState == null || !joiningNationState.extant
+            || __instance.HostileClaimDueToDemocracy(joiningNationState))
+        {
+            return;
+        }
+        __state = new Merge
+        {
+            moving = new List<TIRegionState>(joiningNationState.regions),
+            claimedBefore = new HashSet<TIRegionState>(ownClaims(__instance)),
+        };
+    }
+
+    // Runs to a fixed point, like Plan: a capital the joiner held made peaceful on one pass lends
+    // its own dormant nation's claims on the next.
+    [HarmonyPatch(typeof(TINationState), nameof(TINationState.AbsorbNation))]
+    [HarmonyPostfix]
+    private static void AfterMerge(TINationState __instance, Merge __state)
+    {
+        if (__state == null)
+        {
+            return;
+        }
+        List<TIRegionState> ownHostile = ownHostileClaims(__instance);
+        List<TIRegionState> seized = __state.moving
+            .Where(r => r.nation == __instance && !__state.claimedBefore.Contains(r) && ownHostile.Contains(r))
+            .ToList();
+        bool changed = true;
+        while (changed && seized.Count > 0)
+        {
+            changed = false;
+            foreach (TIRegionState region in seized.ToList())
+            {
+                if (__instance.regions.Any(capital => !ownHostile.Contains(capital)
+                    && LendsPeacefully(__instance, capital, region)))
+                {
+                    __instance.RemoveHostileClaim(region);   // writes the backing list, so ownHostile sees it
+                    seized.Remove(region);
+                    changed = true;
+                }
+            }
+        }
+    }
+
+    // Whether the capital lends the nation a peaceful claim on the region, by LentThrough's rules
+    // but without its skip for a region the nation already holds or claims. Backing fields only.
+    private static bool LendsPeacefully(TINationState nation, TIRegionState capital, TIRegionState region)
+    {
+        TINationState source = CapitalHolder(capital);
+        return source != null && source != nation && !source.alienNation && !source.extant
+            && ownClaims(source)?.Contains(region) == true
+            && ownHostileClaims(source)?.Contains(region) == false
+            && region.ClaimedBy(source);
+    }
+
     [HarmonyPatch(typeof(GameStateManager), nameof(GameStateManager.SaveAllGameStates))]
     [HarmonyPrefix]
     private static void BeforeSave() => saving = true;
