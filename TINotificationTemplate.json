@@ -1,0 +1,18 @@
+[
+  {
+    "dataName": "CataTweaks_ShipRally",
+    "alertHammerLoc": "UI.Notifications.MissionControl",
+    "disable": false,
+    "allowAnyChanges": true,
+    "allowAlertChanges": true,
+    "alertAudience": "None",
+    "firstAlertOverride": false,
+    "newsFeedAudience": "PrimaryFactions",
+    "timerAudience": "RelevantFactions",
+    "summaryAudience": {
+      "audience": "RelevantFactions",
+      "category": "SpaceEvents"
+    },
+    "stacking": "None"
+  }
+]

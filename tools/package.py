@@ -24,7 +24,9 @@ FILES = [
     ("ModInfo.json", "ModInfo.json"),
     ("TIProjectTemplate.json", "TIProjectTemplate.json"),
     ("TIBilateralTemplate.json", "TIBilateralTemplate.json"),
+    ("TINotificationTemplate.json", "TINotificationTemplate.json"),
     ("README.txt", "README.txt"),
+    ("RELEASE_NOTES.md", "RELEASE_NOTES.md"),
     ("LICENSE", "LICENSE"),
     ("CataTweaks.png", "CataTweaks.png"),
 ]

@@ -185,6 +185,14 @@ def main():
     check_localization(projects)
     check_claims(claims, names)
     check_modinfo()
+    notifications = read_json("TINotificationTemplate.json")
+    rally = next((item for item in notifications if item.get("dataName") == "CataTweaks_ShipRally"), None)
+    if rally is None:
+        fail("missing ship rally notification template")
+    elif (rally.get("alertAudience") != "None" or rally.get("firstAlertOverride") is not False
+          or rally.get("summaryAudience", {}).get("category") != "SpaceEvents"
+          or rally.get("newsFeedAudience") != "PrimaryFactions"):
+        fail("ship rallies must be logged as space events without a default or first-time popup")
     check_house_style()
 
     print(str(len(projects)) + " projects, " + str(len(claims)) + " claim rows")

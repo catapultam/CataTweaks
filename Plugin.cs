@@ -4,8 +4,11 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using HarmonyLib;
+using FullSerializer;
+using FullSerializer.Internal;
 using ModelShark;
 using TMPro;
 using PavonisInteractive.TerraInvicta;
@@ -53,7 +56,30 @@ public class Settings : UnityModManager.ModSettings, IDrawable
 
     // Full-width dividing rules between stations on the ship construction screen.
     [Draw("Dividers between stations in the ship construction screen", Tooltip = "The ship construction list shows a line between the shipyards of one station and the shipyards of the next station.")]
-    public bool stationDividers = true;
+    public bool stationDividers = false;
+
+    [Draw("One construction queue per station", Tooltip = "All shipyards on a station share one ordered queue. Idle compatible yards take the next ship, with each yard retaining its own construction speed. Ships already under construction keep their progress.")]
+    public bool pooledStationConstruction = true;
+
+    [Draw("Automatic shipyard rally (experimental)", Tooltip = "Experimental. Requires One construction queue per station. Adds a fleet dropdown to station shipyard cards. Completed ships take the earliest affordable rendezvous and merge on arrival. Disabling this option stops new rallies; rallies already ordered finish normally.")]
+    public bool shipyardRally = true;
+
+    private bool previousStationDividers;
+    private bool previousPooledConstruction = true;
+
+    internal void NormalizeShipyardOptions(string changed = null)
+    {
+        if (stationDividers && pooledStationConstruction)
+        {
+            if (changed == nameof(stationDividers)
+                || (changed == null && stationDividers != previousStationDividers
+                    && pooledStationConstruction == previousPooledConstruction))
+                pooledStationConstruction = false;
+            else stationDividers = false;
+        }
+        previousStationDividers = stationDividers;
+        previousPooledConstruction = pooledStationConstruction;
+    }
 
     // Fleet-detected notifications name the hab's orbit or body as well as the hab itself.
     [Draw("Fleet detections name the orbit or body", Tooltip = "A fleet detection notice gives the orbit and the body of the hab. For a landed fleet it gives the body.")]
@@ -235,7 +261,9 @@ public class Settings : UnityModManager.ModSettings, IDrawable
     {
         try
         {
+            NormalizeShipyardOptions();
             StationSolarMirrors.Invalidate();
+            StationConstruction.RefreshSettings();
         }
         catch (Exception e)
         {
@@ -306,6 +334,7 @@ public static class Main
         Settings.MigrateModFolderFile(modEntry);
         settings = UnityModManager.ModSettings.Load<Settings>(modEntry);
         Settings.MigrateLegacyFile(settings, modEntry);
+        settings.NormalizeShipyardOptions(nameof(Settings.pooledStationConstruction));
         // No OnGUI: every setting has a row on the game's own Settings screen, under the
         // CataTweaks tab, and a second copy in the mod manager would only be somewhere else to
         // look. [Draw] stays as the one place a setting's label and tooltip are written.
@@ -715,7 +744,7 @@ internal static class StationDividerApply
 {
     private static void Postfix(FleetsScreenController __instance)
     {
-        if (!Main.settings.stationDividers)
+        if (!Main.settings.stationDividers || Main.settings.pooledStationConstruction)
         {
             return;
         }
@@ -728,15 +757,1534 @@ internal static class StationDividerApply
 [HarmonyPatch(typeof(FleetsScreenController), nameof(FleetsScreenController.RefreshConstructionManager))]
 internal static class StationDividerClear
 {
-    // Must share stationDividers with the Apply patch: clearing without adding would be
-    // pointless, and adding without clearing would let ListManagerBase delete real cards.
+    // Clear even after the divider option switches off, so old spacers cannot be mistaken
+    // for real cards when the list manager rebuilds the grid.
     private static void Prefix(FleetsScreenController __instance)
     {
-        if (!Main.settings.stationDividers)
+        StationDivider.Clear(__instance);
+        // ListManagerBase clones a live card as its template. Restore native geometry
+        // first so newly added cards do not inherit an already-reflowed section layout.
+        if (__instance.shipyardGridList != null)
+            foreach (object entry in __instance.shipyardGridList)
+                if (entry is ShipyardGridItemController card)
+                {
+                    card.GetComponent<StationConstructionSlots>()?.Hide();
+                    card.GetComponent<StationConstructionRallyPicker>()?.Hide();
+                }
+    }
+}
+
+// A station queue is stored in vanilla's queues: paid heads stay in their yards and the
+// unpaid tail lives in the highest-tier yard. Nothing new needs save serialization. Never
+// return this combined view from TIFactionState.GetShipyardQueue: simulation and actions
+// need the actual mutable per-module lists.
+internal static class StationConstruction
+{
+    internal static bool dispatching;
+    internal static int dailyUpdateDepth;
+    internal static int editingDepth;
+
+    internal static bool Enabled(TIFactionState faction, TIHabModuleState yard) =>
+        Main.settings.pooledStationConstruction && faction != null && faction.isActivePlayer
+        && yard?.ref_hab != null && yard.ref_hab.IsStation;
+
+    internal static bool Enabled(ShipyardGridItemController card) =>
+        Enabled(card.controller.activePlayer, card.shipyardIdx);
+
+    internal static List<TIHabModuleState> Yards(TIFactionState faction, TIHabState hab) =>
+        faction.nShipyardQueues.Keys.Where(y => y.ref_hab == hab)
+            .OrderByDescending(y => y.tier).ThenBy(y => y.ID).ToList();
+
+    internal static string YardName(TIHabModuleState yard) => yard.moduleTemplate.displayName;
+
+    internal static List<ShipConstructionQueueItem> View(TIFactionState faction, TIHabModuleState yard)
+    {
+        if (!Enabled(faction, yard)) return faction.GetShipyardQueue(yard);
+        var items = Yards(faction, yard.ref_hab).SelectMany(y => faction.GetShipyardQueue(y)).ToList();
+        return items.Where(i => i.costPaid).Concat(items.Where(i => !i.costPaid)).ToList();
+    }
+
+    internal static bool Compatible(ShipConstructionQueueItem item, TIHabModuleState yard) =>
+        item.isRefit || item.shipDesign.CanBuildAtShipyard(yard);
+
+    private static void Transfer(TIFactionState faction, ShipConstructionQueueItem item, TIHabModuleState to)
+    {
+        if (item.shipyard == to) return;
+        var from = item.shipyard;
+        item.shipyard = to;
+        try { Reprice(faction, item); }
+        catch { item.shipyard = from; throw; }
+        faction.GetShipyardQueue(from).Remove(item);
+        faction.GetShipyardQueue(to).Add(item);
+    }
+
+    private static void Reprice(TIFactionState faction, ShipConstructionQueueItem item)
+    {
+        var to = item.shipyard;
+        var cost = item.isRefit
+            ? item.shipDesign.RefitResourceCost(to, item.refit_originalShipDesign, true, true, item.originalSpaceShipState)
+            : item.shipDesign.spaceResourceConstructionCost(false, to);
+        if (item.isRefit) cost.GetRefundCost(out item.resourcesRefund);
+        if (item.resourcesCost.GetSingleCostValue(FactionResource.Boost) > 0f)
+            cost = TISpaceShipTemplate.MixedResourceConstructionCost(faction, to.hab, cost, faction.AvailableSpaceResources());
+        item.UpdateResourcesCost(cost);
+    }
+
+    internal static void Normalize(TIFactionState faction, TIHabState hab)
+    {
+        var yards = Yards(faction, hab);
+        if (yards.Count == 0) return;
+        // Snapshot before moving; the anchor's existing tail always precedes incoming work.
+        var waiting = yards.SelectMany(y => faction.GetShipyardQueue(y)).Where(i => !i.costPaid).ToList();
+        foreach (var item in waiting) Transfer(faction, item, yards[0]);
+    }
+
+    internal static void Dispatch(TIFactionState faction, TIHabState hab)
+    {
+        if (dispatching || dailyUpdateDepth > 0 || editingDepth > 0) return;
+        var yards = Yards(faction, hab);
+        if (yards.Count == 0 || !Enabled(faction, yards[0])) return;
+        dispatching = true;
+        try
         {
+            Normalize(faction, hab);
+            var waiting = View(faction, yards[0]).Where(i => !i.costPaid).ToList();
+            var idle = yards.Where(y => y.active && !faction.GetShipyardQueue(y).Any(i => i.costPaid)).ToList();
+            foreach (var item in waiting)
+            {
+                var yard = idle.Where(y => Compatible(item, y))
+                    .OrderBy(y => item.isRefit
+                        ? item.shipDesign.RefitResourceCost(y, item.refit_originalShipDesign, true, true, item.originalSpaceShipState).completionTime_days
+                        : item.shipDesign.hullTemplate.constructionTime_Days(y)).FirstOrDefault();
+                if (yard == null) continue; // A larger hull must not block a smaller free yard.
+                Transfer(faction, item, yard);
+                var queue = faction.GetShipyardQueue(yard);
+                queue.Remove(item);
+                queue.Insert(0, item);
+                Reprice(faction, item);
+                if (!faction.AttemptInitiateShipConstruction(yard)) break; // Keep resource priority.
+                idle.Remove(yard);
+            }
+            Normalize(faction, hab);
+            // Failed starts and skipped incompatible hulls retain their relative priority.
+            var tail = faction.GetShipyardQueue(yards[0]);
+            tail.RemoveAll(i => !i.costPaid);
+            tail.AddRange(waiting.Where(i => !i.costPaid));
+        }
+        finally { dispatching = false; }
+    }
+
+    internal static void DispatchAll(TIFactionState faction)
+    {
+        foreach (var hab in faction.nShipyardQueues.Keys.Where(y => Enabled(faction, y))
+            .Select(y => y.ref_hab).Distinct().ToList()) Dispatch(faction, hab);
+    }
+
+    internal static void RefreshSettings()
+    {
+        foreach (var screen in UnityEngine.Object.FindObjectsOfType<FleetsScreenController>())
+            screen.RefreshConstructionManager();
+    }
+
+    internal static TIHabModuleState BuildYard(ShipyardGridItemController card)
+    {
+        var design = card.controller.constructionManagerSelectedDesign;
+        return Yards(card.controller.activePlayer, card.shipyardIdx.ref_hab)
+            .Where(y => design != null && design.CanBuildAtShipyard(y))
+            .OrderByDescending(y => y.active).ThenBy(y => design.hullTemplate.constructionTime_Days(y))
+            .FirstOrDefault();
+    }
+
+    internal static float FinishTime(TIFactionState faction, TIHabModuleState representative, TISpaceShipTemplate design)
+    {
+        var yards = Enabled(faction, representative) ? Yards(faction, representative.ref_hab)
+            : new List<TIHabModuleState> { representative };
+        var available = yards.Where(y => y.active).ToDictionary(y => y,
+            y => faction.GetShipyardQueue(y).Where(i => i.costPaid).Sum(i => i.daysToCompletion));
+        foreach (var item in View(faction, representative).Where(i => !i.costPaid))
+        {
+            var yard = available.Keys.Where(y => Compatible(item, y)).OrderBy(y => available[y] +
+                (item.isRefit ? item.shipDesign.RefitResourceCost(y, item.refit_originalShipDesign, true, true, item.originalSpaceShipState).completionTime_days
+                    : item.shipDesign.hullTemplate.constructionTime_Days(y))).FirstOrDefault();
+            if (yard != null) available[yard] += item.isRefit
+                ? item.shipDesign.RefitResourceCost(yard, item.refit_originalShipDesign, true, true, item.originalSpaceShipState).completionTime_days
+                : item.shipDesign.hullTemplate.constructionTime_Days(yard);
+        }
+        return available.Keys.Where(y => design.CanBuildAtShipyard(y)).Select(y => available[y] +
+            design.hullTemplate.constructionTime_Days(y)).DefaultIfEmpty(float.PositiveInfinity).Min();
+    }
+
+    internal static void Buttons(ShipyardGridItemController card)
+    {
+        var queue = View(card.controller.activePlayer, card.shipyardIdx);
+        var selected = card.selectedQueueItem;
+        int index = queue.IndexOf(selected);
+        card.RemoveShipButton.interactable = index >= 0;
+        card.ClearQueueButton.interactable = queue.Any(i => !i.costPaid);
+        card.MoveUpinQueueButton.interactable = index > 0 && !selected.costPaid && !queue[index - 1].costPaid;
+        card.MoveDownInQueueButton.interactable = index >= 0 && index < queue.Count - 1 && !selected.costPaid;
+        if (!card.controller.refitScrollviews.activeSelf)
+        {
+            var yard = BuildYard(card);
+            card.AddShipButton.interactable = yard != null;
+            if (yard != null)
+                card.AddToQueueButtonText.SetText(Loc.T("UI.Fleets.AddToConstructionQueueButtonDays",
+                    card.controller.constructionManagerSelectedDesign.hullTemplate.constructionTime_Days(yard).ToString("N0")));
+        }
+    }
+
+    internal static void Apply(FleetsScreenController screen)
+    {
+        var seen = new HashSet<TIHabState>();
+        foreach (object entry in screen.shipyardGridList)
+        {
+            var card = entry as ShipyardGridItemController;
+            if (card == null || !Enabled(card) || !card.gameObject.activeSelf) continue;
+            if (!seen.Add(card.shipyardIdx.ref_hab)) card.gameObject.SetActive(false);
+        }
+        var grid = screen.shipyardGridList.GetComponent<GridLayoutGroup>();
+        if (grid != null)
+        {
+            var size = grid.GetComponent<StationConstructionGrid>();
+            if (size == null) size = grid.gameObject.AddComponent<StationConstructionGrid>();
+            size.Apply(grid);
+        }
+    }
+}
+
+// Station cards form one horizontal row, using the viewport's full available height.
+// Keep stock geometry and scroll settings so disabling pooled queues restores vanilla.
+internal sealed class StationConstructionGrid : MonoBehaviour
+{
+    private GridLayoutGroup grid;
+    private RectTransform content;
+    private ScrollRect scroll;
+    private RectTransform originalScrollContent;
+    private ContentSizeFitter fitter;
+    private Vector2 originalCellSize, originalAnchorMin, originalAnchorMax, originalPivot, originalSize, originalPosition;
+    private GridLayoutGroup.Constraint originalConstraint;
+    private GridLayoutGroup.Axis originalAxis;
+    private GridLayoutGroup.Corner originalCorner;
+    private TextAnchor originalAlignment;
+    private int originalCount;
+    private bool originalHorizontal, originalVertical, originalFitterEnabled, horizontalBarActive, verticalBarActive, applied;
+    private Scrollbar originalHorizontalBar, originalVerticalBar, horizontalBar;
+    private ScrollRect.ScrollbarVisibility originalHorizontalVisibility;
+    private float barHeight;
+
+    internal static float CardHeight(float viewportHeight, float padding, float scrollbarHeight) =>
+        Math.Max(1f, viewportHeight - padding - scrollbarHeight);
+
+    internal static float ContentWidth(int count, float cardWidth, float spacing, float padding, float viewportWidth) =>
+        Math.Max(viewportWidth, Math.Max(0, count) * cardWidth + Math.Max(0, count - 1) * spacing + padding);
+
+    internal void Apply(GridLayoutGroup target)
+    {
+        if (grid == null)
+        {
+            grid = target;
+            content = (RectTransform)grid.transform;
+            scroll = grid.GetComponentInParent<ScrollRect>();
+            fitter = grid.GetComponent<ContentSizeFitter>();
+            originalCellSize = grid.cellSize;
+            originalConstraint = grid.constraint; originalCount = grid.constraintCount;
+            originalAxis = grid.startAxis; originalCorner = grid.startCorner; originalAlignment = grid.childAlignment;
+            originalAnchorMin = content.anchorMin; originalAnchorMax = content.anchorMax;
+            originalPivot = content.pivot; originalSize = content.sizeDelta; originalPosition = content.anchoredPosition;
+            if (fitter != null) originalFitterEnabled = fitter.enabled;
+            if (scroll != null)
+            {
+                originalHorizontal = scroll.horizontal; originalVertical = scroll.vertical;
+                originalScrollContent = scroll.content;
+                originalHorizontalBar = scroll.horizontalScrollbar; originalVerticalBar = scroll.verticalScrollbar;
+                originalHorizontalVisibility = scroll.horizontalScrollbarVisibility;
+                horizontalBarActive = originalHorizontalBar != null && originalHorizontalBar.gameObject.activeSelf;
+                verticalBarActive = originalVerticalBar != null && originalVerticalBar.gameObject.activeSelf;
+            }
+        }
+        Resize();
+    }
+
+    private void CreateScrollbar()
+    {
+        if (originalHorizontalBar != null) { horizontalBar = originalHorizontalBar; return; }
+        if (originalVerticalBar != null)
+            horizontalBar = UnityEngine.Object.Instantiate(originalVerticalBar, scroll.transform);
+        else
+        {
+            var go = new GameObject("Scrollbar", typeof(RectTransform), typeof(Image), typeof(Scrollbar));
+            go.transform.SetParent(scroll.transform, false);
+            go.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0.15f);
+            horizontalBar = go.GetComponent<Scrollbar>();
+            var handle = new GameObject("Handle", typeof(RectTransform), typeof(Image));
+            handle.transform.SetParent(go.transform, false);
+            horizontalBar.handleRect = (RectTransform)handle.transform;
+            horizontalBar.targetGraphic = handle.GetComponent<Image>();
+        }
+        horizontalBar.name = "CataTweaksHorizontalShipyards";
+        horizontalBar.onValueChanged = new Scrollbar.ScrollEvent();
+        horizontalBar.direction = Scrollbar.Direction.LeftToRight;
+        var rect = (RectTransform)horizontalBar.transform;
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = new Vector2(1f, 0f);
+        rect.pivot = new Vector2(0.5f, 0f);
+        rect.offsetMin = new Vector2(0f, 0f);
+        rect.offsetMax = new Vector2(0f, 16f);
+    }
+
+    private void Resize()
+    {
+        if (!Main.settings.pooledStationConstruction || scroll == null)
+        {
+            if (applied) Restore();
             return;
         }
-        StationDivider.Clear(__instance);
+        if (!applied)
+        {
+            applied = true;
+            if (horizontalBar == null) CreateScrollbar();
+            barHeight = Math.Max(0f, ((RectTransform)horizontalBar.transform).rect.height);
+            scroll.StopMovement();
+            scroll.horizontal = true;
+            scroll.vertical = false;
+            scroll.content = content;
+            scroll.verticalScrollbar = null;
+            if (originalVerticalBar != null) originalVerticalBar.gameObject.SetActive(false);
+            scroll.horizontalScrollbar = horizontalBar;
+            scroll.horizontalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
+            horizontalBar.gameObject.SetActive(true);
+            if (fitter != null) fitter.enabled = false;
+            content.anchorMin = content.anchorMax = new Vector2(0f, 1f);
+            content.pivot = new Vector2(0f, 1f);
+            content.anchoredPosition = Vector2.zero;
+        }
+        grid.constraint = GridLayoutGroup.Constraint.FixedRowCount;
+        grid.constraintCount = 1;
+        grid.startAxis = GridLayoutGroup.Axis.Horizontal;
+        grid.startCorner = GridLayoutGroup.Corner.UpperLeft;
+        grid.childAlignment = TextAnchor.UpperLeft;
+        var viewport = scroll.viewport ?? (RectTransform)scroll.transform;
+        if (viewport.rect.height <= 0f) return;
+        float height = CardHeight(viewport.rect.height, grid.padding.vertical, barHeight);
+        int count = 0;
+        foreach (Transform child in grid.transform)
+            if (child.gameObject.activeSelf && child.GetComponent<ShipyardGridItemController>() != null) count++;
+        float width = ContentWidth(count, originalCellSize.x, grid.spacing.x, grid.padding.horizontal, viewport.rect.width);
+        var cell = new Vector2(originalCellSize.x, height);
+        var size = new Vector2(width, height + grid.padding.vertical);
+        if (grid.cellSize != cell || content.sizeDelta != size)
+        {
+            grid.cellSize = cell;
+            content.sizeDelta = size;
+            LayoutRebuilder.MarkLayoutForRebuild(content);
+        }
+        content.anchoredPosition = new Vector2(Math.Max(Math.Min(0f, viewport.rect.width - width),
+            Math.Min(0f, content.anchoredPosition.x)), 0f);
+    }
+
+    private void Restore()
+    {
+        applied = false;
+        scroll.StopMovement();
+        scroll.horizontal = originalHorizontal; scroll.vertical = originalVertical;
+        scroll.content = originalScrollContent;
+        scroll.horizontalScrollbar = originalHorizontalBar; scroll.verticalScrollbar = originalVerticalBar;
+        scroll.horizontalScrollbarVisibility = originalHorizontalVisibility;
+        if (horizontalBar != null && horizontalBar != originalHorizontalBar) horizontalBar.gameObject.SetActive(false);
+        if (originalHorizontalBar != null) originalHorizontalBar.gameObject.SetActive(horizontalBarActive);
+        if (originalVerticalBar != null) originalVerticalBar.gameObject.SetActive(verticalBarActive);
+        grid.cellSize = originalCellSize;
+        grid.constraint = originalConstraint; grid.constraintCount = originalCount;
+        grid.startAxis = originalAxis; grid.startCorner = originalCorner; grid.childAlignment = originalAlignment;
+        content.anchorMin = originalAnchorMin; content.anchorMax = originalAnchorMax;
+        content.pivot = originalPivot; content.sizeDelta = originalSize; content.anchoredPosition = originalPosition;
+        if (fitter != null) fitter.enabled = originalFitterEnabled;
+        LayoutRebuilder.MarkLayoutForRebuild(content);
+    }
+    private void LateUpdate() { if (grid != null) Resize(); }
+}
+
+// A thin, non-interactive progress strip inside a Currently Building slot row.
+internal sealed class StationConstructionProgress : MonoBehaviour
+{
+    private RectTransform track;
+    private RectTransform fill;
+    private Image fillImage;
+
+    internal static float Fraction(ShipConstructionQueueItem item)
+    {
+        if (item == null || !item.costPaid || item.durationInDays <= 0f) return 0f;
+        return Math.Max(0f, Math.Min(1f, 1f - item.daysToCompletion / item.durationInDays));
+    }
+
+    internal void Show(ShipConstructionQueueItem item, bool active)
+    {
+        if (track == null)
+        {
+            var go = new GameObject("CataTweaksSlotProgress", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
+            track = (RectTransform)go.transform;
+            track.SetParent(transform, false);
+            track.anchorMin = new Vector2(0f, 0f);
+            track.anchorMax = new Vector2(1f, 0f);
+            track.pivot = new Vector2(0.5f, 0f);
+            track.offsetMin = new Vector2(5f, 1f);
+            track.offsetMax = new Vector2(-5f, 4f);
+            go.GetComponent<LayoutElement>().ignoreLayout = true;
+            var background = go.GetComponent<Image>();
+            background.color = new Color(1f, 1f, 1f, 0.18f);
+            background.raycastTarget = false;
+            var fillObject = new GameObject("Fill", typeof(RectTransform), typeof(Image));
+            fill = (RectTransform)fillObject.transform;
+            fill.SetParent(track, false);
+            fill.anchorMin = Vector2.zero;
+            fill.offsetMin = fill.offsetMax = Vector2.zero;
+            fillImage = fillObject.GetComponent<Image>();
+            fillImage.raycastTarget = false;
+        }
+        track.gameObject.SetActive(true);
+        track.SetAsLastSibling();
+        fill.anchorMax = new Vector2(Fraction(item), 1f);
+        fill.offsetMin = fill.offsetMax = Vector2.zero;
+        fillImage.color = active ? new Color(0.25f, 0.75f, 1f, 0.9f) : new Color(1f, 0.6f, 0.2f, 0.9f);
+    }
+
+    internal void Hide() { if (track != null) track.gameObject.SetActive(false); }
+}
+
+[HarmonyPatch(typeof(ShipyardGridItemController), nameof(ShipyardGridItemController.UpdateConstructionQueue))]
+internal static class StationConstructionSlotRows
+{
+    private static readonly MethodInfo ScrollRoutine = AccessTools.Method(typeof(ShipyardGridItemController), "SetQueueScrollRect");
+
+    private static bool Prefix(ShipyardGridItemController __instance, ref Sprite ___defaultButtonSprite)
+    {
+        var card = __instance;
+        var slots = card.GetComponent<StationConstructionSlots>();
+        if (!StationConstruction.Enabled(card))
+        {
+            slots?.Hide();
+            return true;
+        }
+        if (slots == null) slots = card.gameObject.AddComponent<StationConstructionSlots>();
+        slots.Render(card);
+        var faction = card.controller.activePlayer;
+        var waiting = StationConstruction.View(faction, card.shipyardIdx).Where(i => !i.costPaid).ToList();
+        int count = waiting.Count;
+        card.queueList.SetListSize<ShipConstructionQueueListItemController>(count);
+        if (___defaultButtonSprite == null && count > 0)
+            ___defaultButtonSprite = card.queueList.transform.GetChild(0).GetComponent<ShipConstructionQueueListItemController>().button.image.sprite;
+        int index = 0;
+        foreach (object entry in card.queueList)
+        {
+            var row = (ShipConstructionQueueListItemController)entry;
+            row.Init(card, ___defaultButtonSprite);
+            row.button.interactable = true;
+            row.UpdateListItem(waiting[index], index);
+            index++;
+        }
+        if (card.gameObject.activeSelf)
+            card.StartCoroutine((System.Collections.IEnumerator)ScrollRoutine.Invoke(card, new object[] { count > 4 }));
+        return false;
+    }
+}
+
+// Currently Building grows with the number of slots within the taller card. The waiting
+// queue uses the remaining space, with room reserved for two queue rows. Stations with
+// more slots than fit still scroll independently of their waiting queue.
+internal sealed class StationConstructionSlots : MonoBehaviour
+{
+    private const float BuildingWellBottomPadding = 9f;
+    private sealed class RectState
+    {
+        private readonly RectTransform target;
+        private readonly Vector2 anchorMin, anchorMax, pivot, size, position;
+        internal RectState(RectTransform rect)
+        {
+            target = rect;
+            anchorMin = rect.anchorMin; anchorMax = rect.anchorMax; pivot = rect.pivot;
+            size = rect.sizeDelta; position = rect.anchoredPosition;
+        }
+        internal void Restore()
+        {
+            target.anchorMin = anchorMin; target.anchorMax = anchorMax; target.pivot = pivot;
+            target.sizeDelta = size; target.anchoredPosition = position;
+        }
+    }
+    private sealed class Slot
+    {
+        internal RectTransform Rect;
+        internal TMP_Text Label;
+        internal TMP_Text TimeCounter;
+        internal TMP_Text ClassName;
+        internal Image Background;
+        internal Button Button;
+        internal StationConstructionProgress Progress;
+        internal ShipConstructionQueueItem Item;
+    }
+    private readonly List<Slot> slots = new List<Slot>();
+    private ShipyardGridItemController card;
+    private RectTransform viewport;
+    private RectTransform content;
+    private ScrollRect scroll;
+    private bool originalTextEnabled;
+    private float rowHeight;
+    private RectTransform cardRect, queueRect, queueTitleRect;
+    private RectState queueState, queueTitleState, currentConstructionState;
+    private float topInset, bottomInset, sectionGap, titleGap, titleHeight;
+    private float slotLeft, slotWidth, queueLeft, queueWidth, titleLeft, titleWidth;
+    private RectTransform buildingFrame, buildingTitleRect, backgroundUpperRight;
+    private RectState buildingFrameState, buildingTitleState, queueWellState;
+    private RectTransform buildingWell, queueWell;
+    private float wellLeft, wellWidth, queueWellWidth, wellBottomInset;
+    private bool originalRightBackgroundActive;
+    private ShipConstructionQueueListItemController slotRowTemplate;
+    // Keep the neutral sprite when ListManager clones a live card with selected rows.
+    [SerializeField] private Sprite slotDefaultSprite;
+    private float buildingFrameLeft, buildingFrameWidth, buildingHeader, buildingFooter;
+    private float buildingTitleLeft, buildingTitleWidth, buildingTitleHeight, buildingTitleInset;
+    private bool originalQueueBarActive;
+
+    internal static float BuildingHeight(int slotCount, float rowHeight, float available)
+    {
+        if (available <= 0f || rowHeight <= 0f) return 0f;
+        float queueReserve = Math.Min(2f * rowHeight, available / 2f);
+        return Math.Min(Math.Max(1, slotCount) * rowHeight, available - queueReserve);
+    }
+
+    private Bounds BoundsInCard(RectTransform rect)
+    {
+        var corners = new Vector3[4];
+        rect.GetWorldCorners(corners);
+        var bounds = new Bounds(cardRect.InverseTransformPoint(corners[0]), Vector3.zero);
+        for (int i = 1; i < corners.Length; i++) bounds.Encapsulate(cardRect.InverseTransformPoint(corners[i]));
+        return bounds;
+    }
+
+    private void Create(ShipyardGridItemController owner)
+    {
+        card = owner;
+        originalTextEnabled = card.currentConstruction.enabled;
+        rowHeight = Mathf.Max(40f, card.currentConstruction.fontSize * 2.4f + 12f);
+        cardRect = (RectTransform)card.transform;
+        // Runtime children can come along when the game clones a live card; its new
+        // component has no slot records for that copied panel, so replace it cleanly.
+        var copiedPanel = cardRect.Find("CataTweaksCurrentlyBuildingSlots");
+        if (copiedPanel != null)
+        {
+            copiedPanel.gameObject.SetActive(false);
+            UnityEngine.Object.Destroy(copiedPanel.gameObject);
+        }
+        queueRect = (RectTransform)card.shipQueueScrollRect.transform;
+        queueTitleRect = card.constructionQueueTitle.rectTransform;
+        queueState = new RectState(queueRect);
+        queueTitleState = new RectState(queueTitleRect);
+        currentConstructionState = new RectState(card.currentConstruction.rectTransform);
+        var currentBounds = BoundsInCard(card.currentConstruction.rectTransform);
+        var queueBounds = BoundsInCard(queueRect);
+        var titleBounds = BoundsInCard(queueTitleRect);
+        topInset = cardRect.rect.yMax - currentBounds.max.y;
+        bottomInset = queueBounds.min.y - cardRect.rect.yMin;
+        sectionGap = Mathf.Max(4f, currentBounds.min.y - titleBounds.max.y);
+        titleGap = Mathf.Max(2f, titleBounds.min.y - queueBounds.max.y);
+        titleHeight = titleBounds.size.y;
+        slotLeft = currentBounds.min.x; slotWidth = currentBounds.size.x;
+        queueLeft = queueBounds.min.x; queueWidth = queueBounds.size.x;
+        titleLeft = titleBounds.min.x; titleWidth = titleBounds.size.x;
+        buildingTitleRect = card.currentConstructionTitle.rectTransform;
+        // These are the installed game's prefab paths, not localized display strings.
+        // Its full-height detail background has a separate, fixed-height right cap;
+        // it does not have independent enclosing Images for the two sections.
+        buildingFrame = buildingTitleRect.parent as RectTransform;
+        backgroundUpperRight = queueRect.parent.Find("Background/Background Upper Right") as RectTransform;
+        slotRowTemplate = card.queueList.GetComponentsInChildren<ShipConstructionQueueListItemController>(true).First();
+        if (slotDefaultSprite == null) slotDefaultSprite = slotRowTemplate.idleButtonImage.sprite;
+        var nativeDefaultSprite = AccessTools.Field(typeof(ShipyardGridItemController), "defaultButtonSprite").GetValue(card) as Sprite;
+        if (nativeDefaultSprite != null) slotDefaultSprite = nativeDefaultSprite;
+        if (buildingFrame != null && buildingFrame != cardRect)
+        {
+            buildingFrameState = new RectState(buildingFrame);
+            buildingTitleState = new RectState(buildingTitleRect);
+            var buildingBounds = BoundsInCard(buildingFrame);
+            var buildingTitleBounds = BoundsInCard(buildingTitleRect);
+            topInset = cardRect.rect.yMax - buildingBounds.max.y;
+            buildingFrameLeft = buildingBounds.min.x; buildingFrameWidth = buildingBounds.size.x;
+            buildingHeader = Math.Max(0f, buildingBounds.max.y - currentBounds.max.y);
+            // The inner value box ends at the last slot. Extra space belongs to
+            // the enclosing well, not this box or the individual queue-row cards.
+            buildingFooter = Math.Max(1f, currentBounds.min.y - buildingBounds.min.y);
+            buildingTitleLeft = buildingTitleBounds.min.x; buildingTitleWidth = buildingTitleBounds.size.x;
+            buildingTitleHeight = buildingTitleBounds.size.y;
+            buildingTitleInset = buildingBounds.max.y - buildingTitleBounds.max.y;
+            sectionGap = Math.Max(BuildingWellBottomPadding + 8f, buildingBounds.min.y - titleBounds.max.y);
+            var sourceWell = queueRect.parent.Find("Background")?.GetComponent<Image>();
+            if (sourceWell != null)
+            {
+                queueWell = sourceWell.rectTransform;
+                queueWellState = new RectState(queueWell);
+                var wellBounds = BoundsInCard(queueWell);
+                wellLeft = wellBounds.min.x;
+                queueWellWidth = wellBounds.size.x;
+                wellWidth = BoundsInCard((RectTransform)queueRect.parent).size.x;
+                wellBottomInset = wellBounds.min.y - cardRect.rect.yMin;
+                var copiedWell = queueRect.parent.Find("CataTweaksCurrentlyBuildingWell");
+                if (copiedWell != null)
+                {
+                    copiedWell.gameObject.SetActive(false);
+                    UnityEngine.Object.Destroy(copiedWell.gameObject);
+                }
+                var well = new GameObject("CataTweaksCurrentlyBuildingWell", typeof(RectTransform), typeof(Image));
+                buildingWell = (RectTransform)well.transform;
+                buildingWell.SetParent(queueRect.parent, false);
+                buildingWell.SetSiblingIndex(queueWell.GetSiblingIndex() + 1);
+                var image = well.GetComponent<Image>();
+                image.sprite = sourceWell.sprite;
+                image.type = sourceWell.type;
+                image.color = sourceWell.color;
+                image.material = sourceWell.material;
+                image.pixelsPerUnitMultiplier = sourceWell.pixelsPerUnitMultiplier;
+                image.fillCenter = sourceWell.fillCenter;
+                image.raycastTarget = false;
+                if (backgroundUpperRight != null) originalRightBackgroundActive = backgroundUpperRight.gameObject.activeSelf;
+            }
+        }
+        else { buildingFrame = null; }
+        originalQueueBarActive = card.shipQueueScrollRect.verticalScrollbar != null
+            && card.shipQueueScrollRect.verticalScrollbar.gameObject.activeSelf;
+        var panel = new GameObject("CataTweaksCurrentlyBuildingSlots", typeof(RectTransform),
+            typeof(Image), typeof(RectMask2D), typeof(ScrollRect), typeof(LayoutElement));
+        viewport = (RectTransform)panel.transform;
+        viewport.SetParent(cardRect, false);
+        panel.GetComponent<LayoutElement>().ignoreLayout = true;
+        panel.GetComponent<Image>().color = Color.clear;
+        var list = new GameObject("Slots", typeof(RectTransform));
+        content = (RectTransform)list.transform;
+        content.SetParent(viewport, false);
+        content.anchorMin = new Vector2(0f, 1f);
+        content.anchorMax = new Vector2(1f, 1f);
+        content.pivot = new Vector2(0.5f, 1f);
+        content.anchoredPosition = Vector2.zero;
+        scroll = panel.GetComponent<ScrollRect>();
+        scroll.viewport = viewport;
+        scroll.content = content;
+        scroll.horizontal = false;
+        scroll.vertical = true;
+        scroll.movementType = ScrollRect.MovementType.Clamped;
+        scroll.scrollSensitivity = card.shipQueueScrollRect.scrollSensitivity;
+    }
+
+    private Slot AddSlot()
+    {
+        // Reuse the native queue row's Image and Button, including sliced sprites,
+        // hover/pressed transitions and navigation. Replace only its content/action.
+        var go = UnityEngine.Object.Instantiate(slotRowTemplate.gameObject, content, false);
+        go.name = "Slot";
+        var copiedController = go.GetComponent<ShipConstructionQueueListItemController>();
+        var copiedBackground = copiedController.idleButtonImage;
+        foreach (Transform child in go.transform)
+        {
+            child.gameObject.SetActive(false);
+            UnityEngine.Object.Destroy(child.gameObject);
+        }
+        UnityEngine.Object.Destroy(copiedController);
+        var slot = new Slot { Rect = (RectTransform)go.transform };
+        slot.Rect.SetParent(content, false);
+        slot.Rect.anchorMin = new Vector2(0f, 1f);
+        slot.Rect.anchorMax = new Vector2(1f, 1f);
+        slot.Rect.pivot = new Vector2(0.5f, 1f);
+        slot.Rect.sizeDelta = new Vector2(0f, rowHeight);
+        slot.Background = copiedBackground;
+        slot.Background.sprite = slotDefaultSprite;
+        slot.Background.overrideSprite = null;
+        slot.Button = go.GetComponent<Button>();
+        slot.Button.onClick = new Button.ButtonClickedEvent();
+        slot.Button.onClick.AddListener(() =>
+        {
+            if (slot.Item == null) return;
+            AudioManager.PlayOneShot("event:/SFX/UI_SFX/trig_SFX_ListLineSelect");
+            card.SetSelectedQueueItem(slot.Item);
+        });
+        slot.Label = SlotText(slot.Rect, TextAlignmentOptions.MidlineLeft);
+        var labelRect = slot.Label.rectTransform;
+        labelRect.anchorMin = new Vector2(0f, 0.5f);
+        labelRect.anchorMax = Vector2.one;
+        labelRect.offsetMin = new Vector2(5f, 0f);
+        labelRect.offsetMax = new Vector2(-5f, -1f);
+        slot.Label.fontSize = card.currentConstruction.fontSize * 0.9f;
+        slot.TimeCounter = SlotText(slot.Rect, TextAlignmentOptions.MidlineLeft);
+        slot.ClassName = SlotText(slot.Rect, TextAlignmentOptions.MidlineRight);
+        slot.Progress = go.AddComponent<StationConstructionProgress>();
+        go.SetActive(true);
+        slots.Add(slot);
+        return slot;
+    }
+
+    private TMP_Text SlotText(RectTransform parent, TextAlignmentOptions alignment)
+    {
+        var text = UnityEngine.Object.Instantiate(card.currentConstruction, parent);
+        // Copy only the text appearance, without the stock value-box shading.
+        foreach (var image in text.GetComponentsInChildren<Image>(true)) image.enabled = false;
+        text.enabled = true;
+        text.raycastTarget = false;
+        text.alignment = alignment;
+        text.enableAutoSizing = false;
+        text.textWrappingMode = TextWrappingModes.NoWrap;
+        text.overflowMode = TextOverflowModes.Ellipsis;
+        return text;
+    }
+
+    private void AlignSlotText(Slot slot)
+    {
+        float width = Math.Max(0f, slot.Rect.rect.width - 10f);
+        float counterWidth = Math.Min(width * 0.4f, slot.TimeCounter.GetPreferredValues(slot.TimeCounter.text).x + 8f);
+        var counter = slot.TimeCounter.rectTransform;
+        counter.anchorMin = Vector2.zero;
+        counter.anchorMax = new Vector2(0f, 0.5f);
+        counter.offsetMin = new Vector2(5f, 5f);
+        counter.offsetMax = new Vector2(5f + counterWidth, 0f);
+        var shipClass = slot.ClassName.rectTransform;
+        shipClass.anchorMin = Vector2.zero;
+        shipClass.anchorMax = new Vector2(1f, 0.5f);
+        shipClass.offsetMin = new Vector2(counterWidth + 13f, 5f);
+        shipClass.offsetMax = new Vector2(-5f, 0f);
+    }
+
+    internal void Render(ShipyardGridItemController owner)
+    {
+        if (viewport == null) Create(owner);
+        card.currentConstruction.enabled = false;
+        viewport.gameObject.SetActive(true);
+        if (buildingWell != null)
+        {
+            buildingWell.gameObject.SetActive(true);
+            if (backgroundUpperRight != null) backgroundUpperRight.gameObject.SetActive(false);
+        }
+        var faction = card.controller.activePlayer;
+        var yards = StationConstruction.Yards(faction, card.shipyardIdx.ref_hab);
+        while (slots.Count < yards.Count) AddSlot();
+        while (slots.Count > yards.Count)
+        {
+            UnityEngine.Object.Destroy(slots[slots.Count - 1].Rect.gameObject);
+            slots.RemoveAt(slots.Count - 1);
+        }
+        for (int index = 0; index < yards.Count; index++)
+        {
+            var yard = yards[index];
+            var slot = slots[index];
+            slot.Item = faction.GetShipyardQueue(yard).FirstOrDefault(i => i.costPaid);
+            slot.Rect.anchoredPosition = new Vector2(0f, -index * rowHeight);
+            slot.Button.interactable = slot.Item != null;
+            slot.Background.sprite = slot.Item != null && slot.Item == card.selectedQueueItem
+                ? slot.Button.spriteState.pressedSprite : slotDefaultSprite;
+            string yardName = StationConstruction.YardName(yard);
+            string text = yardName;
+            if (!yard.active && slot.Item != null)
+                text = TIUtilities.RedLine(text + " " + Loc.T("UI.Fleets.Inactive"));
+            slot.Label.SetText(text);
+            slot.TimeCounter.SetText(slot.Item != null
+                ? Loc.T("UI.Fleets.ConstructionTime", slot.Item.daysToCompletion.ToString("N0"))
+                : Loc.T(yard.active ? "UI.Fleets.ShipyardIdle" : "UI.Fleets.Inactive"));
+            slot.ClassName.SetText(slot.Item?.shipDesign.fullClassName ?? string.Empty);
+            AlignSlotText(slot);
+            slot.Progress.Show(slot.Item, yard.active);
+        }
+        content.sizeDelta = new Vector2(0f, slots.Count * rowHeight);
+        Align();
+    }
+
+    private void Align()
+    {
+        float top = cardRect.rect.yMax - topInset;
+        float bottom = cardRect.rect.yMin + bottomInset;
+        bool framed = buildingFrame != null;
+        float overhead = sectionGap + titleHeight + titleGap + (framed ? buildingHeader + buildingFooter : 0f);
+        float available = Math.Max(0f, top - bottom - overhead);
+        float buildingHeight = BuildingHeight(slots.Count, rowHeight, available);
+        if (framed)
+        {
+            float buildingFrameHeight = buildingHeader + buildingHeight + buildingFooter;
+            Place(buildingFrame, buildingFrameLeft, top, buildingFrameWidth, buildingFrameHeight);
+            Place(buildingTitleRect, buildingTitleLeft, top - buildingTitleInset, buildingTitleWidth, buildingTitleHeight);
+            Place(viewport, slotLeft, top - buildingHeader, slotWidth, buildingHeight);
+            float titleTop = top - buildingFrameHeight - sectionGap;
+            if (buildingWell != null)
+            {
+                // Two native bordered wells, with a small exposed gap between them.
+                Place(buildingWell, wellLeft, top, wellWidth, buildingFrameHeight + BuildingWellBottomPadding);
+                float queueWellTop = titleTop + 4f;
+                Place(queueWell, wellLeft, queueWellTop, queueWellWidth,
+                    Math.Max(0f, queueWellTop - cardRect.rect.yMin - wellBottomInset));
+            }
+            // The title is a child of the scroll rect, so place its parent first.
+            float queueTop = titleTop - titleHeight - titleGap;
+            Place(queueRect, queueLeft, queueTop, queueWidth, Math.Max(0f, queueTop - bottom));
+            Place(queueTitleRect, titleLeft, titleTop, titleWidth, titleHeight);
+        }
+        else
+        {
+            Place(viewport, slotLeft, top, slotWidth, buildingHeight);
+            float titleTop = top - buildingHeight - sectionGap;
+            float queueTop = titleTop - titleHeight - titleGap;
+            Place(queueRect, queueLeft, queueTop, queueWidth, Math.Max(0f, queueTop - bottom));
+            Place(queueTitleRect, titleLeft, titleTop, titleWidth, titleHeight);
+        }
+        // Keep the hidden stock text aligned with the slots. Its parent's native
+        // value-box Image stretches with the resized Currently Building container.
+        Place(card.currentConstruction.rectTransform, slotLeft,
+            framed ? top - buildingHeader : top, slotWidth, buildingHeight);
+        for (int index = 0; index < slots.Count; index++)
+        {
+            slots[index].Rect.sizeDelta = new Vector2(0f, rowHeight);
+            slots[index].Rect.anchoredPosition = new Vector2(0f, -index * rowHeight);
+            AlignSlotText(slots[index]);
+        }
+        content.sizeDelta = new Vector2(0f, slots.Count * rowHeight);
+        scroll.enabled = content.rect.height > buildingHeight;
+        // The queue now has a variable number of visible rows; the stock four-row cutoff
+        // no longer describes its viewport. Align runs after that stock coroutine too.
+        var waitingViewport = card.shipQueueScrollRect.viewport ?? queueRect;
+        // A stretched content RectTransform can be as tall as the viewport even when
+        // only one row exists. Measure the rows' preferred height instead of that rect.
+        float waitingHeight = LayoutUtility.GetPreferredHeight((RectTransform)card.queueList.transform);
+        if (waitingHeight <= 0f && card.queueList.size > 0)
+        {
+            int measured = 0;
+            foreach (Transform child in card.queueList.transform)
+            {
+                if (!child.gameObject.activeSelf || child.GetComponent<ShipConstructionQueueListItemController>() == null) continue;
+                waitingHeight += ((RectTransform)child).rect.height;
+                if (++measured == card.queueList.size) break;
+            }
+            var layout = card.queueList.GetComponent<VerticalLayoutGroup>();
+            if (layout != null) waitingHeight += layout.padding.vertical + Math.Max(0, measured - 1) * layout.spacing;
+        }
+        bool overflowing = card.queueList.size > 0 && waitingHeight > waitingViewport.rect.height + 1f;
+        card.shipQueueScrollRect.enabled = overflowing;
+        if (card.shipQueueScrollRect.verticalScrollbar != null)
+            card.shipQueueScrollRect.verticalScrollbar.gameObject.SetActive(overflowing);
+    }
+    private void Place(RectTransform rect, float left, float top, float width, float height)
+    {
+        rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, width);
+        rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, height);
+        rect.position = cardRect.TransformPoint(new Vector3(left + width * rect.pivot.x,
+            top - height * (1f - rect.pivot.y), 0f));
+    }
+    private void LateUpdate() { if (viewport != null && viewport.gameObject.activeSelf) Align(); }
+    internal void Hide()
+    {
+        if (viewport == null) return;
+        viewport.gameObject.SetActive(false);
+        card.currentConstruction.enabled = originalTextEnabled;
+        buildingFrameState?.Restore();
+        if (buildingWell != null)
+        {
+            buildingWell.gameObject.SetActive(false);
+            queueWellState.Restore();
+            if (backgroundUpperRight != null) backgroundUpperRight.gameObject.SetActive(originalRightBackgroundActive);
+        }
+        buildingTitleState?.Restore();
+        queueState.Restore();
+        queueTitleState.Restore();
+        currentConstructionState.Restore();
+        if (card.shipQueueScrollRect.verticalScrollbar != null)
+            card.shipQueueScrollRect.verticalScrollbar.gameObject.SetActive(originalQueueBarActive);
+    }
+}
+
+// Rally settings belong to the hab; an in-flight merge intent belongs to the new
+// fleet. Weak keys keep campaigns separate even when their numeric IDs are reused.
+internal static class StationConstructionRally
+{
+    internal static bool Enabled => Main.settings.pooledStationConstruction && Main.settings.shipyardRally;
+    internal const string SaveKey = "CataTweaks_RallyFleetID";
+    private sealed class Record { internal int fleetID; }
+    private static readonly ConditionalWeakTable<TIGameState, Record> records = new ConditionalWeakTable<TIGameState, Record>();
+    [ThreadStatic] internal static TIHabModuleState completingYard;
+    [ThreadStatic] internal static Report notification;
+    [ThreadStatic] internal static TISpaceFleetState adoptingTargetTrajectory;
+    internal sealed class Report
+    {
+        internal bool started;
+        internal string summary, detail, failure;
+        internal TISpaceShipState ship;
+    }
+
+    internal static int TargetID(TIGameState state) => state != null && records.TryGetValue(state, out var record) ? record.fleetID : 0;
+    internal static void SetTarget(TIGameState state, int fleetID)
+    {
+        if (state == null) return;
+        if (fleetID <= 0) records.Remove(state);
+        else records.GetValue(state, _ => new Record()).fleetID = fleetID;
+    }
+    internal static void WriteSave(object instance, fsData data)
+    {
+        if (!(instance is TIHabState) && !(instance is TISpaceFleetState)) return;
+        int id = TargetID((TIGameState)instance);
+        if (id > 0 && data.IsDictionary) data.AsDictionary[SaveKey] = new fsData((long)id);
+    }
+    internal static void ReadSave(object instance, fsData data)
+    {
+        if (!(instance is TIHabState) && !(instance is TISpaceFleetState)) return;
+        int id = 0;
+        if (data.IsDictionary && data.AsDictionary.TryGetValue(SaveKey, out var value)
+            && value.IsInt64 && value.AsInt64 > 0 && value.AsInt64 <= int.MaxValue) id = (int)value.AsInt64;
+        SetTarget((TIGameState)instance, id);
+    }
+    internal static TISpaceFleetState ResolveTarget(TIGameState state)
+    {
+        int id = TargetID(state);
+        return id > 0 && new GameStateID(id).TryGetState<TISpaceFleetState>(out var fleet) && !fleet.deleted ? fleet : null;
+    }
+    internal static Trajectory LeastTime(IEnumerable<Trajectory> trajectories, double availableDV_mps)
+    {
+        if (trajectories == null || double.IsNaN(availableDV_mps) || availableDV_mps < 0) return null;
+        return trajectories.Where(t => t != null && t.arrivalTime != null && t.launchTime != null
+                && !t.destroyOnArrival && !double.IsNaN(t.DV_mps) && !double.IsInfinity(t.DV_mps)
+                && t.DV_mps >= 0 && t.DV_mps <= availableDV_mps)
+            .OrderBy(t => t.finalArrivalTime.ToJulianDateInSeconds()).ThenBy(t => t.DV_mps).FirstOrDefault();
+    }
+    internal static bool FuelFailure(TransferResult result, double minimumDV_kps, double availableDV_mps) =>
+        result?.Result == TransferResult.Outcome.Fail_InsufficientDV
+        || (!double.IsNaN(minimumDV_kps) && !double.IsInfinity(minimumDV_kps)
+            && minimumDV_kps >= 0 && minimumDV_kps * 1000 > availableDV_mps);
+
+    internal static Report Start(TISpaceShipState ship, TIHabModuleState yard)
+    {
+        var report = new Report { ship = ship };
+        var source = ship.fleet;
+        var hab = yard.ref_hab;
+        var target = ResolveTarget(hab);
+        string targetName = target?.GetDisplayName(source.faction) ?? Loc.T("UI.CataTweaks.RallyMissingFleet");
+        string originName = hab.displayName;
+        report.failure = Loc.T("UI.CataTweaks.RallyUnavailable", targetName, originName);
+        if (target == null || target == source || target.faction != source.faction || target.ships.Count == 0
+            || target.landed || source.ships.Count != 1 || source.inCombatOrWaitingForCombat || source.transferAssigned) return report;
+        // The native completion routine starts a battle after its notification if
+        // hostile fleets are docked here. Do not issue a departure before that check.
+        if (hab.dockedFleets.Any(f => !f.faction.permanentAlly(source.faction))) return report;
+        if (source.CanMerge(target) && target.CanMerge(source))
+        {
+            string location = target.GetLocationDescription(source.faction, capitalize: false, expand: true);
+            // Let construction finish before removing its newly created fleet.
+            SetTarget(source, (int)target.ID);
+            report.started = true;
+            report.summary = report.detail = Loc.T("UI.CataTweaks.RallyJoined", ship.displayName, targetName, location);
+            return report;
+        }
+        var operation = new TransferOperation();
+        if (source.currentDeltaV_mps <= 0)
+        {
+            report.failure = Loc.T("UI.CataTweaks.RallyNoDV", targetName, ship.displayName, originName);
+            return report;
+        }
+        if (!operation.ActorCanPerformOperation(source, target) || !operation.ValidTransferDestinationForFleet(source, target)) return report;
+        Trajectory[] choices = null;
+        var result = MasterTransferPlanner.RequestTrajectories(source, target, 64, trajectories => choices = trajectories,
+            out double minimumDV_kps, usePlaceholderTrajectories: false, stopOnFirstSuccess: false);
+        var trajectory = LeastTime(choices, source.currentDeltaV_mps);
+        if (trajectory == null)
+        {
+            if (FuelFailure(result, minimumDV_kps, source.currentDeltaV_mps))
+                report.failure = Loc.T("UI.CataTweaks.RallyNoDV", targetName, ship.displayName, originName);
+            return report;
+        }
+        string destination = target.GetLocationDescription(source.faction, capitalize: false, expand: true);
+        if (!operation.OnOperationConfirm(source, target, null, trajectory))
+        {
+            if (source.transferAssigned) source.AbortTransfer(-1);
+            return report;
+        }
+        SetTarget(source, (int)target.ID);
+        report.started = true;
+        report.summary = Loc.T("UI.CataTweaks.RallySummary", ship.displayName, targetName);
+        report.detail = Loc.T("UI.CataTweaks.RallyDetail", ship.displayName, ship.template.fullClassName, originName,
+            targetName, destination, trajectory.launchTime.ToCustomDateString(), trajectory.finalArrivalTime.ToCustomDateString(),
+            trajectory.DV_kps.ToString("N2"));
+        return report;
+    }
+
+    internal static void TryMerge(TISpaceFleetState source)
+    {
+        if (source == null || source.deleted || TargetID(source) <= 0) return;
+        var target = ResolveTarget(source);
+        if (target == null || target.faction != source.faction)
+        {
+            SetTarget(source, 0);
+            return;
+        }
+        if (!source.inCombatOrWaitingForCombat && !target.inCombatOrWaitingForCombat
+            && source.CanMerge(target) && target.CanMerge(source))
+        {
+            SetTarget(source, 0);
+            new MergeFleetOperation().ExecuteOperation(target, source);
+        }
+    }
+}
+
+// TIGameStateConverter calls these base methods only for full records, not ID
+// references. Unknown extension fields are ignored by an unmodded game.
+[HarmonyPatch(typeof(fsReflectedConverter), nameof(fsReflectedConverter.TrySerialize))]
+internal static class StationConstructionRallySave
+{
+    private static void Postfix(object instance, fsData serialized, fsResult __result)
+    {
+        if (!__result.Failed) StationConstructionRally.WriteSave(instance, serialized);
+    }
+}
+[HarmonyPatch(typeof(fsReflectedConverter), nameof(fsReflectedConverter.TryDeserialize))]
+internal static class StationConstructionRallyLoad
+{
+    private static void Postfix(object instance, fsData data, fsResult __result)
+    {
+        if (!__result.Failed) StationConstructionRally.ReadSave(instance, data);
+    }
+}
+[HarmonyPatch(typeof(TIFactionState), nameof(TIFactionState.CompleteShipConstruction))]
+internal static class StationConstructionRallyCompletion
+{
+    private static void Prefix(TIFactionState __instance, TIHabModuleState shipyardIdx, bool refitCancel, out TIHabModuleState __state)
+    {
+        __state = StationConstructionRally.completingYard;
+        StationConstructionRally.completingYard = !refitCancel && __instance.isActivePlayer ? shipyardIdx : null;
+    }
+    private static void Finalizer(TIHabModuleState __state) => StationConstructionRally.completingYard = __state;
+    private static void Postfix(TIFactionState __instance)
+    {
+        if (__instance.isActivePlayer)
+            foreach (var fleet in __instance.fleets.ToList()) StationConstructionRally.TryMerge(fleet);
+    }
+}
+[HarmonyPatch(typeof(TINotificationQueueState), nameof(TINotificationQueueState.LogShipComplete))]
+internal static class StationConstructionRallyNotification
+{
+    private static void Prefix(TISpaceShipState ship, bool isACancelledRefit, out StationConstructionRally.Report __state)
+    {
+        __state = StationConstructionRally.notification;
+        StationConstructionRally.notification = null;
+        var yard = StationConstructionRally.completingYard;
+        if (!StationConstructionRally.Enabled || isACancelledRefit || yard == null || StationConstructionRally.TargetID(yard.ref_hab) <= 0) return;
+        try { StationConstructionRally.notification = StationConstructionRally.Start(ship, yard); }
+        catch (Exception e)
+        {
+            Main.mod?.Logger.Error("Automatic ship rally failed: " + e);
+            StationConstructionRally.notification = new StationConstructionRally.Report
+            {
+                ship = ship,
+                failure = Loc.T("UI.CataTweaks.RallyUnavailable", Loc.T("UI.CataTweaks.RallyMissingFleet"), yard.ref_hab.displayName)
+            };
+        }
+    }
+    private static void Finalizer(StationConstructionRally.Report __state) => StationConstructionRally.notification = __state;
+}
+[HarmonyPatch(typeof(TINotificationQueueState), "AddItem")]
+internal static class StationConstructionRallyEvent
+{
+    private static void Prefix(NotificationQueueItem item)
+    {
+        var report = StationConstructionRally.notification;
+        if (item.templateName != "LogShipComplete" || report == null) return;
+        if (!report.started)
+        {
+            item.itemDetail = report.failure + "\n\n" + item.itemDetail;
+            return;
+        }
+        item.templateName = "CataTweaks_ShipRally";
+        item.itemHeadline = Loc.T("UI.CataTweaks.RallyHeadline");
+        item.itemSummary = report.summary;
+        item.itemDetail = report.detail;
+        item.notificationDelegates.Clear();
+        item.gotoGameState = report.ship.fleet;
+    }
+}
+[HarmonyPatch(typeof(TISpaceFleetState), nameof(TISpaceFleetState.ArriveFleet))]
+internal static class StationConstructionRallyArrival
+{
+    private static void Postfix(TISpaceFleetState __instance, bool startupFix)
+    {
+        if (!startupFix) StationConstructionRally.TryMerge(__instance);
+    }
+}
+[HarmonyPatch(typeof(TIFactionState), nameof(TIFactionState.ShipConstructionQueueDailyUpdate))]
+internal static class StationConstructionRallyRetry
+{
+    private static void Postfix(TIFactionState __instance)
+    {
+        if (__instance.isActivePlayer)
+            foreach (var fleet in __instance.fleets.ToList()) StationConstructionRally.TryMerge(fleet);
+    }
+}
+[HarmonyPatch(typeof(TISpaceFleetState), nameof(TISpaceFleetState.AbortTransfer))]
+internal static class StationConstructionRallyAbort
+{
+    private static void Prefix(TISpaceFleetState __instance) => StationConstructionRally.SetTarget(__instance, 0);
+}
+[HarmonyPatch(typeof(CancelFleetOperation), nameof(CancelFleetOperation.ExecuteOperation))]
+internal static class StationConstructionRallyCancel
+{
+    private static void Prefix(TIGameState actorState) => StationConstructionRally.SetTarget(actorState.ref_fleet, 0);
+}
+[HarmonyPatch(typeof(TISpaceFleetState), nameof(TISpaceFleetState.AssignTrajectory))]
+internal static class StationConstructionRallyReroute
+{
+    private static void Prefix(TISpaceFleetState __instance, Trajectory __0)
+    {
+        if (StationConstructionRally.adoptingTargetTrajectory == __instance) return;
+        int target = StationConstructionRally.TargetID(__instance);
+        if (target > 0 && (__0?.destinationFleet == null || (int)__0.destinationFleet.ID != target))
+            StationConstructionRally.SetTarget(__instance, 0);
+    }
+}
+
+// Rendezvous with a moving fleet adopts its remaining transfer before ArriveFleet
+// returns. That native continuation is not a player redirecting the rally.
+[HarmonyPatch(typeof(TISpaceFleetState), nameof(TISpaceFleetState.AssumeTargetFleetTrajectory))]
+internal static class StationConstructionRallyAdoptTrajectory
+{
+    private static void Prefix(TISpaceFleetState __instance, out TISpaceFleetState __state)
+    {
+        __state = StationConstructionRally.adoptingTargetTrajectory;
+        StationConstructionRally.adoptingTargetTrajectory = __instance;
+    }
+    private static void Finalizer(TISpaceFleetState __state) => StationConstructionRally.adoptingTargetTrajectory = __state;
+}
+
+internal sealed class StationConstructionRallyPicker : MonoBehaviour
+{
+    private ShipyardGridItemController card;
+    private TMP_Dropdown dropdown;
+    private RectTransform buttons, detail;
+    private Vector2 buttonPosition, detailMin;
+    private readonly List<TISpaceFleetState> choices = new List<TISpaceFleetState>();
+    private float nextRefresh;
+    private bool applied;
+    internal void Apply(ShipyardGridItemController owner)
+    {
+        if (dropdown == null)
+        {
+            var source = GeneralControlsController.Singleton?.mapModeDropdown;
+            if (source == null) return;
+            card = owner;
+            var copied = card.transform.Find("CataTweaksRallyDropdown");
+            if (copied != null) { copied.gameObject.SetActive(false); UnityEngine.Object.Destroy(copied.gameObject); }
+            dropdown = UnityEngine.Object.Instantiate(source, card.transform);
+            dropdown.name = "CataTweaksRallyDropdown";
+            // The map-mode caption is a sibling of the source dropdown. Cloning
+            // only the dropdown leaves that reference pointing at the map UI.
+            // Keep a caption inside this control so RefreshShownValue updates it.
+            if (dropdown.captionText == null || !dropdown.captionText.transform.IsChildOf(dropdown.transform))
+            {
+                TMP_Text nativeCaption = source.captionText ?? source.itemText;
+                dropdown.captionText = nativeCaption != null
+                    ? UnityEngine.Object.Instantiate(nativeCaption, dropdown.transform)
+                    : new GameObject("Caption", typeof(RectTransform), typeof(TextMeshProUGUI))
+                        .GetComponent<TextMeshProUGUI>();
+                dropdown.captionText.transform.SetParent(dropdown.transform, false);
+                dropdown.captionText.name = "Caption";
+                // Instantiating an active dropdown may refresh its inherited
+                // external caption before we can replace the reference.
+                source.RefreshShownValue();
+            }
+            dropdown.captionText.gameObject.SetActive(true);
+            dropdown.captionText.raycastTarget = false;
+            dropdown.captionText.overflowMode = TextOverflowModes.Ellipsis;
+            var captionRect = dropdown.captionText.rectTransform;
+            captionRect.anchorMin = Vector2.zero; captionRect.anchorMax = Vector2.one;
+            captionRect.offsetMin = new Vector2(6f, 1f); captionRect.offsetMax = new Vector2(-24f, -1f);
+            if (dropdown.captionImage != null && !dropdown.captionImage.transform.IsChildOf(dropdown.transform))
+                dropdown.captionImage = null;
+            foreach (var localizer in dropdown.GetComponentsInChildren<UITextLocalizer>(true))
+                UnityEngine.Object.Destroy(localizer);
+            dropdown.onValueChanged = new TMP_Dropdown.DropdownEvent();
+            dropdown.onValueChanged.AddListener(index =>
+            {
+                if (index == 0) StationConstructionRally.SetTarget(card.shipyardIdx.ref_hab, 0);
+                else if (index > 0 && index < choices.Count && choices[index] != null)
+                    StationConstructionRally.SetTarget(card.shipyardIdx.ref_hab, (int)choices[index].ID);
+            });
+            Loc.SwapFonts(dropdown.gameObject);
+            var rect = dropdown.GetComponent<RectTransform>();
+            rect.anchorMin = Vector2.zero; rect.anchorMax = new Vector2(1f, 0f); rect.pivot = new Vector2(0.5f, 0f);
+            rect.offsetMin = new Vector2(4f, 4f); rect.offsetMax = new Vector2(-4f, 28f);
+            var layout = dropdown.GetComponent<LayoutElement>();
+            if (layout != null) layout.ignoreLayout = true;
+            buttons = (RectTransform)card.ClearQueueButton.transform.parent;
+            detail = (RectTransform)card.shipQueueScrollRect.transform.parent;
+            buttonPosition = buttons.anchoredPosition;
+            detailMin = detail.offsetMin;
+        }
+        if (!applied)
+        {
+            buttons.anchoredPosition = buttonPosition + new Vector2(0f, 28f);
+            // Reserve space in the whole detail area, including its wells, rather
+            // than shortening only the queue viewport behind the raised buttons.
+            detail.offsetMin = detailMin + new Vector2(0f, 28f);
+            applied = true;
+        }
+        dropdown.gameObject.SetActive(true);
+        Refresh();
+    }
+    private void Refresh()
+    {
+        if (dropdown.IsExpanded || card.shipyardIdx?.ref_faction == null) return;
+        var faction = card.shipyardIdx.ref_faction;
+        int selectedID = StationConstructionRally.TargetID(card.shipyardIdx.ref_hab);
+        choices.Clear(); choices.Add(null);
+        choices.AddRange(faction.fleets.Where(f => !f.deleted && !f.landed && f.ships.Count > 0)
+            .OrderBy(f => f.GetDisplayName(faction)).ThenBy(f => f.ID));
+        var options = choices.Select(f => f == null ? Loc.T("UI.CataTweaks.RallyNone")
+            : Loc.T("UI.CataTweaks.RallyFleet", f.GetDisplayName(faction))).ToList();
+        int index = choices.FindIndex(f => f != null && (int)f.ID == selectedID);
+        if (selectedID > 0 && index < 0)
+        {
+            // Preserve the saved selection until the player changes it. Completion
+            // reports an unavailable target rather than silently losing the setting.
+            choices.Add(null);
+            options.Add(Loc.T("UI.CataTweaks.RallyFleet", Loc.T("UI.CataTweaks.RallyMissingFleet")));
+            index = options.Count - 1;
+        }
+        dropdown.ClearOptions(); dropdown.AddOptions(options); dropdown.SetValueWithoutNotify(Math.Max(0, index));
+        dropdown.RefreshShownValue();
+        nextRefresh = Time.unscaledTime + 1f;
+    }
+    private void LateUpdate()
+    {
+        if (!StationConstructionRally.Enabled) { Hide(); return; }
+        if (applied && dropdown != null && Time.unscaledTime >= nextRefresh) Refresh();
+    }
+    internal void Hide()
+    {
+        if (dropdown == null || !applied) return;
+        dropdown.gameObject.SetActive(false);
+        buttons.anchoredPosition = buttonPosition;
+        detail.offsetMin = detailMin;
+        applied = false;
+    }
+}
+[HarmonyPatch(typeof(ShipyardGridItemController), nameof(ShipyardGridItemController.UpdateGridItem))]
+internal static class StationConstructionRallyCard
+{
+    private static void Prefix(ShipyardGridItemController __instance)
+    {
+        if (__instance.controller?.activePlayer?.isActivePlayer != true) return;
+        if (!StationConstructionRally.Enabled || __instance.shipyardIdx?.ref_hab?.IsStation != true)
+        {
+            __instance.GetComponent<StationConstructionRallyPicker>()?.Hide();
+            return;
+        }
+        var picker = __instance.GetComponent<StationConstructionRallyPicker>()
+            ?? __instance.gameObject.AddComponent<StationConstructionRallyPicker>();
+        picker.Apply(__instance);
+    }
+}
+
+[HarmonyPatch(typeof(TIHabModuleState), nameof(TIHabModuleState.FullSummary))]
+internal static class StationConstructionHabTooltip
+{
+    internal static ShipConstructionQueueItem CurrentJob(TIFactionState faction, TIHabModuleState yard)
+    {
+        if (faction?.nShipyardQueues == null || yard == null
+            || !faction.nShipyardQueues.TryGetValue(yard, out var queue)) return null;
+        // Use this module's physical slot, not the shared station queue. Unpowered
+        // modules still retain their paid job even though buildingShip is false.
+        return queue.FirstOrDefault(item => item.costPaid);
+    }
+
+    internal static string Append(string summary, TIHabModuleState module)
+    {
+        if (string.IsNullOrEmpty(summary) || module?.moduleTemplate?.allowsShipConstruction != true) return summary;
+        var faction = module.ref_faction;
+        if (faction == null || !faction.isActivePlayer) return summary;
+        var item = CurrentJob(faction, module);
+        if (item?.shipDesign == null) return summary;
+        string days = item.daysToCompletion.ToString("N0");
+        string text = item.isRefit
+            ? Loc.T("UI.Fleets.RefitDays", days) + ": "
+                + (item.originalSpaceShipState?.displayName ?? item.refit_originalShipDesign?.fullClassName ?? item.shipDesign.fullClassName)
+                + " → " + item.shipDesign.fullClassName
+            : Loc.T("UI.Fleets.CurrentlyBuildingTitle") + ": "
+                + Loc.T("UI.Fleets.OtherQueueItem", item.shipDesign.fullClassName, days);
+        if (!module.active) text = TIUtilities.RedLine(text + " (" + Loc.T("UI.Fleets.Inactive") + ")");
+        return summary.TrimEnd() + "\n\n" + text + "\n";
+    }
+
+    private static void Postfix(TIHabModuleState habModule, ref string __result) => __result = Append(__result, habModule);
+}
+
+[HarmonyPatch(typeof(HabModuleListItem), "SetTooltipText")]
+internal static class StationConstructionHabListTooltip
+{
+    private static void Postfix(HabModuleListItem __instance, ref string __result)
+    {
+        if (!__instance.prospective)
+            __result = StationConstructionHabTooltip.Append(__result, __instance.GetModuleState());
+    }
+}
+
+[HarmonyPatch(typeof(TIFactionState), nameof(TIFactionState.AttemptInitiateShipConstruction))]
+internal static class StationConstructionStart
+{
+    private static bool Prefix(TIFactionState __instance, TIHabModuleState shipyard, ref bool __result)
+    {
+        if (!StationConstruction.Enabled(__instance, shipyard)) return true;
+        if (StationConstruction.dispatching) return true;
+        __result = false;
+        return false; // The dispatcher alone chooses which unpaid head starts next.
+    }
+}
+
+[HarmonyPatch(typeof(TIFactionState), nameof(TIFactionState.AddShipToShipyardQueue))]
+internal static class StationConstructionAdd
+{
+    private static void Prefix(TIFactionState __instance, ref TIHabModuleState shipyard)
+    {
+        if (!StationConstruction.Enabled(__instance, shipyard)) return;
+        StationConstruction.Normalize(__instance, shipyard.ref_hab);
+        shipyard = StationConstruction.Yards(__instance, shipyard.ref_hab)[0];
+    }
+    private static void Postfix(TIFactionState __instance, TIHabModuleState shipyard, ref bool __result)
+    {
+        if (!StationConstruction.Enabled(__instance, shipyard)) return;
+        StationConstruction.Dispatch(__instance, shipyard.ref_hab);
+        __result = true; // Enqueue succeeds even when resources are unavailable.
+    }
+}
+
+[HarmonyPatch(typeof(TIFactionState), nameof(TIFactionState.ShipConstructionQueueDailyUpdate))]
+internal static class StationConstructionDaily
+{
+    private static void Prefix() { StationConstruction.dailyUpdateDepth++; }
+    private static Exception Finalizer(TIFactionState __instance, Exception __exception)
+    {
+        StationConstruction.dailyUpdateDepth--;
+        if (__exception == null) StationConstruction.DispatchAll(__instance);
+        return __exception;
+    }
+}
+
+[HarmonyPatch(typeof(TIFactionState), nameof(TIFactionState.CompleteShipConstruction))]
+internal static class StationConstructionCompleted
+{
+    private static void Postfix(TIFactionState __instance, TIHabModuleState shipyardIdx, bool refitCancel)
+    {
+        if (!refitCancel && StationConstruction.Enabled(__instance, shipyardIdx))
+            StationConstruction.Dispatch(__instance, shipyardIdx.ref_hab);
+    }
+}
+
+[HarmonyPatch(typeof(TIFactionState), nameof(TIFactionState.RemoveShipyardFromFaction))]
+internal static class StationConstructionLostYard
+{
+    private static void Prefix(TIFactionState __instance, TIHabModuleState shipyard)
+    {
+        if (!StationConstruction.Enabled(__instance, shipyard)) return;
+        var survivor = StationConstruction.Yards(__instance, shipyard.ref_hab).FirstOrDefault(y => y != shipyard);
+        if (survivor == null) return;
+        // Losing a slot cancels its paid construction as usual, but not the station backlog.
+        foreach (var item in __instance.GetShipyardQueue(shipyard).Where(i => !i.costPaid).ToList())
+        {
+            __instance.GetShipyardQueue(shipyard).Remove(item);
+            item.shipyard = survivor;
+            __instance.GetShipyardQueue(survivor).Add(item);
+        }
+    }
+}
+
+[HarmonyPatch]
+internal static class StationConstructionQueueView
+{
+    private static IEnumerable<MethodBase> TargetMethods()
+    {
+        foreach (string name in new[] { "UpdateGridItem", "UpdateConstructionQueue", "SetAddClearShipButtons", "get_selectedItemIndex" })
+            yield return AccessTools.Method(typeof(ShipyardGridItemController), name);
+    }
+    private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+    {
+        var original = AccessTools.Method(typeof(TIFactionState), nameof(TIFactionState.GetShipyardQueue));
+        var view = AccessTools.Method(typeof(StationConstruction), nameof(StationConstruction.View));
+        foreach (var instruction in instructions)
+        {
+            if (instruction.Calls(original))
+            {
+                instruction.opcode = OpCodes.Call;
+                instruction.operand = view;
+            }
+            yield return instruction;
+        }
+    }
+}
+
+[HarmonyPatch(typeof(ShipyardGridItemController), nameof(ShipyardGridItemController.UpdateGridItem))]
+internal static class StationConstructionCard
+{
+    private static void Postfix(ShipyardGridItemController __instance)
+    {
+        if (!StationConstruction.Enabled(__instance)) return;
+        var yards = StationConstruction.Yards(__instance.controller.activePlayer, __instance.shipyardIdx.ref_hab);
+        var queue = StationConstruction.View(__instance.controller.activePlayer, __instance.shipyardIdx);
+        int busy = queue.Count(i => i.costPaid);
+        __instance.shipyardDetails.SetText(Loc.T("UI.CataTweaks.StationShipyards", yards.Count, yards.Count(y => y.active)));
+        string summary = Loc.T("UI.CataTweaks.StationSlots", busy, yards.Count);
+        if (busy == 0 && queue.Count > 0) summary += "\n" + __instance.currentConstruction.text;
+        __instance.currentConstruction.SetText(summary);
+        StationConstruction.Buttons(__instance);
+    }
+}
+
+[HarmonyPatch(typeof(ShipConstructionQueueListItemController), nameof(ShipConstructionQueueListItemController.UpdateListItem))]
+internal static class StationConstructionQueueRow
+{
+    private static void Postfix(ShipConstructionQueueListItemController __instance, ShipConstructionQueueItem item)
+    {
+        var progress = __instance.GetComponent<StationConstructionProgress>();
+        progress?.Hide();
+        __instance.button.interactable = true;
+        if (!StationConstruction.Enabled(item.shipyard.ref_faction, item.shipyard)) return;
+        string text = item.costPaid
+            ? Loc.T("UI.CataTweaks.StationBuildingYard",
+                StationConstruction.YardName(item.shipyard),
+                item.shipDesign.fullClassName, item.daysToCompletion.ToString("N0"))
+            : Loc.T("UI.Fleets.OtherQueueItem", item.shipDesign.fullClassName, item.daysToCompletion.ToString("N0"));
+        if (item.costPaid && !item.shipyard.active) text = TIUtilities.RedLine(text + " " + Loc.T("UI.Fleets.Inactive"));
+        __instance.className.SetText(text);
+    }
+}
+
+[HarmonyPatch]
+internal static class StationConstructionButtons
+{
+    private static IEnumerable<MethodBase> TargetMethods()
+    {
+        foreach (string name in new[] { "SetButtons", "OnNewClassSelectedInFleetController" })
+            yield return AccessTools.Method(typeof(ShipyardGridItemController), name);
+    }
+    private static void Postfix(ShipyardGridItemController __instance)
+    {
+        if (StationConstruction.Enabled(__instance)) StationConstruction.Buttons(__instance);
+    }
+}
+
+[HarmonyPatch(typeof(ShipyardGridItemController), nameof(ShipyardGridItemController.CanAddShip))]
+internal static class StationConstructionCanAdd
+{
+    private static bool Prefix(ShipyardGridItemController __instance, ref bool __result)
+    {
+        if (!StationConstruction.Enabled(__instance) || __instance.controller.refitScrollviews.activeSelf) return true;
+        __result = StationConstruction.BuildYard(__instance) != null;
+        return false;
+    }
+}
+
+[HarmonyPatch]
+internal static class StationConstructionCanEdit
+{
+    private static IEnumerable<MethodBase> TargetMethods()
+    {
+        foreach (string name in new[] { "CanMoveUpInQueue", "CanMoveDownInQueue", "CanRemoveFromQueue" })
+            yield return AccessTools.PropertyGetter(typeof(ShipyardGridItemController), name);
+    }
+    private static bool Prefix(ShipyardGridItemController __instance, MethodBase __originalMethod, ref bool __result)
+    {
+        if (!StationConstruction.Enabled(__instance)) return true;
+        var queue = StationConstruction.View(__instance.controller.activePlayer, __instance.shipyardIdx);
+        var selected = __instance.selectedQueueItem;
+        int index = queue.IndexOf(selected);
+        switch (__originalMethod.Name)
+        {
+            case "get_CanRemoveFromQueue": __result = index >= 0; break;
+            case "get_CanMoveUpInQueue":
+                __result = index > 0 && !selected.costPaid && !queue[index - 1].costPaid; break;
+            default: __result = index >= 0 && index < queue.Count - 1 && !selected.costPaid; break;
+        }
+        return false;
+    }
+}
+
+[HarmonyPatch]
+internal static class StationConstructionQueueControls
+{
+    private static IEnumerable<MethodBase> TargetMethods()
+    {
+        foreach (string name in new[] { "OnClearQueueButtonClicked", "OnRemoveFromQueueClicked",
+            "OnMoveUpInQueueClicked", "OnMoveDowninQueueClicked", "ToggleUseEarthResources" })
+            yield return AccessTools.Method(typeof(ShipyardGridItemController), name);
+    }
+    private static bool Prefix(ShipyardGridItemController __instance, MethodBase __originalMethod)
+    {
+        var card = __instance;
+        if (!StationConstruction.Enabled(card)) return true;
+        var faction = card.controller.activePlayer;
+        var queue = StationConstruction.View(faction, card.shipyardIdx);
+        var selected = card.selectedQueueItem;
+        int index = queue.IndexOf(selected);
+        StationConstruction.editingDepth++;
+        try
+        {
+            switch (__originalMethod.Name)
+            {
+                case "OnClearQueueButtonClicked":
+                    foreach (var item in queue.Where(i => !i.costPaid).ToList())
+                        faction.playerControl.StartAction(new RemoveShipFromShipyardQueueAction(item.shipyard, item));
+                    card.SetSelectedQueueItem(null);
+                    break;
+                case "OnRemoveFromQueueClicked":
+                    if (index >= 0)
+                        faction.playerControl.StartAction(new RemoveShipFromShipyardQueueAction(selected.shipyard, selected));
+                    card.SetSelectedQueueItem(null);
+                    break;
+                case "ToggleUseEarthResources":
+                    foreach (var yard in StationConstruction.Yards(faction, card.shipyardIdx.ref_hab))
+                        faction.playerControl.StartAction(new UpdatePayMethodForConstructionQueueAction(yard, card.allowPayFromEarthToggle.isOn));
+                    break;
+                default:
+                    int next = index + (__originalMethod.Name == "OnMoveUpInQueueClicked" ? -1 : 1);
+                    if (index < 0 || next < 0 || next >= queue.Count || selected.costPaid || queue[next].costPaid) break;
+                    StationConstruction.Normalize(faction, card.shipyardIdx.ref_hab);
+                    var actual = faction.GetShipyardQueue(selected.shipyard);
+                    int target = actual.IndexOf(queue[next]);
+                    faction.playerControl.StartAction(new RepositionShipinConstructionQueueAction(selected.shipyard, selected, target));
+                    break;
+            }
+        }
+        finally { StationConstruction.editingDepth--; }
+        AudioManager.PlayOneShot("event:/SFX/UI_SFX/trig_SFX_GenericConfirm");
+        StationConstruction.Dispatch(faction, card.shipyardIdx.ref_hab);
+        card.controller.RefreshConstructionManager();
+        return false;
+    }
+}
+
+[HarmonyPatch]
+internal static class StationConstructionFilter
+{
+    private static IEnumerable<MethodBase> TargetMethods()
+    {
+        yield return AccessTools.Method(typeof(FleetsScreenController), nameof(FleetsScreenController.FilterShipLists));
+        yield return AccessTools.Method(typeof(FleetsScreenController), nameof(FleetsScreenController.RefreshShipyards));
+    }
+    [HarmonyPriority(Priority.First)]
+    private static void Postfix(FleetsScreenController __instance) { StationConstruction.Apply(__instance); }
+}
+
+[HarmonyPatch(typeof(FleetsScreenController), nameof(FleetsScreenController.OnClickAddToFastestQueue))]
+internal static class StationConstructionFastest
+{
+    private static bool Prefix(FleetsScreenController __instance)
+    {
+        if (!Main.settings.pooledStationConstruction) return true;
+        var design = __instance.constructionManagerSelectedDesign;
+        if (design == null) return false;
+        var cards = new List<ShipyardGridItemController>();
+        foreach (object entry in __instance.shipyardGridList)
+            if (entry is ShipyardGridItemController card && card.gameObject.activeSelf) cards.Add(card);
+        var best = cards.OrderBy(c => StationConstruction.FinishTime(__instance.activePlayer, c.shipyardIdx, design)).FirstOrDefault();
+        if (best != null && !float.IsPositiveInfinity(StationConstruction.FinishTime(__instance.activePlayer, best.shipyardIdx, design)))
+        {
+            AudioManager.PlayOneShot("event:/SFX/UI_SFX/trig_SFX_InitiateBuildShip");
+            __instance.activePlayer.playerControl.StartAction(new AddShipDesignToConstructionQueueAction(
+                best.shipyardIdx, design, best.allowPayFromEarth, 1f, null));
+            __instance.RefreshConstructionManager();
+        }
+        return false;
     }
 }
 
@@ -4397,6 +5945,7 @@ internal static class VanillaOptionsRows
     // Settings that only mean something while another is on, and gray out with it.
     private static readonly Dictionary<string, string> DependsOn = new Dictionary<string, string>
     {
+        { nameof(Settings.shipyardRally), nameof(Settings.pooledStationConstruction) },
         { "solarMirrorOutputCap", "solarMirrorsBoostStations" },
         { "launchSiteFocus", "betterLaunchSites" },
         { "controlPointTradeValue", "tradeControlPoints" },
@@ -4498,12 +6047,17 @@ internal static class VanillaOptionsRows
     private static Transform Toggle(Transform list, Transform source, TMP_Text title,
         FieldInfo field, DrawAttribute draw, Action refresh)
     {
-        Transform row = CloneRow(list, source, field.Name, draw.Label, title, null);
+        bool pooledConstruction = field.Name == nameof(Settings.pooledStationConstruction);
+        bool rally = field.Name == nameof(Settings.shipyardRally);
+        Transform row = CloneRow(list, source, field.Name, pooledConstruction
+            ? Loc.T("UI.CataTweaks.PooledConstructionSetting")
+            : rally ? Loc.T("UI.CataTweaks.RallySetting") : draw.Label, title, null);
         if (row == null)
         {
             return null;
         }
-        Tooltip(row, draw.Tooltip);
+        Tooltip(row, pooledConstruction ? Loc.T("UI.CataTweaks.PooledConstructionTooltip")
+            : rally ? Loc.T("UI.CataTweaks.RallyTooltip") : draw.Tooltip);
         Toggle toggle = row.GetComponentInChildren<Toggle>(true);
         // Set every time, not inherited from the row we copied: a clone keeps whatever state its
         // source happened to be in at that instant, and in a campaign the row is cloned while the
@@ -4516,6 +6070,7 @@ internal static class VanillaOptionsRows
         toggle.onValueChanged.AddListener(on =>
         {
             field.SetValue(Main.settings, on);
+            Main.settings.NormalizeShipyardOptions(field.Name);
             refresh();
             Commit();
         });
@@ -4623,6 +6178,10 @@ internal static class VanillaOptionsRows
     // says what it would do.
     private static void Refresh(Dictionary<string, Transform> rows)
     {
+        // Selecting either shipyard mode switches off the other and updates both controls.
+        foreach (string name in new[] { nameof(Settings.stationDividers), nameof(Settings.pooledStationConstruction) })
+            if (rows.TryGetValue(name, out Transform modeRow))
+                modeRow.GetComponentInChildren<Toggle>(true)?.SetIsOnWithoutNotify((bool)typeof(Settings).GetField(name).GetValue(Main.settings));
         foreach (KeyValuePair<string, string> pair in DependsOn)
         {
             if (!rows.TryGetValue(pair.Key, out Transform row))

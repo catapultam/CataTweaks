@@ -62,7 +62,60 @@ Quality of life and UI
   STO, space defense and nuclear options. The nation does not change
   to Custom.
 
-- Dividers between stations in the ship construction screen. The list
+- One construction queue per station. Station cards form one horizontal
+  scrolling row, at stock width and the full available viewport height.
+  Currently Building grows with
+  the slot count, with a row and progress bar for each slot. Space is
+  reserved for two waiting queue rows; extra slots scroll independently.
+  The queue lists only waiting ships and uses the remaining space.
+  Slots and waiting queues scroll vertically inside each card as needed.
+  Disabling shared queues restores the stock vertical grid and layout.
+  Idle and offline slots stay visible. Active progress bars are blue;
+  paused progress bars are orange and retain the construction progress.
+  Yards use their localized module names, without numbering.
+  In-progress rows use the game's queue-row hover and selection sprites.
+  Currently Building and Queue have separate bordered wells, with extra
+  padding below the slots. The building well grows with the slots.
+  Yard labels sit above the details. Time remaining is aligned left;
+  ship classes align right and truncate with an ellipsis when needed.
+  Section frames resize with the contents; queue scrollbars hide when
+  all waiting ships fit.
+  Hab management tooltips show each yard's current job and time remaining.
+  Refits show the ship name and target class; unpowered yards mark the
+  retained job inactive. This also works for bases and individual queues.
+  Free active yards take the next compatible ship at their own speed.
+  Refits share the queue. Ships already building keep their progress;
+  clearing the queue removes only waiting work. Queue controls and the
+  fastest-queue button work across the station. Bases keep individual
+  queues. Uses existing save data; existing queues merge when work is
+  added or on the next daily update. Enabled by default. Turning it off
+  restores individual yard cards and leaves work in its stored yards.
+  Shared queues and shipyard dividers are mutually exclusive: enabling
+  either switches the other off.
+
+- Automatic shipyard rally (experimental). A separate option, enabled by default,
+  requiring One construction queue per station. Its control is grayed
+  out while shared queues are off. Disabling either hides the dropdown
+  and stops new rallies; existing rallies finish normally. Saved station
+  selections are retained. Select a fleet in the dropdown at the bottom
+  of a station's shipyard card. All yards on that station share the saved
+  selection. New ships and completed refits take the earliest affordable
+  rendezvous returned by the game's transfer planner and merge into the
+  selected fleet on arrival. Ships already alongside it join directly.
+  Cancelling or redirecting the transfer cancels automatic merging.
+  Successful rallies replace the completion notice with a space event
+  showing destination, departure, arrival and delta-v, without a popup
+  by default. Insufficient delta-v leaves the ship at the station and
+  prepends an explanation to its normal completion notice. Other
+  unavailable transfers also leave the ship there with an explanation.
+  Actual transfers, merging and full campaign save/load still need
+  in-game verification. Later target maneuvers use the game's normal
+  change-trajectory prompt or cannot-chase notice. Replacement routes
+  are not approved automatically. Accepting a new route to the same
+  fleet preserves merging; aborting the transfer clears it.
+
+- Dividers between stations in the ship construction screen. With
+  shared station queues disabled, the list
   shows a line between the shipyards of one station and the shipyards
   of the next station. The line follows the standard location filter.
 

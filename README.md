@@ -55,7 +55,58 @@ and the field accepts a name that already exists.
 preset is applied again within one day. Examples are a spaceflight program, a military, a navy,
 and the STO, space defense and nuclear options. The nation does not change to Custom.
 
-**Dividers between stations in the ship construction screen.** The list shows a line between the
+**One construction queue per station.** The construction screen shows one card per station in
+a single horizontal scrolling row. Cards keep the stock width and fill the available viewport
+height. Currently Building grows with the slot count, with a
+row and progress bar for every slot. It reserves space for two waiting queue rows, then scrolls
+any extra slots independently. The construction queue lists only waiting ships and uses the
+remaining space. Each card's slots and waiting queue scroll vertically when needed. Disabling
+shared queues restores the stock card dimensions, vertical shipyard grid, and section layout.
+Idle and offline slots remain visible; paused construction retains its progress and shows an
+orange bar, while active construction uses blue. Yards are labeled by their localized module
+type, such as Shipyard or Spaceworks. In-progress rows use the game's queue-row hover and selection
+sprites. Currently Building and Queue have separate bordered wells, with extra padding
+below the slots. The building well grows with the visible slots.
+Each yard has its own label above the details: time remaining is aligned left, and the ship class
+is aligned right with an ellipsis if it cannot fit.
+The section borders resize with their contents, and queue scrollbars appear only for overflow.
+Hab management tooltips for your shipyards show the job in that module and its time remaining.
+Refits show the ship name and target class; unpowered yards retain their job with an inactive label.
+This annotation also works for surface shipyards and with shared queues disabled.
+Free active shipyards take the next compatible ship; each yard keeps its own construction speed. Refits share
+the queue too. Ships already building keep their progress, and clearing the queue removes only
+waiting work. Selection, removal, reordering, payment from Earth, location filters, and adding to
+the fastest queue work across the station. Surface bases retain their individual queues.
+
+The queue uses the game's existing save data. Existing queues merge when work is added or on the
+next daily update. Losing one yard preserves the station's waiting work while handling that yard's
+current construction as the standard game does. Enabled by default. Turning it off restores the
+individual yard display; existing work remains in the yards where it was stored. Shared station
+queues and shipyard dividers are mutually exclusive: enabling either switches the other off.
+
+**Automatic shipyard rally (experimental).** A separate option, enabled by default, that requires One construction
+queue per station. Its settings control is grayed out while shared queues are off. Disabling either
+option hides the rally dropdown and stops new rallies; already ordered rallies finish normally.
+Saved station selections are retained. A dropdown at the bottom of each station's shipyard card selects
+one of your fleets, or None. The selection applies to all shipyards on that station and is saved
+with the campaign. Newly constructed ships and completed refits take the earliest affordable
+rendezvous returned by the game's transfer planner, then merge into the selected fleet on arrival.
+Ships already alongside the selected fleet join it directly. Cancelling or redirecting a rally
+transfer cancels its automatic merge.
+
+A successful rally replaces the ship-completed notice with a space event showing the destination,
+departure, arrival and transfer delta-v. It does not open a popup by default. If the ship lacks
+delta-v, it stays at the station and the normal completion notice starts with that explanation.
+Other unavailable transfers also leave the ship at the station with an explanation.
+
+Rally is experimental: actual transfers, arrival merging, and full campaign save/load behavior
+still need in-game verification. If the selected fleet changes course after a rally starts,
+the game handles the maneuver through its normal change-trajectory prompt or cannot-chase notice.
+The tweak does not automatically approve a replacement trajectory. Accepting a new transfer to
+the same fleet preserves automatic merging; aborting it clears automatic merging.
+
+**Dividers between stations in the ship construction screen.** With shared station queues disabled,
+the list shows a line between the
 shipyards of one station and the shipyards of the next station. The line follows the standard
 location filter.
 
