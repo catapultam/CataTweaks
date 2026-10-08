@@ -1,3 +1,15 @@
+# CataTweaks 3.4.3
+
+- Fixed missing fleet detection and ship construction/refit completion notifications.
+  Harmony's generated method names were being used as notification template keys; the
+  patched methods now select their native templates, including with mod options disabled.
+- Added regression checks reproducing the failure and verifying the fixed lookups with
+  options on and off. Incoming fleet and assault carrier template lookups pass as controls.
+
+Validation: Release build, template/localization validation, C# syntax checks, and
+notification and construction/rally regression checks passed. Actual alert presentation
+still requires an in-game smoke test.
+
 # CataTweaks 3.4.2
 
 - Added one construction queue per station, with parallel construction and refit slots,

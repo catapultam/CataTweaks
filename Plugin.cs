@@ -1757,6 +1757,9 @@ internal static class StationConstructionRallyCompletion
 [HarmonyPatch(typeof(TINotificationQueueState), nameof(TINotificationQueueState.LogShipComplete))]
 internal static class StationConstructionRallyNotification
 {
+    private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase __originalMethod) =>
+        NotificationTemplateName.UseOriginal(instructions, __originalMethod);
+
     private static void Prefix(TISpaceShipState ship, bool isACancelledRefit, out StationConstructionRally.Report __state)
     {
         __state = StationConstructionRally.notification;
@@ -2990,6 +2993,9 @@ internal static class RepeatableWarningsDescription
 [HarmonyPatch(typeof(TINotificationQueueState), nameof(TINotificationQueueState.LogFleetDetected))]
 internal static class FleetDetectedLocation
 {
+    private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase __originalMethod) =>
+        NotificationTemplateName.UseOriginal(instructions, __originalMethod);
+
     // ThreadStatic: the flag is only meant for the notification's own two calls, so a hab list
     // rendering on another thread inside the same window keeps the short form.
     [ThreadStatic]
@@ -3006,6 +3012,30 @@ internal static class FleetDetectedLocation
 internal static class FleetDetectedLocationExpand
 {
     private static void Prefix(ref bool expand) => expand |= FleetDetectedLocation.expanding;
+}
+
+// Native notification methods select their template with GetCurrentMethod().Name.
+// In a Harmony replacement that names the generated wrapper, not the native method,
+// so AddItem drops the notification for a missing template even with the tweak off.
+internal static class NotificationTemplateName
+{
+    internal static IEnumerable<CodeInstruction> UseOriginal(IEnumerable<CodeInstruction> instructions, MethodBase original)
+    {
+        var codes = instructions.ToList();
+        var currentMethod = AccessTools.Method(typeof(MethodBase), nameof(MethodBase.GetCurrentMethod));
+        var methodName = AccessTools.PropertyGetter(typeof(MemberInfo), nameof(MemberInfo.Name));
+        for (int i = 0; i + 1 < codes.Count; i++)
+        {
+            if (!codes[i].Calls(currentMethod) || !codes[i + 1].Calls(methodName)) continue;
+            // Keep both instructions' labels and exception blocks in place.
+            codes[i].opcode = OpCodes.Ldstr;
+            codes[i].operand = original.Name;
+            codes[i + 1].opcode = OpCodes.Nop;
+            codes[i + 1].operand = null;
+            return codes;
+        }
+        throw new InvalidOperationException("Notification template lookup not found in " + original.Name);
+    }
 }
 
 // Tweak 11: a nation that holds another nation's original capital borrows that nation's claims.

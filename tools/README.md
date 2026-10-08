@@ -19,6 +19,12 @@ the game installed. Desktop CLR cannot execute Unity's engine ECalls, so prefab 
 resource/refit calculations, full campaign save round trips, actual rendezvous/merging, and full patch attachment still require an in-game
 smoke test.
 
+`dotnet run --project tools/NotificationCheck -c Release` reproduces the generated Harmony
+wrapper name breaking native notification template lookup, then verifies the fixed detection
+and ship completion patches with their options on and off. Incoming fleet and assault carrier
+warnings are controls. It needs the game installed and stops at notification initialization;
+actual alert presentation still needs an in-game smoke test.
+
 `package.py` builds, validates and writes the release zip. `workshop.py` stages the Workshop item
 in `dist/workshop/` and uploads it with SteamCMD's `workshop_build_item`, setting the page's
 description from `workshop-description.txt`. SteamCMD needs one interactive login first, for
