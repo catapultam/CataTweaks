@@ -48,6 +48,12 @@ Quality of life and UI
   template, so you can apply a template that changes nothing and
   rename the hab.
 
+  Template names containing commas, parentheses or quotes are quoted
+  in the suffix so saving and reapplying preserve the full name.
+
+- Alphabetical hab templates. The template manager and the normal,
+  bulk and quick-apply dropdowns sort by template name, ignoring case.
+
 - Priority presets overwrite in place. When you save a preset with the
   name of an existing custom preset, it replaces that preset. The new
   preset stays the default preset if the old one was the default.
@@ -87,9 +93,12 @@ Quality of life and UI
   Refits share the queue. Ships already building keep their progress;
   clearing the queue removes only waiting work. Queue controls and the
   fastest-queue button work across the station. Bases keep individual
-  queues. Uses existing save data; existing queues merge when work is
-  added or on the next daily update. Enabled by default. Turning it off
-  restores individual yard cards and leaves work in its stored yards.
+  queues. A ship that another mod refuses to start keeps its place and
+  does not block the ships behind it. It is tried again in each
+  compatible yard each game day. Uses existing save data; existing
+  queues merge when work is added or on the next daily update. Enabled
+  by default. Turning it off restores individual yard cards and leaves
+  work in its stored yards.
   Shared queues and shipyard dividers are mutually exclusive: enabling
   either switches the other off.
 
@@ -113,6 +122,18 @@ Quality of life and UI
   change-trajectory prompt or cannot-chase notice. Replacement routes
   are not approved automatically. Accepting a new route to the same
   fleet preserves merging; aborting the transfer clears it.
+  With TI Fleet Manager installed, a ship built for one of its
+  commission orders goes to the commission fleet, and the rally does
+  not take it. When the rally is on and the station has a rally fleet,
+  the completion notice says so. Fleets in Fleet
+  Manager's reserve are not offered as rally targets, because Fleet
+  Manager does not let ships join them. If a selected fleet goes into
+  the reserve later, the selection is cleared with a notice, and a ship
+  already on its way stays where it arrives. A rallied ship that joins
+  a fleet is sorted into Fleet Manager squadrons as Auto-Organise sorts
+  it: into the mother fleet's squadrons when the fleet is detached from
+  one, else the fleet's own. If that fleet has no squadrons, the ship is
+  not sorted.
 
 - Dividers between stations in the ship construction screen. With
   shared station queues disabled, the list
@@ -210,6 +231,9 @@ Gameplay
   borrowed claims when you lose the capital, or when your claim on it
   becomes hostile. A claim that the other nation held as hostile stays
   hostile for you. A nation that still holds territory is excluded.
+  Some nations share an original capital: TWN and WUR both have
+  Shanghai, and YEM and YMS both have Yemen. Each of them that is
+  dormant lends its claims through that capital.
   A region you take through a borrowed claim is held by a hostile
   claim, so you must legitimize a capital you take that way before
   you can borrow its claims. A unification is not a conquest: a
@@ -220,10 +244,11 @@ Gameplay
   claims you borrow as hostile, one at a time: the claim becomes
   peaceful for the nation you borrow it from, so it stays peaceful
   for whoever holds that capital. A project that needs a nation to
-  exist, such as Greater Indonesia, is also available while that
-  nation is dormant and its capital is held without a hostile claim:
-  its claims go to the dormant nation, and whoever holds the capital
-  borrows them.
+  exist, such as Greater Indonesia, can also be offered while that
+  nation is dormant and its capital is held without a hostile claim.
+  Each faction gets one roll for it, and a roll that fails marks it
+  as missed. If the project is completed, its claims go to the dormant
+  nation, and whoever holds the capital borrows them.
   The region screen goes on crediting the claim to the nation it
   came from rather than to you, so which capital is carrying it stays
   visible. Save files do not change.
@@ -239,7 +264,21 @@ Gameplay
   armies, nuclear weapons, space funding and accumulated investment
   move across. Alliances, rivalries and federation membership do not.
   The change happens on the next day after the nation is at peace
-  with everyone.
+  with everyone. A nation never becomes a nation that joined it by
+  choice, for example through a unification or an event that annexes
+  it. If South Korea unifies with North Korea, then loses Seoul and
+  its new capital is Pyongyang, it stays South Korea: North Korea
+  joined it. Only nations that joined by choice are excluded. Another
+  dormant nation with the same original capital is still an heir: if a
+  China that unified with Taiwan has Shanghai as its new capital, and
+  the End of China project has opened Huanan's claim on Shanghai, it
+  becomes Huanan, which never joined it, even though Taiwan's original
+  capital is also Shanghai. A nation that joined by choice and later
+  becomes independent again is no longer a member. Each nation's
+  record of the nations that joined it is kept in its save entry,
+  under CataTweaks_MergedNations. A save made before this record
+  existed has no record of earlier unifications, so for those the old
+  behaviour stays.
 
 - Repeatable management project scaling. Each repeat of Management
   Research, Audience Research, Commercial Research and Operations
@@ -323,24 +362,52 @@ errors. Neither option has been played through a full campaign.
   Expanded Council keeps it in its save: the pool stands aside while
   Expanded Council is there and comes back if you remove it.
 
-- Restored Empires claims. Claim chains and four projects for old
+- Restored Empires claims. Claim chains and eight projects for old
   powers. This was a separate mod and is now part of CataTweaks.
 
-  * The Sun Never Sets (United Kingdom, 25,000) claims the Empire and
-    the Commonwealth beyond the settler dominions. The standard
-    project Commonwealth Restored also gains Delhi, Calcutta and
-    Ireland.
+  * The Sun Never Sets (United Kingdom, 25,000) claims the thirteen
+    colonies as represented by the game's eastern North American
+    regions, the Caribbean islands, and British India including
+    Burma. Dynastic claims cover continental France, Germany, Spain,
+    Portugal, the Low Countries, Scandinavia, Greece, Romania and
+    European Russia. It adds no claims in Africa, the Pacific,
+    Argentina, or the rest of Southeast Asia. The map has no separate
+    Falklands region. Commonwealth Restored also gains Delhi and
+    Calcutta, and Ireland outside Broken Earth.
 
   * New Liberia (Liberia, 20,000) claims Sierra Leone, the Ivory
     Coast, Accra, Togo-Benin and Libreville. The Dominion of America
     claims Liberia and Jamaica behind the standard project Greater
     Dominion. It reaches that coast when it releases Liberia, lets it
-    grow, and absorbs it again.
+    grow, and absorbs it again, or uses the capital-borrowing tweak.
 
-  * Mare Nostrum (Rome, 10,000) and Imperium Sine Fine (Rome, 25,000)
-    claim the Mediterranean world, the eastern roads, Aksum and both
-    American seaboards. Both appear in Broken Earth only, which is the
-    one scenario that has the Roman Republic.
+  * Rome has six independent regional conquest projects in Broken
+    Earth only. All require Great Nations, cost 35,000 RP each, and
+    grant the researching faction +10 control point capacity each:
+    210,000 RP and +60 capacity for all six.
+
+    All Roads Lead to Rome: 62 regions in continental Europe and European Russia.
+    Scipio’s Legacy: 79 regions in Africa and adjacent islands.
+    Beyond Alexander: 26 regions in India, Pakistan, Bangladesh, Nepal,
+    Bhutan, Sri Lanka and the Maldives.
+    Beyond the Pillars: 46 regions in North America, Central America,
+    Greenland and the Caribbean.
+    Under Southern Stars: 26 regions in South America.
+    Empire Without End: 101 regions in the rest of Asia, including the Middle
+    East, Siberia and Southeast Asia.
+
+    These 340 broad territorial claims do not overlap. Italy, Milan
+    and Naples are peaceful; other claims are hostile. Continental
+    Europe excludes the British Isles, Iceland and the Azores; Oceania
+    is outside these branches. Existing saves retain Mare Nostrum's
+    completion as All Roads Lead to Rome and Imperium Sine Fine's as Empire Without End.
+
+  In Broken Earth, the UK starts with hostile claims on Jamaica and
+  Ireland, and the Dominion of America starts with a hostile claim
+  on Jamaica. The Sun Never Sets makes both UK claims peaceful;
+  Greater Dominion makes the Dominion's Jamaica claim peaceful.
+  These are claims, not starting ownership. They remain subject to
+  the Restored Empires campaign option.
 
   A claim on a territory that fought for independence is hostile. A
   claim on a small dependency that left by agreement is peaceful. For
@@ -369,8 +436,60 @@ on the next start. A Settings.txt from the version before that is read
 once and then renamed to Settings.txt.migrated.
 
 Works alongside Expanded Council (the spy slot pool is off while it
-is installed), Alien Threat Analysis and Cooperative Missions. None of them is
-required.
+is installed), Alien Threat Analysis, Cooperative Missions, TI Fleet
+Manager, TI Space Nations and TI Crew Extended. TI Crew Extended
+refuses to start a ship with an invalid design; that ship keeps its
+place in the shared station queue. A ship without enough crew is held
+in its yard when it is complete; the shared queue counts that yard as
+busy. With TI Fleet Manager, commissioned ships
+reach their commission fleet whichever yard on the station builds
+them (a ship fills the oldest open order for its design on the
+station; with shared queues off, CataTweaks leaves the orders alone;
+in multiplayer the host does not share a remote player's queue, so
+that player's ships fill the oldest open order for their design on
+the yard that built them, as with Fleet Manager alone;
+when a station loses a yard, every open order on it moves to a
+surviving yard and stays open; when the last yard is lost, the orders
+are left as they are),
+its commission time estimate follows the shared station queue,
+commission orders take precedence over the rally, and reserve fleets
+are not rally targets. With TI Space Nations, the United Nations and a
+planetary union do not become one of their members when they lose
+their capital (only for members that joined after this version; a
+United Nations or union founded in an older save can still become one
+of its older members), and Space Nations' claim grants read each
+nation's own claims, so a claim that the nation only borrows does not
+stop them. With the Global Assembly the United Nations claims every
+region on Earth, and Demand Claim ignores the target's other wars, so
+the United Nations can demand any region that is not a capital from a
+nation it is not at war with. The target can still refuse. Both mods
+work as designed there. A known effect, also true before this
+version: a dormant United Nations with the Global Assembly lends
+peaceful claims on every region on Earth to any nation that holds its
+original capital with a peaceful claim. A dormant planetary union does
+the same for the regions it claims on its body. None of them is
+required. If a later TI Fleet Manager
+or TI Space Nations changes what CataTweaks reads, CataTweaks writes
+one line to the log and behaves as it does without it, except that
+with TI Fleet Manager the station rally then holds back every new
+ship, as described below. If a TI Fleet
+Manager call fails during play, CataTweaks writes one line to the log
+and turns off only that part of its TI Fleet Manager support
+(commission orders, the reserve check, the reserve refit check, or
+rally sorting) until the next campaign loads. A failed multiplayer update of a moved order
+counts as a commission order failure and also stops the commission
+time estimate. The rally never takes a ship that TI Fleet Manager may
+deliver or keep in its fleet hierarchy. If CataTweaks' TI Fleet
+Manager support could not bind, the rally holds back every new station
+ship, refits included, because nothing can be read. If commission
+order support is off or the claim failed, the rally follows TI Fleet
+Manager's own rule: it holds back a new ship when an open commission
+order for its design is on the yard that built it, and every new ship
+that is not a refit if that cannot be read. It also holds back a
+refit of a ship in a reserve fleet, because TI Fleet Manager keeps the
+refitted ship in that fleet's division, and a refit for which this
+cannot be read; refits of ships in other fleets may rally. A ship that
+is held back gets the normal completion notice.
 
 If you still have the separate Restored Empires mod installed, remove
 it. If you do not, its claim rows are duplicated.

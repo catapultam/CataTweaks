@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -107,6 +108,26 @@ public class Settings : UnityModManager.ModSettings, IDrawable
     [Draw("Solar mirror orbital boost cap", DrawType.Slider, Min = 2f, Max = 8f, Tooltip = "The maximum output of the solar modules of a mirror-lit station, as a multiple of their unlit output. This applies to orbital stations only. The standard limit is 8.")]
     public float solarMirrorOutputCap = 8f;
 
+    private bool previousSolarMirrors;
+    private float previousSolarCap = 8f;
+
+    internal void RememberSolarOptions()
+    {
+        previousSolarMirrors = solarMirrorsBoostStations;
+        previousSolarCap = solarMirrorOutputCap;
+    }
+
+    internal void ApplySolarOptions()
+    {
+        bool changed = previousSolarMirrors != solarMirrorsBoostStations
+            || (solarMirrorsBoostStations && previousSolarCap != solarMirrorOutputCap);
+        bool wasEnabled = previousSolarMirrors;
+        float wasCap = previousSolarCap;
+        RememberSolarOptions();
+        if (changed)
+            StationSolarMirrorRefresh.RefreshAll(wasEnabled, wasCap);
+    }
+
     [Draw("Project review favors the expensive project", Tooltip = "Review Failed Projects weights each project by its availability chance multiplied by its research cost. An expensive project is more likely to be selected.")]
     public bool expensiveFirstProjectReview = true;
 
@@ -136,12 +157,12 @@ public class Settings : UnityModManager.ModSettings, IDrawable
 
     // A nation that holds another nation's original capital borrows that nation's claims for as
     // long as it holds it, so unification no longer has to be worked strictly from the outside in.
-    [Draw("Holding a capital borrows that nation's claims", Tooltip = "While you hold the original capital of a dormant nation, you can use the claims of that nation. Your claim on the capital must not be hostile. You lose the borrowed claims when you lose the capital, or when your claim on it becomes hostile. A claim that the other nation held as hostile stays hostile for you. A nation that still holds territory is excluded. A region you take through a borrowed claim is held by a hostile claim, so you must legitimize a capital you take that way before you can borrow its claims. A unification is not a conquest: a region that comes with one, and that you then borrow a peaceful claim on, is held peacefully. After any hostile regions, investment in Government and Unity also legitimizes the claims you borrow as hostile, one at a time: the claim becomes peaceful for the nation you borrow it from, so it stays peaceful for whoever holds that capital. A project that needs a nation to exist, such as Greater Indonesia, is also available while a dormant nation's capital is held without a hostile claim: its claims go to the dormant nation, and whoever holds the capital borrows them. The region screen goes on crediting the claim to the nation it came from, so you can always see which capital is carrying it.")]
+    [Draw("Holding a capital borrows that nation's claims", Tooltip = "While you hold the original capital of a dormant nation, you can use the claims of that nation. Your claim on the capital must not be hostile. You lose the borrowed claims when you lose the capital, or when your claim on it becomes hostile. A claim that the other nation held as hostile stays hostile for you. A nation that still holds territory is excluded. If several dormant nations have the same original capital, each of them lends its claims. A region you take through a borrowed claim is held by a hostile claim, so you must legitimize a capital you take that way before you can borrow its claims. A unification is not a conquest: a region that comes with one, and that you then borrow a peaceful claim on, is held peacefully. After any hostile regions, investment in Government and Unity also legitimizes the claims you borrow as hostile, one at a time: the claim becomes peaceful for the nation you borrow it from, so it stays peaceful for whoever holds that capital. A project that needs a nation to exist, such as Greater Indonesia, can also be offered while a dormant nation's capital is held without a hostile claim. Each faction gets one roll for it, and a roll that fails marks it as missed. If the project is completed, its claims go to the dormant nation, and whoever holds the capital borrows them. The region screen goes on crediting the claim to the nation it came from, so you can always see which capital is carrying it.")]
     public bool inheritedCapitalClaims = true;
 
     // A nation that comes out of a war without its own capital, sitting on the capital of a
     // dormant nation instead, becomes that nation.
-    [Draw("A nation left on a dormant nation's capital becomes that nation", Tooltip = "When a war ends and a nation has lost its original capital to an enemy in that war, the nation looks at its new capital. If that region is the original capital of a dormant nation, and the dormant nation has a claim on it, the dormant nation comes back with all the regions of the nation. Each faction keeps its control points and their priorities. Stats, armies, nuclear weapons, space funding and accumulated investment move across. Alliances, rivalries and federation membership do not. The change happens on the next day after the nation is at peace with everyone.")]
+    [Draw("A nation left on a dormant nation's capital becomes that nation", Tooltip = "When a war ends and a nation has lost its original capital to an enemy in that war, the nation looks at its new capital. If that region is the original capital of a dormant nation, and the dormant nation has a claim on it, the dormant nation comes back with all the regions of the nation. Each faction keeps its control points and their priorities. Stats, armies, nuclear weapons, space funding and accumulated investment move across. Alliances, rivalries and federation membership do not. The change happens on the next day after the nation is at peace with everyone. A nation never becomes a nation that joined it voluntarily, for example by unification. Other dormant nations with the same original capital are not excluded.")]
     public bool dormantCapitalIdentity = true;
 
     // Repeatable projects granting control point capacity or resources (Management, Audience,
@@ -262,7 +283,7 @@ public class Settings : UnityModManager.ModSettings, IDrawable
         try
         {
             NormalizeShipyardOptions();
-            StationSolarMirrors.Invalidate();
+            ApplySolarOptions();
             StationConstruction.RefreshSettings();
         }
         catch (Exception e)
@@ -335,9 +356,10 @@ public static class Main
         settings = UnityModManager.ModSettings.Load<Settings>(modEntry);
         Settings.MigrateLegacyFile(settings, modEntry);
         settings.NormalizeShipyardOptions(nameof(Settings.pooledStationConstruction));
+        settings.RememberSolarOptions();
         // No OnGUI: every setting has a row on the game's own Settings screen, under the
         // CataTweaks tab, and a second copy in the mod manager would only be somewhere else to
-        // look. [Draw] stays as the one place a setting's label and tooltip are written.
+        // look. [Draw] supplies row metadata; in-game text comes from localization keys.
         Harmony harmony = new Harmony(modEntry.Info.Id);
         harmony.PatchAll(Assembly.GetExecutingAssembly());
         try
@@ -446,7 +468,7 @@ internal static class ApplyTemplateForRename
             __instance.managementQueryToggle.isOn, out _, out _, out _);
         if (toBuild.Count == 0)
         {
-            __instance.managementQueryText.SetText(__instance.managementQueryText.text + "\nRename to " + newName);
+            __instance.managementQueryText.SetText(__instance.managementQueryText.text + "\n" + Loc.T("UI.CataTweaks.RenameTo", newName));
             __instance.managementQueryConfirmButton.interactable = true;
         }
     }
@@ -492,6 +514,40 @@ internal static class HabTemplateOverwrite
                      .Where(d => d.displayName == habDesign.displayName).ToList())
         {
             __instance.DeleteHabDesign(old.dataName);
+        }
+    }
+}
+
+// Sort the lists used to build UI rows, keeping the saved designs and vanilla's index-to-template
+// mappings intact. The manager normally groups by type/tier before sorting by name.
+[HarmonyPatch]
+internal static class AlphabeticalHabTemplates
+{
+    private static IEnumerable<MethodBase> TargetMethods()
+    {
+        foreach (string name in new[] { "PopulateHabTemplateDropdown", "PopulateMassHabTemplateDropdown",
+            "PopulateQuickHabTemplateDropdown", "RefreshHabTemplateManagerList" })
+            yield return AccessTools.Method(typeof(HabitatsScreenController), name);
+    }
+
+    private static List<TIHabTemplate> Ordered(List<TIHabTemplate> designs) =>
+        designs.OrderBy(d => d.displayName, StringComparer.CurrentCultureIgnoreCase)
+            .ThenBy(d => d.dataName, StringComparer.Ordinal).ToList();
+
+    private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions,
+        MethodBase __originalMethod)
+    {
+        FieldInfo designs = AccessTools.Field(typeof(TIFactionState), nameof(TIFactionState.habDesigns));
+        MethodInfo ordered = AccessTools.Method(typeof(AlphabeticalHabTemplates), nameof(Ordered));
+        bool manager = __originalMethod.Name == "RefreshHabTemplateManagerList";
+        foreach (CodeInstruction code in instructions)
+        {
+            yield return code;
+            // Dropdowns enumerate habDesigns directly; the manager first builds a sorted copy.
+            if ((!manager && code.LoadsField(designs))
+                || (manager && code.operand is MethodInfo method && method.Name == "ToList"
+                    && method.ReturnType == typeof(List<TIHabTemplate>)))
+                yield return new CodeInstruction(OpCodes.Call, ordered);
         }
     }
 }
@@ -596,10 +652,13 @@ internal static class ReapplyPresetsOnValidityChange
     private static readonly Dictionary<GameStateID, HashSet<PriorityType>> lastInvalid =
         new Dictionary<GameStateID, HashSet<PriorityType>>();
 
+    internal static void Reset() => lastInvalid.Clear();
+
     private static void Postfix(TINationState nation)
     {
         if (!Main.settings.presetTrackingOnNationChanges)
         {
+            lastInvalid.Remove(nation.ID);
             return;
         }
         var current = new HashSet<PriorityType>(nation.InvalidPriorities);
@@ -784,6 +843,31 @@ internal static class StationConstruction
     internal static int dailyUpdateDepth;
     internal static int editingDepth;
 
+    // A start that another mod's patch refuses is not retried in the same yard until the next
+    // game day, as vanilla retries a yard's head once a day. The key is the item and the yard,
+    // because a patch can refuse for either; the item can still start in another yard.
+    private sealed class Refusal { internal int day; internal readonly HashSet<TIHabModuleState> yards = new HashSet<TIHabModuleState>(); }
+    private static readonly ConditionalWeakTable<ShipConstructionQueueItem, Refusal> refusals = new ConditionalWeakTable<ShipConstructionQueueItem, Refusal>();
+
+    // The calendar date, which changes at 00:00 like the daily tick. A Julian day changes at noon.
+    [MethodImpl(MethodImplOptions.NoInlining)] // ConstructionCheck replaces it; the game clock needs a campaign.
+    internal static int Today()
+    {
+        var now = TITimeState.Now();
+        return (now.year * 100 + now.month) * 100 + now.day;
+    }
+
+    internal static bool Refused(ShipConstructionQueueItem item, TIHabModuleState yard) =>
+        refusals.TryGetValue(item, out var refusal) && refusal.day == Today() && refusal.yards.Contains(yard);
+
+    private static void Refuse(ShipConstructionQueueItem item, TIHabModuleState yard)
+    {
+        var refusal = refusals.GetValue(item, _ => new Refusal());
+        int today = Today();
+        if (refusal.day != today) { refusal.day = today; refusal.yards.Clear(); }
+        refusal.yards.Add(yard);
+    }
+
     internal static bool Enabled(TIFactionState faction, TIHabModuleState yard) =>
         Main.settings.pooledStationConstruction && faction != null && faction.isActivePlayer
         && yard?.ref_hab != null && yard.ref_hab.IsStation;
@@ -850,20 +934,28 @@ internal static class StationConstruction
             Normalize(faction, hab);
             var waiting = View(faction, yards[0]).Where(i => !i.costPaid).ToList();
             var idle = yards.Where(y => y.active && !faction.GetShipyardQueue(y).Any(i => i.costPaid)).ToList();
+            bool shortage = false;
             foreach (var item in waiting)
             {
-                var yard = idle.Where(y => Compatible(item, y))
+                // A larger hull must not block a smaller free yard.
+                foreach (var yard in idle.Where(y => Compatible(item, y) && !Refused(item, y))
                     .OrderBy(y => item.isRefit
                         ? item.shipDesign.RefitResourceCost(y, item.refit_originalShipDesign, true, true, item.originalSpaceShipState).completionTime_days
-                        : item.shipDesign.hullTemplate.constructionTime_Days(y)).FirstOrDefault();
-                if (yard == null) continue; // A larger hull must not block a smaller free yard.
-                Transfer(faction, item, yard);
-                var queue = faction.GetShipyardQueue(yard);
-                queue.Remove(item);
-                queue.Insert(0, item);
-                Reprice(faction, item);
-                if (!faction.AttemptInitiateShipConstruction(yard)) break; // Keep resource priority.
-                idle.Remove(yard);
+                        : item.shipDesign.hullTemplate.constructionTime_Days(y)).ToList())
+                {
+                    Transfer(faction, item, yard);
+                    var queue = faction.GetShipyardQueue(yard);
+                    queue.Remove(item);
+                    queue.Insert(0, item);
+                    Reprice(faction, item);
+                    // Vanilla refuses a player's start only when the cost cannot be paid. Any
+                    // other refusal comes from a patch and must not hold up the ships behind it.
+                    if (!item.resourcesCost.CanAfford(faction)) { shortage = true; break; }
+                    // A patch could pay and still return false; a paid item must not be tried again.
+                    if (faction.AttemptInitiateShipConstruction(yard) | item.costPaid) { idle.Remove(yard); break; }
+                    Refuse(item, yard);
+                }
+                if (shortage) break; // Keep resource priority.
             }
             Normalize(faction, hab);
             // Failed starts and skipped incompatible hulls retain their relative priority.
@@ -897,21 +989,35 @@ internal static class StationConstruction
 
     internal static float FinishTime(TIFactionState faction, TIHabModuleState representative, TISpaceShipTemplate design)
     {
-        var yards = Enabled(faction, representative) ? Yards(faction, representative.ref_hab)
-            : new List<TIHabModuleState> { representative };
-        var available = yards.Where(y => y.active).ToDictionary(y => y,
-            y => faction.GetShipyardQueue(y).Where(i => i.costPaid).Sum(i => i.daysToCompletion));
-        foreach (var item in View(faction, representative).Where(i => !i.costPaid))
-        {
-            var yard = available.Keys.Where(y => Compatible(item, y)).OrderBy(y => available[y] +
-                (item.isRefit ? item.shipDesign.RefitResourceCost(y, item.refit_originalShipDesign, true, true, item.originalSpaceShipState).completionTime_days
-                    : item.shipDesign.hullTemplate.constructionTime_Days(y))).FirstOrDefault();
-            if (yard != null) available[yard] += item.isRefit
-                ? item.shipDesign.RefitResourceCost(yard, item.refit_originalShipDesign, true, true, item.originalSpaceShipState).completionTime_days
-                : item.shipDesign.hullTemplate.constructionTime_Days(yard);
-        }
+        var available = FreeTimes(faction, representative);
         return available.Keys.Where(y => design.CanBuildAtShipyard(y)).Select(y => available[y] +
             design.hullTemplate.constructionTime_Days(y)).DefaultIfEmpty(float.PositiveInfinity).Min();
+    }
+
+    // Days until each active yard is free. Each waiting item, in queue order, goes to the
+    // compatible yard where it would finish first; a yard that refused it today starts it on the
+    // next day at the earliest. This is an estimate: Dispatch starts work only in idle yards.
+    internal static Dictionary<TIHabModuleState, float> FreeTimes(TIFactionState faction, TIHabModuleState representative)
+    {
+        var yards = Enabled(faction, representative) ? Yards(faction, representative.ref_hab)
+            : new List<TIHabModuleState> { representative };
+        // A paid job still in its queue at zero days is held by a patch, or finishes at the next
+        // daily tick at the earliest. Either way the yard is not free now.
+        var available = yards.Where(y => y.active).ToDictionary(y => y,
+            y => faction.GetShipyardQueue(y).Where(i => i.costPaid).Sum(i => Math.Max(i.daysToCompletion, 1f)));
+        float Days(ShipConstructionQueueItem item, TIHabModuleState y) => item.isRefit
+            ? item.shipDesign.RefitResourceCost(y, item.refit_originalShipDesign, true, true, item.originalSpaceShipState).completionTime_days
+            : item.shipDesign.hullTemplate.constructionTime_Days(y);
+        // A yard that refused the item today tries it again on the next day at the earliest.
+        float Start(ShipConstructionQueueItem item, TIHabModuleState y) =>
+            Refused(item, y) ? Math.Max(available[y], 1f) : available[y];
+        foreach (var item in View(faction, representative).Where(i => !i.costPaid))
+        {
+            var yard = available.Keys.Where(y => Compatible(item, y))
+                .OrderBy(y => Start(item, y) + Days(item, y)).FirstOrDefault();
+            if (yard != null) available[yard] = Start(item, yard) + Days(item, yard);
+        }
+        return available;
     }
 
     internal static void Buttons(ShipyardGridItemController card)
@@ -1712,12 +1818,67 @@ internal static class StationConstructionRally
             SetTarget(source, 0);
             return;
         }
+        // A ship already on its way stays where it arrives.
+        if (DropReserveTarget(source)) return;
         if (!source.inCombatOrWaitingForCombat && !target.inCombatOrWaitingForCombat
             && source.CanMerge(target) && target.CanMerge(source))
         {
             SetTarget(source, 0);
+            var ships = source.ships.ToList();
             new MergeFleetOperation().ExecuteOperation(target, source);
+            FleetManagerCompat.Organize(target, ships);
         }
+    }
+
+    // Fleet Manager refuses every merge into a mothballed fleet, so a rally to one cannot finish.
+    // One notice a day per fleet, however many stations and ships pointed at it.
+    private static int notifiedDay;
+    private static readonly HashSet<int> notified = new HashSet<int>();
+    internal static void ResetNotices()
+    {
+        notifiedDay = 0;
+        notified.Clear();
+    }
+    internal static bool DropReserveTarget(TIGameState state)
+    {
+        if (!Enabled) return false;
+        try
+        {
+            var target = ResolveTarget(state);
+            if (target == null || !FleetManagerCompat.InReserve(target)) return false;
+            SetTarget(state, 0);
+            int today = StationConstruction.Today();
+            if (notifiedDay != today) { notifiedDay = today; notified.Clear(); }
+            if (notified.Add((int)target.ID)) NotifyReserve(target);
+            return true;
+        }
+        catch (Exception e)
+        {
+            FleetManagerCompat.Report("reserve rally check", e);
+            return false;
+        }
+    }
+
+    internal static string Commissioned(TISpaceShipState ship, TISpaceFleetState fleet) =>
+        Loc.T("UI.CataTweaks.RallyCommissioned", ship.displayName, fleet.GetDisplayName(fleet.faction));
+
+    private static readonly MethodInfo addItem = AccessTools.Method(typeof(TINotificationQueueState), "AddItem");
+    internal static void NotifyReserve(TISpaceFleetState fleet)
+    {
+        string text = Loc.T("UI.CataTweaks.RallyReserveCleared", fleet.GetDisplayName(fleet.faction));
+        var factions = new List<TIFactionState> { fleet.faction };
+        addItem.Invoke(null, new object[] { new NotificationQueueItem
+        {
+            templateName = "CataTweaks_ShipRally",
+            primaryFactions = factions,
+            relevantFactions = factions.ToList(),
+            itemHeadline = Loc.T("UI.CataTweaks.RallyHeadline"),
+            itemSummary = text,
+            itemDetail = text,
+            icon = fleet.iconResource,
+            popupResource1 = fleet.iconResource,
+            gotoGameState = fleet,
+        }, false });
     }
 }
 
@@ -1728,7 +1889,11 @@ internal static class StationConstructionRallySave
 {
     private static void Postfix(object instance, fsData serialized, fsResult __result)
     {
-        if (!__result.Failed) StationConstructionRally.WriteSave(instance, serialized);
+        if (!__result.Failed)
+        {
+            StationConstructionRally.WriteSave(instance, serialized);
+            DormantCapitalIdentity.WriteSave(instance, serialized);
+        }
     }
 }
 [HarmonyPatch(typeof(fsReflectedConverter), nameof(fsReflectedConverter.TryDeserialize))]
@@ -1736,7 +1901,11 @@ internal static class StationConstructionRallyLoad
 {
     private static void Postfix(object instance, fsData data, fsResult __result)
     {
-        if (!__result.Failed) StationConstructionRally.ReadSave(instance, data);
+        if (!__result.Failed)
+        {
+            StationConstructionRally.ReadSave(instance, data);
+            DormantCapitalIdentity.ReadSave(instance, data);
+        }
     }
 }
 [HarmonyPatch(typeof(TIFactionState), nameof(TIFactionState.CompleteShipConstruction))]
@@ -1748,12 +1917,46 @@ internal static class StationConstructionRallyCompletion
         StationConstructionRally.completingYard = !refitCancel && __instance.isActivePlayer ? shipyardIdx : null;
     }
     private static void Finalizer(TIHabModuleState __state) => StationConstructionRally.completingYard = __state;
+    // Last, so Fleet Manager's completion postfix finds the new fleet before a rally merge archives it.
+    [HarmonyPriority(Priority.Last)]
     private static void Postfix(TIFactionState __instance)
     {
         if (__instance.isActivePlayer)
             foreach (var fleet in __instance.fleets.ToList()) StationConstructionRally.TryMerge(fleet);
     }
 }
+// Fleet Manager reads its commission orders in its own postfix. This prefix runs before every
+// postfix, so the order is on the building yard by then whichever mod loaded first. It runs last
+// among the prefixes: its class-type arguments make Harmony skip it once an earlier prefix has
+// cancelled the completion, so a cancelled completion moves no order. The finalizer then sees no
+// saved state and leaves the claim alone.
+[HarmonyPatch(typeof(TIFactionState), nameof(TIFactionState.CompleteShipConstruction))]
+internal static class FleetManagerCommission
+{
+    [ThreadStatic] internal static TISpaceFleetState fleet;
+    // CataTweaks could not move the order with confidence, and Fleet Manager may deliver this ship.
+    [ThreadStatic] internal static bool held;
+    internal sealed class Saved { internal TISpaceFleetState fleet; internal bool held; }
+    [HarmonyPriority(Priority.Last)]
+    private static void Prefix(TIFactionState __instance, TIHabModuleState shipyardIdx, bool refitCancel, ShipConstructionQueueItem item,
+        out Saved __state)
+    {
+        __state = new Saved { fleet = fleet, held = held };
+        fleet = null;
+        held = false;
+        if (refitCancel || shipyardIdx == null
+            || !__instance.nShipyardQueues.TryGetValue(shipyardIdx, out var queue) || queue.Count == 0) return;
+        fleet = FleetManagerCompat.ClaimOrder(__instance, shipyardIdx, item ?? queue[0], out held);
+        held |= FleetManagerCompat.Tracked(item ?? queue[0]);
+    }
+    private static void Finalizer(Saved __state)
+    {
+        if (__state == null) return;
+        fleet = __state.fleet;
+        held = __state.held;
+    }
+}
+
 [HarmonyPatch(typeof(TINotificationQueueState), nameof(TINotificationQueueState.LogShipComplete))]
 internal static class StationConstructionRallyNotification
 {
@@ -1766,6 +1969,23 @@ internal static class StationConstructionRallyNotification
         StationConstructionRally.notification = null;
         var yard = StationConstructionRally.completingYard;
         if (!StationConstructionRally.Enabled || isACancelledRefit || yard == null || StationConstructionRally.TargetID(yard.ref_hab) <= 0) return;
+        if (StationConstructionRally.DropReserveTarget(yard.ref_hab)) return;
+        // A Fleet Manager commission order names this ship's fleet; it takes precedence over the station default.
+        var commission = FleetManagerCommission.fleet;
+        if (commission != null)
+        {
+            try
+            {
+                StationConstructionRally.notification = new StationConstructionRally.Report
+                {
+                    ship = ship,
+                    failure = StationConstructionRally.Commissioned(ship, commission)
+                };
+            }
+            catch (Exception e) { FleetManagerCompat.Report("commission notice", e); }
+            return;
+        }
+        if (FleetManagerCommission.held) return; // The ship stays; Fleet Manager may deliver it.
         try { StationConstructionRally.notification = StationConstructionRally.Start(ship, yard); }
         catch (Exception e)
         {
@@ -1812,8 +2032,10 @@ internal static class StationConstructionRallyRetry
 {
     private static void Postfix(TIFactionState __instance)
     {
-        if (__instance.isActivePlayer)
-            foreach (var fleet in __instance.fleets.ToList()) StationConstructionRally.TryMerge(fleet);
+        if (!__instance.isActivePlayer) return;
+        foreach (var fleet in __instance.fleets.ToList()) StationConstructionRally.TryMerge(fleet);
+        foreach (var hab in __instance.nShipyardQueues.Keys.Select(y => y.ref_hab).Where(h => h != null).Distinct().ToList())
+            StationConstructionRally.DropReserveTarget(hab);
     }
 }
 [HarmonyPatch(typeof(TISpaceFleetState), nameof(TISpaceFleetState.AbortTransfer))]
@@ -1932,7 +2154,7 @@ internal sealed class StationConstructionRallyPicker : MonoBehaviour
         var faction = card.shipyardIdx.ref_faction;
         int selectedID = StationConstructionRally.TargetID(card.shipyardIdx.ref_hab);
         choices.Clear(); choices.Add(null);
-        choices.AddRange(faction.fleets.Where(f => !f.deleted && !f.landed && f.ships.Count > 0)
+        choices.AddRange(faction.fleets.Where(f => !f.deleted && !f.landed && f.ships.Count > 0 && !FleetManagerCompat.InReserve(f))
             .OrderBy(f => f.GetDisplayName(faction)).ThenBy(f => f.ID));
         var options = choices.Select(f => f == null ? Loc.T("UI.CataTweaks.RallyNone")
             : Loc.T("UI.CataTweaks.RallyFleet", f.GetDisplayName(faction))).ToList();
@@ -2023,9 +2245,12 @@ internal static class StationConstructionHabListTooltip
     }
 }
 
+// First, so other mods' bool prefixes do not run (and log) for a call that cannot start anything.
+// Calls from the dispatcher pass through to every other prefix.
 [HarmonyPatch(typeof(TIFactionState), nameof(TIFactionState.AttemptInitiateShipConstruction))]
 internal static class StationConstructionStart
 {
+    [HarmonyPriority(Priority.First)]
     private static bool Prefix(TIFactionState __instance, TIHabModuleState shipyard, ref bool __result)
     {
         if (!StationConstruction.Enabled(__instance, shipyard)) return true;
@@ -2035,18 +2260,44 @@ internal static class StationConstructionStart
     }
 }
 
+// The yard is chosen in the action, before AddShipToShipyardQueue runs. A prefix that takes
+// __args writes the original arguments back, so a ref change there can be undone by another mod.
+[HarmonyPatch(typeof(AddShipDesignToConstructionQueueAction), nameof(AddShipDesignToConstructionQueueAction.Execute))]
+internal static class StationConstructionAddYard
+{
+    private static readonly AccessTools.FieldRef<AddShipDesignToConstructionQueueAction, TIHabModuleState> yard =
+        AccessTools.FieldRefAccess<AddShipDesignToConstructionQueueAction, TIHabModuleState>("shipyard");
+
+    private static void Prefix(AddShipDesignToConstructionQueueAction __instance)
+    {
+        var shipyard = yard(__instance);
+        var faction = shipyard?.ref_faction;
+        if (!StationConstruction.Enabled(faction, shipyard)) return;
+        StationConstruction.Normalize(faction, shipyard.ref_hab);
+        yard(__instance) = StationConstruction.Yards(faction, shipyard.ref_hab)[0];
+    }
+}
+
+// Mods that call AddShipToShipyardQueue directly with any yard are covered by the dispatcher's
+// Normalize. Harmony skips this prefix after another prefix returns false, because it takes a
+// class-type argument; __state then stays 0 and the postfix keeps the refusing result.
 [HarmonyPatch(typeof(TIFactionState), nameof(TIFactionState.AddShipToShipyardQueue))]
 internal static class StationConstructionAdd
 {
-    private static void Prefix(TIFactionState __instance, ref TIHabModuleState shipyard)
+    internal static int Count(TIFactionState faction, TIHabModuleState shipyard) =>
+        StationConstruction.Yards(faction, shipyard.ref_hab).Sum(y => faction.GetShipyardQueue(y).Count);
+
+    // __state is the item count plus one, so 0 means that the prefix did not run.
+    private static void Prefix(TIFactionState __instance, TIHabModuleState shipyard, out int __state)
     {
-        if (!StationConstruction.Enabled(__instance, shipyard)) return;
-        StationConstruction.Normalize(__instance, shipyard.ref_hab);
-        shipyard = StationConstruction.Yards(__instance, shipyard.ref_hab)[0];
+        __state = StationConstruction.Enabled(__instance, shipyard) ? Count(__instance, shipyard) + 1 : 0;
     }
-    private static void Postfix(TIFactionState __instance, TIHabModuleState shipyard, ref bool __result)
+    // First, so later postfixes such as TI Crew Extended's see the final result.
+    [HarmonyPriority(Priority.First)]
+    private static void Postfix(TIFactionState __instance, TIHabModuleState shipyard, int __state, bool __runOriginal, ref bool __result)
     {
-        if (!StationConstruction.Enabled(__instance, shipyard)) return;
+        // Refused, or not a shared queue: keep the result.
+        if (!__runOriginal || __state == 0 || Count(__instance, shipyard) < __state) return;
         StationConstruction.Dispatch(__instance, shipyard.ref_hab);
         __result = true; // Enqueue succeeds even when resources are unavailable.
     }
@@ -2079,9 +2330,23 @@ internal static class StationConstructionLostYard
 {
     private static void Prefix(TIFactionState __instance, TIHabModuleState shipyard)
     {
-        if (!StationConstruction.Enabled(__instance, shipyard)) return;
-        var survivor = StationConstruction.Yards(__instance, shipyard.ref_hab).FirstOrDefault(y => y != shipyard);
+        // The game skips a module with no queue, such as a yard still being built or decommissioned.
+        if (shipyard == null || !__instance.nShipyardQueues.ContainsKey(shipyard)) return;
+        // Save repair removes broken yards (no template, so no tier to sort by). Nothing here may
+        // stop the game from removing a yard; it is moved before any change.
+        TIHabModuleState survivor;
+        try
+        {
+            if (!StationConstruction.Enabled(__instance, shipyard)) return;
+            survivor = StationConstruction.Yards(__instance, shipyard.ref_hab).FirstOrDefault(y => y != shipyard);
+        }
+        catch (Exception e)
+        {
+            Main.mod?.Logger.Error("Shared station queue: a lost shipyard's waiting work was not moved - " + e.Message);
+            return;
+        }
         if (survivor == null) return;
+        FleetManagerCompat.MoveOrders(__instance, shipyard, survivor);
         // Losing a slot cancels its paid construction as usual, but not the station backlog.
         foreach (var item in __instance.GetShipyardQueue(shipyard).Where(i => !i.costPaid).ToList())
         {
@@ -2443,89 +2708,105 @@ internal static class StationSolarMirrorOutput
         int bonus = StationSolarMirrors.BonusFor(station, faction) * tier;
         if (bonus > 0)
         {
-            // Re-apply the ceiling rather than letting the bonus run past it. Vanilla's is 8x.
-            __result = Mathf.Min(__result + bonus,
-                (int)(Main.settings.solarMirrorOutputCap * powerValue));
+            // This slider is a multiple of the station's actual unlit output, which already
+            // includes its distance from the Sun. A mirror must never reduce that output.
+            int unlit = __result;
+            __result = WithMirrors(unlit, bonus, Main.settings.solarMirrorOutputCap);
         }
     }
+    internal static int WithMirrors(int unlit, int bonus, float cap) =>
+        Math.Min(unlit + bonus, Math.Max(unlit, (int)(cap * unlit)));
+
 }
 
-// Vanilla only refreshes surfaceBases when a mirror toggles, so station power grids would show
-// stale output until something else forced a recalculation.
-[HarmonyPatch(typeof(TISpaceBodyState), nameof(TISpaceBodyState.ChangeSolarMirrorBonus))]
+// Vanilla only refreshes surfaceBases when a mirror toggles. Snapshot station solar supply
+// before the toggle, then rebalance only stations whose supply actually changed.
+[HarmonyPatch(typeof(TIHabModuleState), nameof(TIHabModuleState.SetPowerStatus))]
 internal static class StationSolarMirrorRefresh
 {
-    // A sweep is only ever run by the outermost call, because the sweep re-enters the method it
-    // is a postfix on. A mirror is a Station module and a power consumer, so refreshing a
-    // station's power grid can power one up or, in the deficit loop, shut one down - and either
-    // toggle runs SetPowerStatus, which calls ChangeSolarMirrorBonus, which lands here again and
-    // starts another sweep before the first has returned. Since each toggle really does change
-    // the module's state, SetPowerStatus does not stop it at its own no-change guard: a mirror
-    // turned on at one depth and off at the next goes round for as long as the stack holds.
-    //
-    // That is why the crash had nothing to say for itself. A stack overflow in Mono is not an
-    // exception anything can catch - not the try/catch in OnChange, not Harmony, not Unity's
-    // logger. The process simply ends.
-    //
-    // Vanilla cannot reach this: ChangeSolarMirrorBonus refreshes surfaceBases, and every solar
-    // mirror module in TIHabModuleTemplate.json is habType Station, so a surface base can never
-    // hold the module whose toggle would call back in. Pointing the same refresh at stations is
-    // what closes the loop, so the guard belongs here rather than in the tweak that reads it.
+    // Lighting is acyclic: Lagrange mirrors light body orbits, and body-orbit mirrors only
+    // light lower orbits of the same barycenter. Visit sources first so nested power changes
+    // invalidate the bonus cache before any dependent station is evaluated. All faction habs
+    // are included because a L1 source can also light a moon outside the triggering body.
     private static bool refreshing;
 
-    private static void Postfix(TISpaceBodyState __instance, int changeBy, TIFactionState faction)
+    internal static IEnumerable<TIHabState> OrderedStations(TIFactionState faction) =>
+        faction.habs.Where(h => h != null && h.IsStation && h.orbitState != null)
+            .OrderByDescending(h => h.orbitState.barycenter?.isLagrangePointState == true)
+            .ThenByDescending(h => h.orbitState.semiMajorAxis_m).ToArray();
+
+    private static int SolarSupply(TIHabState station, bool enabled, float cap)
     {
-        if (!StationSolarMirrors.Enabled)
+        int total = 0;
+        int bonus = enabled ? StationSolarMirrors.BonusFor(station, station.faction) : 0;
+        foreach (TIHabModuleState module in station.CompletedModules())
         {
-            return;
+            if (!module.functional || !module.moduleTemplate.SpecialRules.Contains(
+                HabModuleSpecialRule.Solar_Power_Variable_Output))
+                continue;
+            int unlit = TIHabModuleState.SolarPowerOutput(station, module.moduleTemplate.power,
+                station.faction, module.tier, true);
+            total += bonus > 0
+                ? StationSolarMirrorOutput.WithMirrors(unlit, bonus * module.tier, cap) : unlit;
         }
-        if (changeBy == 0 || faction == null)
-        {
+        return total;
+    }
+
+    private static Dictionary<TIHabState, int> Snapshot(TIFactionState faction, bool enabled, float cap) =>
+        OrderedStations(faction).ToDictionary(station => station, station => SolarSupply(station, enabled, cap));
+
+    internal static void RefreshAll(bool wasEnabled, float wasCap)
+    {
+        StationSolarMirrors.Invalidate();
+        if (GameControl.control?.activePlayer == null)
             return;
-        }
-        // Above the guard: a nested toggle still has to drop the cache, or the sweep that is
-        // already running would go on handing out the bonus as it stood before the toggle.
+        foreach (TIFactionState faction in GameStateManager.AllFactions())
+            Refresh(faction, Snapshot(faction, wasEnabled, wasCap));
+    }
+
+    private static void Prefix(TIHabModuleState __instance, bool __0,
+        out Dictionary<TIHabState, int> __state)
+    {
+        __state = null;
+        if (!StationSolarMirrors.Enabled || refreshing || __instance.powered == __0
+            || __instance.moduleTemplate == null
+            || !__instance.moduleTemplate.SpecialRules.Contains(HabModuleSpecialRule.SolarMirror))
+            return;
+        // ChangeSolarMirrorBonus is called only from SetPowerStatus, after powered changes.
+        // Capture here, then refresh after all native body/moon notifications have finished.
+        StationSolarMirrors.Invalidate();
+        __state = Snapshot(__instance.ref_faction, true, Main.settings.solarMirrorOutputCap);
+    }
+
+    private static void Postfix(TIHabModuleState __instance, Dictionary<TIHabState, int> __state)
+    {
+        if (__state != null)
+            Refresh(__instance.ref_faction, __state);
+        else if (StationSolarMirrors.Enabled && __instance.moduleTemplate != null
+            && __instance.moduleTemplate.SpecialRules.Contains(HabModuleSpecialRule.SolarMirror))
+            StationSolarMirrors.Invalidate();
+    }
+
+    private static void Refresh(TIFactionState faction, Dictionary<TIHabState, int> before)
+    {
+        // Nested mirror changes still invalidate the cache; dependency ordering means their
+        // consumers have yet to be visited. Never recursively enter native power management.
         StationSolarMirrors.Invalidate();
         if (refreshing)
-        {
             return;
-        }
         refreshing = true;
         try
         {
-            foreach (TIOrbitState orbit in StationOrbits(__instance))
+            foreach (TIHabState station in OrderedStations(faction))
             {
-                // stationsInOrbit builds a fresh list on every read, so the loop is already
-                // reading a copy and a refresh that moves a station cannot disturb it.
-                foreach (TIHabState station in orbit.stationsInOrbit)
-                {
-                    if (station != null && station.faction == faction)
-                    {
-                        station.UpdatePowerManagement(changeBy > 0, null, faction.player.isAI);
-                    }
-                }
+                int after = SolarSupply(station, StationSolarMirrors.Enabled, Main.settings.solarMirrorOutputCap);
+                if (before.TryGetValue(station, out int prior) && after != prior)
+                    station.UpdatePowerManagement(after > prior, null, faction.player.isAI);
             }
         }
         finally
         {
             refreshing = false;
-        }
-    }
-
-    // The body's own orbits plus those around its Lagrange points, since a station at L1 orbits
-    // the point rather than the body and would otherwise never be refreshed.
-    private static IEnumerable<TIOrbitState> StationOrbits(TISpaceBodyState body)
-    {
-        foreach (TIOrbitState orbit in body.orbits)
-        {
-            yield return orbit;
-        }
-        foreach (TILagrangePointState point in body.lagrangePoints)
-        {
-            foreach (TIOrbitState orbit in point.orbits)
-            {
-                yield return orbit;
-            }
         }
     }
 }
@@ -2779,18 +3060,21 @@ internal static class RepeatableScaling
 [HarmonyPatch(typeof(TIFactionState), nameof(TIFactionState.GetControlPointMaintenanceFreebieCap))]
 internal static class RepeatableCapScalesWithCost
 {
-    private struct Cached
+    private sealed class Cached
     {
-        public int completedCount;
+        public int completedCount = -1;
+        public float rate;
         public float extra;
     }
 
     // The cap is read by the ledger, the nations screen and the AI planner, several times per
     // frame, and completedProjects runs to hundreds of entries. Recompute only when the list
-    // grows. ponytail: in-memory and keyed on the faction object, so a save reload just
-    // repopulates it; bounded by the faction count either way.
-    private static readonly Dictionary<TIFactionState, Cached> cache =
-        new Dictionary<TIFactionState, Cached>();
+    // grows or the scaling rate changes. Weak keys let unloaded factions and their connected
+    // campaign state be collected, including a query that finishes while a load is beginning.
+    private static ConditionalWeakTable<TIFactionState, Cached> cache =
+        new ConditionalWeakTable<TIFactionState, Cached>();
+
+    internal static void Reset() => cache = new ConditionalWeakTable<TIFactionState, Cached>();
 
     private static float Compute(TIFactionState faction)
     {
@@ -2830,12 +3114,18 @@ internal static class RepeatableCapScalesWithCost
             return;
         }
         int completed = __instance.completedProjects.Count;
-        if (!cache.TryGetValue(__instance, out Cached entry) || entry.completedCount != completed)
+        float rate = RepeatableScaling.Rate;
+        Cached entry = cache.GetValue(__instance, _ => new Cached());
+        lock (entry)
         {
-            entry = new Cached { completedCount = completed, extra = Compute(__instance) };
-            cache[__instance] = entry;
+            if (entry.completedCount != completed || entry.rate != rate)
+            {
+                entry.extra = Compute(__instance);
+                entry.completedCount = completed;
+                entry.rate = rate;
+            }
+            __result += entry.extra;
         }
-        __result += entry.extra;
     }
 }
 
@@ -2970,14 +3260,14 @@ internal static class RepeatableWarningsDescription
             .Sum(e => RepeatableScaling.Scaled(-e.value, next));
         if (cap > 0f)
         {
-            payoff.Add(TIUtilities.FormatBigOrSmallNumber(cap) + " control point management capacity");
+            payoff.Add(TIUtilities.FormatBigOrSmallNumber(cap) + " "
+                + Loc.T("UI.Objectives.GeneralControlsCanvas.CPCap.Name"));
         }
-        string extended = "This is a repeatable project. The required research to finish it increases by "
-            + $"{(__instance.researchCost / modifier).ToString("N0")}{sprite} each time it is repeated. "
-            + $"Additionally, the reward for this project will increase by {RepeatableScaling.Rate:P0} "
-            + "each time it is repeated. Our next attempt at this project will cost "
-            + $"{(__instance.researchCost * next / modifier).ToString("N0")}{sprite} "
-            + $"and will grant {string.Join(", ", payoff)}.";
+        string extended = Loc.T("UI.CataTweaks.RepeatingScaled",
+            (__instance.researchCost / modifier).ToString("N0"), sprite,
+            RepeatableScaling.Rate.ToString("P0"),
+            (__instance.researchCost * next / modifier).ToString("N0"),
+            string.Join(", ", payoff));
         __result = __result.Replace(TIUtilities.GreenLine(repeating), TIUtilities.GreenLine(extended));
     }
 }
@@ -3080,27 +3370,45 @@ internal static class InheritedCapitalClaims
         AccessTools.FieldRefAccess<TINationState, List<TIRegionState>>("<hostileClaims>k__BackingField");
 
     // originalCapital is set during world init and never moves afterwards (SetCapital changes the
-    // working capital, not this), so the region -> nation map is built once and only rebuilt if the
-    // nation count changes. Scanning every nation per region on every read would be far too slow.
-    private static Dictionary<TIRegionState, TINationState> capitalOf;
+    // working capital, not this), so the region -> nations map is built once and only rebuilt if
+    // the nation count changes. Scanning every nation per region on every read would be far too slow.
+    //
+    // Several nations can share an original capital: vanilla gives Shanghai to TWN and WUR and
+    // Yemen to YEM and YMS, and a mod that founds a nation by annexing another can seat both on
+    // one region. Each of them is that region's nation, so every one that is dormant lends
+    // through it, and where two disagree on a claim's hostility the peaceful reading wins, as it
+    // does between two capitals. Keeping only one would make the lender depend on nation order.
+    private static Dictionary<TIRegionState, List<TINationState>> capitalOf;
     private static int mappedNations = -1;
+    private static readonly List<TINationState> noHolders = new List<TINationState>();
 
-    private static TINationState CapitalHolder(TIRegionState region)
+    internal static Dictionary<TIRegionState, List<TINationState>> MapCapitals(IEnumerable<TINationState> nations)
+    {
+        var map = new Dictionary<TIRegionState, List<TINationState>>();
+        foreach (TINationState nation in nations)
+        {
+            if (nation?.originalCapital == null)
+            {
+                continue;
+            }
+            if (!map.TryGetValue(nation.originalCapital, out List<TINationState> holders))
+            {
+                map[nation.originalCapital] = holders = new List<TINationState>();
+            }
+            holders.Add(nation);
+        }
+        return map;
+    }
+
+    private static List<TINationState> CapitalHolders(TIRegionState region)
     {
         TINationState[] all = GameStateManager.AllNations();
         if (capitalOf == null || mappedNations != all.Length)
         {
-            capitalOf = new Dictionary<TIRegionState, TINationState>();
-            foreach (TINationState nation in all)
-            {
-                if (nation.originalCapital != null)
-                {
-                    capitalOf[nation.originalCapital] = nation;
-                }
-            }
+            capitalOf = MapCapitals(all);
             mappedNations = all.Length;
         }
-        return capitalOf.TryGetValue(region, out TINationState source) ? source : null;
+        return capitalOf.TryGetValue(region, out List<TINationState> sources) ? sources : noHolders;
     }
 
     // While a save is being written the getters answer with the nation's own lists only.
@@ -3165,9 +3473,15 @@ internal static class InheritedCapitalClaims
         return want;
     }
 
-    // What one capital lends the nation, as claim -> hostile. Backing fields only, like Borrowed.
+    // What one capital lends the nation, as claim -> hostile, from every nation it is the original
+    // capital of. Backing fields only, like Borrowed.
     private static IEnumerable<KeyValuePair<TIRegionState, bool>> LentThrough(TINationState nation,
-        TIRegionState capital, Capture pending)
+        TIRegionState capital, Capture pending) =>
+        CapitalHolders(capital).SelectMany(source => LentBy(nation, capital, source, pending));
+
+    // What one capital lends the nation from one of the nations it is the original capital of.
+    private static IEnumerable<KeyValuePair<TIRegionState, bool>> LentBy(TINationState nation,
+        TIRegionState capital, TINationState source, Capture pending)
     {
         List<TIRegionState> own = ownClaims(nation);
         // Holding it in anger lends nothing. A capital not yet taken counts only on a peaceful
@@ -3177,7 +3491,6 @@ internal static class InheritedCapitalClaims
         {
             yield break;
         }
-        TINationState source = CapitalHolder(capital);
         // Dormant nations only. A living nation that moved its capital still speaks for itself,
         // and borrowing from it would be leeching rather than skipping the merge dance.
         if (source == null || source == nation || source.alienNation
@@ -3249,15 +3562,18 @@ internal static class InheritedCapitalClaims
         {
             return true;                             // vanilla's own case: a region it holds
         }
-        // Every capital lending it hostile, since a claim is only borrowed hostile when no source
+        // Every source lending it hostile, since a claim is only borrowed hostile when no source
         // lends it peacefully.
         bool changed = false;
         foreach (TIRegionState capital in __instance.regions)
         {
-            if (LentThrough(__instance, capital, null).Any(lent => lent.Key == claim && lent.Value))
+            foreach (TINationState source in CapitalHolders(capital))
             {
-                CapitalHolder(capital).RemoveHostileClaim(claim);
-                changed = true;
+                if (LentBy(__instance, capital, source, null).Any(lent => lent.Key == claim && lent.Value))
+                {
+                    source.RemoveHostileClaim(claim);
+                    changed = true;
+                }
             }
         }
         if (!changed)
@@ -3296,8 +3612,8 @@ internal static class InheritedCapitalClaims
             Loc.T("UI.CataTweaks.LegitimizeBorrowedClaims", args));
     }
 
-    // Forty-five projects - Greater Indonesia, Commonwealth Restored and the rest - name a nation
-    // that must exist, and do nothing but hand that nation claims. With its capital in someone's
+    // Projects such as Greater Indonesia, Commonwealth Restored and the Roman regional branches
+    // name a nation that must exist before they can unlock its claims. With its capital in someone's
     // peaceful hands a dormant nation's claims are still in use, so such a project counts that
     // nation as present: completing it gives the dormant nation the claims, and the holder
     // borrows them.
@@ -3444,17 +3760,39 @@ internal static class InheritedCapitalClaims
                 yield return instruction;
             }
         }
+
+        internal static bool Reads(CodeInstruction instruction) =>
+            instruction.Calls(getClaims) || instruction.Calls(getHostileClaims);
     }
+
+    // Another mod's method that reads either list before it writes a claim gets the same rewrite.
+    internal static HarmonyMethod OwnListsTranspiler =>
+        new HarmonyMethod(AccessTools.Method(typeof(WritersUseOwnLists), "Transpiler"));
+
+    internal static bool ReadsClaimLists(MethodBase method) =>
+        PatchProcessor.GetOriginalInstructions(method).Any(WritersUseOwnLists.Reads);
 
     // Taking a capital hands the conqueror every region of the loser it claims, and that list is
     // drawn up once, from the claims it holds the moment the capital falls. This decides what the
     // conqueror is about to take, and leaves it in force until the capture is done - the same
     // condition vanilla tests, so what it assumes is always what happens.
+    //
+    // It also marks the call as a conquest, whatever the setting: AbsorbNation inside it is never a
+    // voluntary merger, even where the game absorbs a nation that still lives.
+    private static bool occupying;
+
+    private sealed class Occupation
+    {
+        internal Capture capture;
+        internal bool occupying;
+    }
+
     [HarmonyPatch(typeof(TIRegionState), "CompleteOccupationofRegion")]
     [HarmonyPrefix]
-    private static void BeforeCapture(TIRegionState __instance, TIArmyState army, out Capture __state)
+    private static void BeforeCapture(TIRegionState __instance, TIArmyState army, out Occupation __state)
     {
-        __state = capture;
+        __state = new Occupation { capture = capture, occupying = occupying };
+        occupying = true;
         TINationState loser = __instance.nation;
         TINationState winner = __instance.leadOccupier ?? army?.homeNation;
         if (!Main.settings.inheritedCapitalClaims || loser == null || winner == null || winner == loser
@@ -3469,7 +3807,11 @@ internal static class InheritedCapitalClaims
     // Finalizer, not a postfix: a capture that throws must not leave its assumption behind.
     [HarmonyPatch(typeof(TIRegionState), "CompleteOccupationofRegion")]
     [HarmonyFinalizer]
-    private static void AfterCapture(Capture __state) => capture = __state;
+    private static void AfterCapture(Occupation __state)
+    {
+        capture = __state?.capture;
+        occupying = __state?.occupying ?? false;
+    }
 
     // What the winner will hold is what it claims of the loser, and what it claims depends on the
     // capitals among that, so this runs to a fixed point. It first assumes the loser goes dormant -
@@ -3506,10 +3848,19 @@ internal static class InheritedCapitalClaims
     // joiner's capital and borrows its claims, and its own hostile claim on a region hides the
     // peaceful one it borrows: a claim the joiner had legitimized would come out hostile again.
     // So each region the merger seizes that way, and borrows peacefully once it is done, has its
-    // new claim made peaceful. Conquest never comes through here with regions to move - vanilla
-    // calls AbsorbNation on a loser that is already dormant - so conquests stay hostile.
+    // new claim made peaceful. Conquests stay hostile: an AbsorbNation inside
+    // CompleteOccupationofRegion is left alone.
+    //
+    // The same test - a living joiner, a human absorber, no occupation under way - is what makes a
+    // merger voluntary, and DormantCapitalIdentity keeps a record of those whatever this tweak's
+    // setting is. The game's callers of AbsorbNation are unification, annexing events, the debug
+    // console, the alien nation's missions and annexations, and CompleteOccupationofRegion. That
+    // last one absorbs a loser that is already dormant, except when the alien nation leads the
+    // occupation: then the loser can still live, and the region can go to a human nation in the
+    // alien nation's alliance. The occupation test leaves all of those out.
     private sealed class Merge
     {
+        internal TINationState joiner;
         internal List<TIRegionState> moving;
         internal HashSet<TIRegionState> claimedBefore;
     }
@@ -3519,18 +3870,19 @@ internal static class InheritedCapitalClaims
     private static void BeforeMerge(TINationState __instance, TINationState joiningNationState, out Merge __state)
     {
         __state = null;
+        if (occupying || __instance.alienNation || joiningNationState == null || !joiningNationState.extant)
+        {
+            return;
+        }
+        __state = new Merge { joiner = joiningNationState };
         // Vanilla's democracy rule makes the whole merger hostile, claimed or not; that stands.
-        if (!ready || !Main.settings.inheritedCapitalClaims || __instance.alienNation
-            || joiningNationState == null || !joiningNationState.extant
+        if (!ready || !Main.settings.inheritedCapitalClaims
             || __instance.HostileClaimDueToDemocracy(joiningNationState))
         {
             return;
         }
-        __state = new Merge
-        {
-            moving = new List<TIRegionState>(joiningNationState.regions),
-            claimedBefore = new HashSet<TIRegionState>(ownClaims(__instance)),
-        };
+        __state.moving = new List<TIRegionState>(joiningNationState.regions);
+        __state.claimedBefore = new HashSet<TIRegionState>(ownClaims(__instance));
     }
 
     // Runs to a fixed point, like Plan: a capital the joiner held made peaceful on one pass lends
@@ -3540,6 +3892,11 @@ internal static class InheritedCapitalClaims
     private static void AfterMerge(TINationState __instance, Merge __state)
     {
         if (__state == null)
+        {
+            return;
+        }
+        DormantCapitalIdentity.Merged(__instance, __state.joiner);
+        if (__state.moving == null)
         {
             return;
         }
@@ -3566,14 +3923,11 @@ internal static class InheritedCapitalClaims
 
     // Whether the capital lends the nation a peaceful claim on the region, by LentThrough's rules
     // but without its skip for a region the nation already holds or claims. Backing fields only.
-    private static bool LendsPeacefully(TINationState nation, TIRegionState capital, TIRegionState region)
-    {
-        TINationState source = CapitalHolder(capital);
-        return source != null && source != nation && !source.alienNation && !source.extant
+    private static bool LendsPeacefully(TINationState nation, TIRegionState capital, TIRegionState region) =>
+        CapitalHolders(capital).Any(source => source != nation && !source.alienNation && !source.extant
             && ownClaims(source)?.Contains(region) == true
             && ownHostileClaims(source)?.Contains(region) == false
-            && region.ClaimedBy(source);
-    }
+            && region.ClaimedBy(source));
 
     [HarmonyPatch(typeof(GameStateManager), nameof(GameStateManager.SaveAllGameStates))]
     [HarmonyPrefix]
@@ -3654,7 +4008,7 @@ internal static class CouncilSlotPool
                 || (empires && !CampaignFlags.RestoredEmpires)
                 // requiresNation is not the gate it looks like: PrereqsSatisfied only rejects a
                 // project whose required nation exists and is gone, so one naming a nation the
-                // scenario never had passes. Rome exists in Broken Earth alone, and its two
+                // scenario never had passes. Rome exists in Broken Earth alone, and its regional
                 // projects would otherwise be offered in every start with nothing to claim.
                 || (!string.IsNullOrEmpty(project.requiresNation)
                     && project.requiredNationState == null);
@@ -4860,6 +5214,9 @@ internal static class PactConfirm
     // Which target the question is about, and, by being set at all, that one is up.
     private static TIGameState asked;
 
+    private static CouncilorMissionCanvasController owner;
+    private static TIMissionTemplate askedMission;
+
     private static string promptWas;
 
     private static bool Prefix(CouncilorMissionCanvasController __instance)
@@ -4902,11 +5259,13 @@ internal static class PactConfirm
         // and vanilla would never get its prompt back.
         if (asked != null)
         {
-            Close(ui);
+            Cancel();
         }
         // Vanilla still cycles the target behind the panel - Tab runs CycleTargetForward whether
         // this is up or not - so an answer only stands for the target it was asked about.
         asked = target.GetValue(ui) as TIGameState;
+        owner = ui;
+        askedMission = mission.Invoke(ui, null) as TIMissionTemplate;
         promptWas = ui.unassignedWarningPrompt != null ? ui.unassignedWarningPrompt.text : null;
 
         // The header is left as vanilla wrote it - "Warning!" - because the panel carries two
@@ -4929,30 +5288,44 @@ internal static class PactConfirm
     // handler - which would finalize the whole mission phase - does not run.
     internal static bool Answer(CouncilorMissionCanvasController ui, bool yes)
     {
+        // Once this is our button press, even a failed confirmation must consume it. Falling
+        // through to the borrowed panel's native handler would finalize the whole mission phase.
+        if (!ReferenceEquals(owner, ui) || ReferenceEquals(asked, null))
+            return false;
         try
         {
-            if (asked == null || ui == null || ui.unassignedWarningPanel == null)
+            if (ui == null || ui.unassignedWarningPanel == null)
             {
-                return false;
+                Cancel();
+                return true;
             }
             TIGameState was = asked;
+            TIMissionTemplate wasMission = askedMission;
             TIGameState now = target.GetValue(ui) as TIGameState;
+            TIMissionTemplate nowMission = mission.Invoke(ui, null) as TIMissionTemplate;
             Close(ui);
             if (!yes)
             {
                 AudioManager.PlayOneShot("event:/SFX/UI_SFX/trig_SFX_Decline");
                 return true;
             }
+            if (nowMission == null || now == null)
+                return true;
             // A target that moved while the question was up goes back through the check rather
             // than through the answer, which is to say it gets asked about in its own right.
-            answered = ReferenceEquals(now, was);
+            answered = ReferenceEquals(now, was) && ReferenceEquals(nowMission, wasMission);
             ui.OnConfirmMissionClick();
             return true;
         }
         catch (Exception e)
         {
             Main.mod?.Logger.Error("Could not answer about a pact - " + e.Message);
-            return false;
+            Cancel();
+            return true;
+        }
+        finally
+        {
+            answered = false;
         }
     }
 
@@ -4960,13 +5333,58 @@ internal static class PactConfirm
     // its own prompt would ask about a pact the next time it opens.
     private static void Close(CouncilorMissionCanvasController ui)
     {
-        if (promptWas != null)
-        {
-            ui.unassignedWarningPrompt?.SetText(promptWas);
-        }
+        string restore = promptWas;
         promptWas = null;
         asked = null;
-        ui.unassignedWarningPanel.SetActive(value: false);
+        askedMission = null;
+        owner = null;
+        if (ui == null)
+            return;
+        try
+        {
+            if (restore != null && ui.unassignedWarningPrompt != null)
+                ui.unassignedWarningPrompt.SetText(restore);
+        }
+        finally
+        {
+            if (ui.unassignedWarningPanel != null)
+                ui.unassignedWarningPanel.SetActive(value: false);
+        }
+    }
+
+    internal static void Cancel()
+    {
+        answered = false;
+        Close(owner);
+    }
+
+    [HarmonyPatch(typeof(CouncilorMissionCanvasController), "ShutdownTargetSelection")]
+    [HarmonyPrefix]
+    private static void BeforeSelectionCloses(CouncilorMissionCanvasController __instance)
+    {
+        if (ReferenceEquals(owner, __instance))
+            Cancel();
+    }
+}
+
+// Both new campaigns and save loads reset their game-state identities. None of these caches
+// may use a previous campaign's validity snapshots or retain its faction objects.
+[HarmonyPatch]
+internal static class ResetTransientCampaignState
+{
+    private static IEnumerable<MethodBase> TargetMethods()
+    {
+        yield return AccessTools.Method(typeof(GameStateManager), nameof(GameStateManager.ClearAllGameStates));
+        yield return AccessTools.Method(typeof(GameStateManager), nameof(GameStateManager.LoadAllGameStates));
+    }
+
+    private static void Prefix()
+    {
+        ReapplyPresetsOnValidityChange.Reset();
+        RepeatableCapScalesWithCost.Reset();
+        DormantCapitalIdentity.Reset();
+        StationSolarMirrors.Invalidate();
+        PactConfirm.Cancel();
     }
 }
 
@@ -5773,12 +6191,126 @@ internal static class UnagedCouncilorPortraits
 // "Lost its capital in this war" is read off the map rather than tracked: at the moment a war
 // ends, the nation's original capital is held by the enemy it just made peace with. The swap waits
 // for the next daily update, and for the nation to be at peace with everyone - wars end inside
-// region transfers, which is no place to empty a nation. ponytail: the queue is in memory only, so
-// a reload between the peace and the next day drops it.
+// region transfers, which is no place to empty a nation. The pending flag rides in the nation's
+// save record, so saving before that update cannot discard the conversion.
+//
+// A nation never becomes one that merged into it. A union made by choice - a unification, an
+// annexing event, a mod that founds a nation by annexing others - is one nation, and losing its
+// seat in a war does not undo it: its capital moves, as vanilla moves it. Vanilla keeps no record
+// of who absorbed whom, so each voluntary merger is recorded here (InheritedCapitalClaims.BeforeMerge
+// says which mergers count) and rides in the absorber's save record. Membership is transitive: a
+// nation that absorbs another takes over that one's members too. A member that lives again leaves
+// the record, so one taken back later by conquest is an heir like any other, and a dormant nation
+// loses its own list. Only members are excluded: a dormant nation that shares a member's capital
+// but never joined is an heir as before. A save made before this record existed holds no mergers,
+// so its earlier unions keep the old behaviour.
 [HarmonyPatch]
 internal static class DormantCapitalIdentity
 {
     private static readonly HashSet<TINationState> pending = new HashSet<TINationState>();
+    private const string SaveKey = "CataTweaks_DormantCapitalPending";
+
+    // Absorber ID -> the IDs of every nation that merged into it by choice.
+    private static readonly Dictionary<int, HashSet<int>> merged = new Dictionary<int, HashSet<int>>();
+    private const string MergedKey = "CataTweaks_MergedNations";
+
+    internal static void Reset()
+    {
+        pending.Clear();
+        merged.Clear();
+    }
+
+    internal static void WriteSave(object instance, fsData data)
+    {
+        if (!(instance is TINationState nation) || !data.IsDictionary)
+            return;
+        if (pending.Contains(nation))
+            data.AsDictionary[SaveKey] = new fsData(true);
+        if (merged.TryGetValue((int)nation.ID, out HashSet<int> members) && members.Count > 0)
+            data.AsDictionary[MergedKey] = new fsData(members.OrderBy(id => id).Select(id => new fsData((long)id)).ToList());
+    }
+
+    internal static void ReadSave(object instance, fsData data)
+    {
+        if (!(instance is TINationState nation) || !data.IsDictionary)
+            return;
+        if (data.AsDictionary.TryGetValue(SaveKey, out fsData queued) && queued.IsBool && queued.AsBool)
+            pending.Add(nation);
+        else
+            pending.Remove(nation);
+        merged.Remove((int)nation.ID);
+        if (data.AsDictionary.TryGetValue(MergedKey, out fsData list) && list.IsList)
+        {
+            var members = new HashSet<int>(list.AsList
+                .Where(id => id.IsInt64 && id.AsInt64 > 0 && id.AsInt64 <= int.MaxValue).Select(id => (int)id.AsInt64));
+            if (members.Count > 0)
+                merged[(int)nation.ID] = members;
+        }
+    }
+
+    // The joiner, and every nation that had merged into it, now belong to the absorber.
+    internal static void AddMerger(Dictionary<int, HashSet<int>> map, int absorber, int joiner)
+    {
+        if (absorber == joiner)
+            return;
+        if (!map.TryGetValue(absorber, out HashSet<int> members))
+            map[absorber] = members = new HashSet<int>();
+        members.Add(joiner);
+        if (map.TryGetValue(joiner, out HashSet<int> theirs))
+            members.UnionWith(theirs.Where(id => id != absorber));
+    }
+
+    // Once a day. A nation that lives again is no longer anyone's member. A dormant nation holds
+    // no region, so it holds no member either: its own list goes, and a nation that is revived
+    // later starts with none. A merger records the joiner's list in the same call that makes the
+    // joiner dormant, before this can drop it.
+    internal static void Sweep(Dictionary<int, HashSet<int>> map, IEnumerable<TINationState> nations)
+    {
+        var living = new HashSet<int>();
+        foreach (TINationState nation in nations)
+        {
+            if (nation == null)
+                continue;
+            if (nation.extant)
+                living.Add((int)nation.ID);
+            else
+                map.Remove((int)nation.ID);
+        }
+        foreach (HashSet<int> members in map.Values)
+            members.ExceptWith(living);
+        foreach (int empty in map.Where(pair => pair.Value.Count == 0).Select(pair => pair.Key).ToList())
+            map.Remove(empty);
+    }
+
+    // The heir takes over the rump's members, since it now holds their regions.
+    internal static void Inherit(Dictionary<int, HashSet<int>> map, int rump, int heir)
+    {
+        if (!map.TryGetValue(rump, out HashSet<int> members))
+            return;
+        map.Remove(rump);
+        foreach (int member in members)
+            AddMerger(map, heir, member);
+    }
+
+    internal static void Merged(TINationState absorber, TINationState joiner)
+    {
+        if (absorber != null && joiner != null)
+            AddMerger(merged, (int)absorber.ID, (int)joiner.ID);
+    }
+
+    // The dormant nation the rump becomes, or null: one whose original capital the seat is, that
+    // claims it and that did not merge into the rump. Several nations can share a seat; a peaceful
+    // claim on it goes first, then the lowest ID, so the answer does not depend on nation order.
+    internal static TINationState Heir(IEnumerable<TINationState> nations, TINationState rump, TIRegionState seat,
+        IReadOnlyDictionary<int, HashSet<int>> map, Func<TINationState, bool> claimsSeat, Func<TINationState, bool> hostileSeat)
+    {
+        HashSet<int> members = map.TryGetValue((int)rump.ID, out HashSet<int> found) ? found : null;
+        return nations
+            .Where(x => x != null && x != rump && x.originalCapital == seat && !x.extant && !x.alienNation
+                && members?.Contains((int)x.ID) != true && claimsSeat(x))
+            .OrderBy(x => hostileSeat(x)).ThenBy(x => (int)x.ID)
+            .FirstOrDefault();
+    }
 
     private static readonly MethodInfo independence = AccessTools.Method(typeof(TINationState), "Independence");
     private static readonly MethodInfo nuclearProgram =
@@ -5810,6 +6342,14 @@ internal static class DormantCapitalIdentity
     [HarmonyPostfix]
     private static void Daily()
     {
+        // Any revival path - Independence, a release, another mod's - shows up here within the day.
+        // Once a day is enough: a stale entry matters only if a revived member is dormant again by
+        // the next day, and conquering a whole nation takes longer than that. A voluntary merger
+        // on that day records it again anyway.
+        if (merged.Count > 0)
+        {
+            Sweep(merged, GameStateManager.AllNations());
+        }
         if (pending.Count == 0)
         {
             return;
@@ -5828,10 +6368,6 @@ internal static class DormantCapitalIdentity
         }
     }
 
-    [HarmonyPatch(typeof(GameControl), nameof(GameControl.CompleteInit))]
-    [HarmonyPostfix]
-    private static void OnCampaignReady() => pending.Clear();
-
     private static void TryBecomeHeir(TINationState rump)
     {
         TIRegionState seat = rump.capital;
@@ -5839,8 +6375,9 @@ internal static class DormantCapitalIdentity
         {
             return;
         }
-        TINationState heir = GameStateManager.AllNations().FirstOrDefault(x => x.originalCapital == seat);
-        if (heir == null || heir == rump || heir.extant || heir.alienNation || !seat.ClaimedBy(heir))
+        TINationState heir = Heir(GameStateManager.AllNations(), rump, seat, merged,
+            x => seat.ClaimedBy(x), x => x.hostileClaims.Contains(seat));
+        if (heir == null)
         {
             return;
         }
@@ -5871,6 +6408,7 @@ internal static class DormantCapitalIdentity
         {
             heir.SetCapital(seat);
         }
+        Inherit(merged, (int)rump.ID, (int)heir.ID);
         // Lined up from the top, the way the game itself treats control points: the top one is the
         // executive, a nation that grows gains new ones at the bottom and hands them to its highest
         // owner, and a nation that shrinks sheds from the bottom. The revived nation's count is
@@ -5967,8 +6505,8 @@ internal static class VanillaOptionsRows
     // settings are declared in, so a field moved in Settings moves here too.
     private static readonly Dictionary<string, string> Sections = new Dictionary<string, string>
     {
-        { "persistCampaignOptions", "Quality of Life and UI" },
-        { "solarMirrorsBoostStations", "Gameplay" },
+        { "persistCampaignOptions", "UI.CataTweaks.SectionUI" },
+        { "solarMirrorsBoostStations", "UI.Options.Gameplay" },
     };
     private const string PaneName = "CataTweaks_Pane";
 
@@ -6045,12 +6583,12 @@ internal static class VanillaOptionsRows
                 if (Sections.TryGetValue(field.Name, out string section))
                 {
                     Header(list, __instance.showEarthLightsToggleTitle,
-                        "CataTweaks_Section_" + field.Name, section).SetAsLastSibling();
+                        "CataTweaks_Section_" + field.Name, Loc.T(section)).SetAsLastSibling();
                 }
                 DrawAttribute draw = field.GetCustomAttribute<DrawAttribute>();
                 Transform row = field.FieldType == typeof(bool)
                     ? Toggle(list, toggleSource, __instance.showEarthLightsToggleTitle,
-                        field, draw, refresh)
+                        field, refresh)
                     : Slider(list, sliderSource, __instance.maxShipsInCombatTitle,
                         __instance.maxShipsInCombatValue, field, draw);
                 if (row != null)
@@ -6074,20 +6612,25 @@ internal static class VanillaOptionsRows
             .Where(f => f.GetCustomAttribute<DrawAttribute>() != null
                 && (f.FieldType == typeof(bool) || f.FieldType == typeof(float)));
 
-    private static Transform Toggle(Transform list, Transform source, TMP_Text title,
-        FieldInfo field, DrawAttribute draw, Action refresh)
+    private static string SettingText(FieldInfo field, bool tooltip)
     {
-        bool pooledConstruction = field.Name == nameof(Settings.pooledStationConstruction);
-        bool rally = field.Name == nameof(Settings.shipyardRally);
-        Transform row = CloneRow(list, source, field.Name, pooledConstruction
-            ? Loc.T("UI.CataTweaks.PooledConstructionSetting")
-            : rally ? Loc.T("UI.CataTweaks.RallySetting") : draw.Label, title, null);
+        string key = field.Name == nameof(Settings.pooledStationConstruction)
+            ? "UI.CataTweaks.PooledConstruction" + (tooltip ? "Tooltip" : "Setting")
+            : field.Name == nameof(Settings.shipyardRally)
+                ? "UI.CataTweaks.Rally" + (tooltip ? "Tooltip" : "Setting")
+                : "UI.CataTweaks.Setting." + field.Name + (tooltip ? ".Tooltip" : ".Label");
+        return Loc.T(key);
+    }
+
+    private static Transform Toggle(Transform list, Transform source, TMP_Text title,
+        FieldInfo field, Action refresh)
+    {
+        Transform row = CloneRow(list, source, field.Name, SettingText(field, false), title, null);
         if (row == null)
         {
             return null;
         }
-        Tooltip(row, pooledConstruction ? Loc.T("UI.CataTweaks.PooledConstructionTooltip")
-            : rally ? Loc.T("UI.CataTweaks.RallyTooltip") : draw.Tooltip);
+        Tooltip(row, SettingText(field, true));
         Toggle toggle = row.GetComponentInChildren<Toggle>(true);
         // Set every time, not inherited from the row we copied: a clone keeps whatever state its
         // source happened to be in at that instant, and in a campaign the row is cloned while the
@@ -6110,12 +6653,12 @@ internal static class VanillaOptionsRows
     private static Transform Slider(Transform list, Transform source, TMP_Text title,
         TMP_Text value, FieldInfo field, DrawAttribute draw)
     {
-        Transform row = CloneRow(list, source, field.Name, draw.Label, title, value);
+        Transform row = CloneRow(list, source, field.Name, SettingText(field, false), title, value);
         if (row == null)
         {
             return null;
         }
-        Tooltip(row, draw.Tooltip);
+        Tooltip(row, SettingText(field, true));
         Suffixes.TryGetValue(field.Name, out string suffix);
         readouts.TryGetValue(field.Name, out TMP_Text readout);
         bool percent = Percents.Contains(field.Name);
@@ -6138,6 +6681,10 @@ internal static class VanillaOptionsRows
         {
             field.SetValue(Main.settings, v);
             readout?.SetText(show(v));
+            // Power flags must follow the live cap too; otherwise a drag changes supply while
+            // leaving consumers powered until the screen closes. Saving still waits for close.
+            if (field.Name == nameof(Settings.solarMirrorOutputCap))
+                Main.settings.ApplySolarOptions();
             // Not Commit: this fires every frame of a drag, and Commit writes Settings.xml and runs
             // OnChange. The patches read the field directly, so the value is already live; the
             // bookkeeping waits for the screen to close.
@@ -6243,16 +6790,12 @@ internal static class VanillaOptionsRows
             return null;
         }
         Transform existing = list.Find(name);
-        if (existing != null)
-        {
-            return existing;
-        }
-
         TMP_Text[] before = source.GetComponentsInChildren<TMP_Text>(true);
         int labelIndex = Array.IndexOf(before, title);
         int valueIndex = value != null ? Array.IndexOf(before, value) : -1;
 
-        GameObject clone = UnityEngine.Object.Instantiate(source.gameObject, list);
+        GameObject clone = existing != null ? existing.gameObject
+            : UnityEngine.Object.Instantiate(source.gameObject, list);
         clone.name = name;
 
         TMP_Text[] texts = clone.GetComponentsInChildren<TMP_Text>(true);
@@ -6279,6 +6822,7 @@ internal static class VanillaOptionsRows
         Transform existing = list.Find(name);
         if (existing != null)
         {
+            existing.GetComponent<TMP_Text>()?.SetText(label);
             return existing;
         }
         GameObject header = new GameObject(name, typeof(RectTransform));
@@ -6505,8 +7049,8 @@ internal static class CampaignFlags
             ? TIGlobalValuesState.GlobalValues.scenarioCustomizations
             : GameControl.control?.scenarioCustomizationsStartup;
 
-    // A campaign started without going through Customize Campaign records nothing, so the answer
-    // falls back to the default in Settings.xml rather than to a hardcoded one.
+    // A campaign started without Customize Campaign adopts both defaults once, then stores
+    // them in its own customizations so later Settings changes cannot change that campaign.
     // Read per claim row per claim query, so the key is a compile-time constant rather than a
     // concatenation, and nothing here allocates.
     // Expanded Council runs the council when it is installed, so the pool stands aside: the flag
@@ -6519,10 +7063,11 @@ internal static class CampaignFlags
     private static bool Get(string key, bool fallback)
     {
         ScenarioCustomizations customizations = Current;
-        if (customizations?.customFactionText == null)
+        if (customizations == null)
         {
             return fallback;
         }
+        FreezeDefaults(customizations);
         return customizations.customFactionText.TryGetValue(
             key, out ScenarioCustomizations.CustomFactionText entry)
             ? entry.customDisplayName == "1"
@@ -6531,14 +7076,33 @@ internal static class CampaignFlags
 
     internal static void Write(ScenarioCustomizations customizations, string name, bool on)
     {
-        if (customizations?.customFactionText == null)
+        if (customizations == null)
         {
             return;
         }
+        if (customizations.customFactionText == null)
+            customizations.customFactionText = new Dictionary<string, ScenarioCustomizations.CustomFactionText>();
         customizations.customFactionText.Remove(Prefix + name);
         customizations.customFactionText.Add(Prefix + name,
             new ScenarioCustomizations.CustomFactionText(on ? "1" : "0", "", "", "", "", "", "", ""));
     }
+
+    // Legacy/quick-start campaigns adopt both defaults once and save that decision. Subsequent
+    // settings changes affect future campaigns rather than the currently loaded one.
+    internal static void FreezeDefaults(ScenarioCustomizations customizations)
+    {
+        if (customizations == null)
+            return;
+        if (customizations.customFactionText == null
+            || !customizations.customFactionText.ContainsKey(CouncilPoolKey))
+            Write(customizations, "councilPool", Main.settings.spySlotsAsCouncilSlots);
+        if (!customizations.customFactionText.ContainsKey(RestoredEmpiresKey))
+            Write(customizations, "restoredEmpires", Main.settings.restoredEmpires);
+    }
+
+    [HarmonyPatch(typeof(GameControl), nameof(GameControl.CompleteInit))]
+    [HarmonyPrefix]
+    private static void OnCampaignReady() => FreezeDefaults(Current);
 
     // SetCustomCampaignOptions builds the whole object from the screen and ends by cloning it into
     // GameControl, so the entries go onto the clone the campaign will actually be built from.
@@ -6601,7 +7165,7 @@ internal static class ModTemplates
 
 // Restored Empires, folded in and switchable per campaign.
 //
-// Its four projects hide the same way the council ones do. Its claims mostly gate themselves:
+// Its projects hide the same way the council ones do. Its claims mostly gate themselves:
 // almost every row hangs off one of those projects, and BilateralIsActive is already
 // projectUnlock?.SomeoneHasDoneIt() ?? true, so a hidden project takes its claims with it. The few
 // ungated rows, Jamaica in Broken Earth and Ireland for the UK, need the gate applied directly.
@@ -6614,6 +7178,10 @@ internal static class RestoredEmpires
         "Project_TheSunNeverSets",
         "Project_MareNostrum",
         "Project_ImperiumSineFine",
+        "Project_CataTweaks_RomanAfrica",
+        "Project_CataTweaks_RomanIndia",
+        "Project_CataTweaks_RomanNorthAmerica",
+        "Project_CataTweaks_RomanSouthAmerica",
         "Project_NewLiberia",
     };
 
@@ -6674,6 +7242,15 @@ internal static class OtherMods
         {
             Main.mod?.Logger.Log("Expanded Council is installed; the spy slot pool stands aside for it.");
         }
+        if (Patched(FleetManagerCompat.Owner, AccessTools.Method(typeof(TIFactionState), nameof(TIFactionState.CompleteShipConstruction))))
+        {
+            FleetManagerCompat.Bind(new Harmony(Main.mod?.Info.Id ?? "CataTweaks"));
+        }
+        if (Patched(SpaceNationsCompat.Owner, AccessTools.Method(typeof(TINationState), nameof(TINationState.Unification)),
+            AccessTools.Method(typeof(TINationState), nameof(TINationState.BoostIncrease), new[] { typeof(float) })))
+        {
+            SpaceNationsCompat.Bind(new Harmony(Main.mod?.Info.Id ?? "CataTweaks"));
+        }
     }
 
     private static bool Patched(string owner, params MethodBase[] methods)
@@ -6688,6 +7265,424 @@ internal static class OtherMods
             Main.mod?.Logger.Error("Could not check for " + owner + " - " + e.Message);
             return false;
         }
+    }
+}
+
+// Shared by the bridges to other mods, which CataTweaks reaches only by name.
+internal static class ModBridge
+{
+    // A type of another mod: from the given assembly in the checks, else from any loaded assembly.
+    internal static Type Find(Assembly source, string name) =>
+        source != null ? source.GetType(name, false) : AccessTools.TypeByName(name);
+
+    // Patches every method, or none: after a failure it undoes what it patched. Returns null, or
+    // why it failed and what it left patched.
+    internal static string PatchAll(Harmony harmony, IEnumerable<MethodBase> methods,
+        HarmonyMethod postfix = null, HarmonyMethod transpiler = null)
+    {
+        // Harmony records a patch only after the patched method is built, so a method that failed
+        // needs no undo.
+        var done = new List<MethodBase>();
+        try
+        {
+            foreach (MethodBase method in methods)
+            {
+                harmony?.Patch(method, postfix: postfix, transpiler: transpiler);
+                done.Add(method);
+            }
+            return null;
+        }
+        catch (Exception e)
+        {
+            string state = "nothing is patched";
+            foreach (MethodBase method in done)
+            {
+                try
+                {
+                    if (postfix != null) harmony.Unpatch(method, postfix.method);
+                    if (transpiler != null) harmony.Unpatch(method, transpiler.method);
+                }
+                catch (Exception undo) { state = method.Name + " may still be patched - " + undo.Message; }
+            }
+            return "(" + state + ") - " + e.Message;
+        }
+    }
+}
+
+// TI Fleet Manager (Workshop 3731957572, assembly TIFleetRework) commissions ships for a fleet,
+// sorts fleets into squadrons and divisions, and mothballs fleets in a reserve. CataTweaks has no
+// reference to it: each member is found by name once OtherMods sees Fleet Manager's patches. If a
+// member is missing, the bridge stays off and one line goes to the log. If one of Fleet Manager's
+// members throws, that part of the bridge turns off with one log line and tries again when the
+// next campaign loads: commission orders, the reserve check, the reserve refit check and rally
+// sorting fail separately, so a failure in an optional part leaves the order work running. A
+// failed multiplayer push of a moved order counts as an order failure, so it also stops the
+// queue estimate. Errors in CataTweaks' own code are logged once per kind and leave the bridge
+// on.
+//
+// The rally never takes a ship that Fleet Manager may deliver or track:
+// - When the bind failed, nothing can be read, so the rally holds back every new station ship
+//   that is not a refit, and every refit too.
+// - When the order work is off or the claim threw, the rally decides by Fleet Manager's own
+//   rule, read only: it holds back a ship when an open order of its design is on the building
+//   yard, and every new ship that is not a refit when that cannot be read.
+// - It holds back a refit of a ship in a reserve fleet, which Fleet Manager keeps in that
+//   fleet's division, or a refit for which that cannot be read (see Tracked).
+// Like Fleet Manager's own completion patch, the bridge changes no Fleet Manager record on a
+// remote multiplayer client, and it sends each change to the clients the way Fleet Manager
+// sends its own.
+//
+// - Commission orders name a yard (TIFleetCommissionOrder.shipyardID) and Fleet Manager fills the
+//   oldest open order of the design at the yard that built the ship. A shared station queue
+//   chooses the yard itself, so the oldest order on the station is moved to the building yard
+//   first. Without the shared queue, CataTweaks does not touch orders.
+// - When a station loses a yard, every open order on that yard moves to a surviving yard of the
+//   station and stays open, so each still takes the next ship of its design built there. When
+//   the last yard is lost, nothing changes, as with Fleet Manager alone.
+// - A commissioned ship goes to its commission fleet; the station rally does not take it.
+// - Fleet Manager refuses merges into reserve fleets, so they are not rally targets.
+// - Rallied ships are sorted into the target's squadrons, as Fleet Manager does for commissions.
+internal static class FleetManagerCompat
+{
+    internal const string Owner = "TIFleetRework";
+    private static bool detected, bound, bindFailed;
+    private static readonly HashSet<string> reported = new HashSet<string>();
+    // Parts of the bridge that fail separately.
+    private const string Orders = "commission orders", Reads = "reserve check", Sorting = "rally sorting",
+        Refits = "reserve refit check";
+    private static readonly HashSet<string> failed = new HashSet<string>();
+    private static MethodInfo isInReserve, reserveOrder, divisionForShip, squadronsForFleet, distribute, motherFleet, reassess, pushHierarchy,
+        pushChanged, orders, targetFleet, remoteClient, queueDays;
+    private static FieldInfo orderYard, orderDesign, orderDelivered;
+
+    internal sealed class Order { internal int id, yard; internal string design; }
+
+    // Thrown after a Fleet Manager member failed and its part of the bridge turned off.
+    private sealed class Off : Exception { }
+
+    private static bool Ready(string part) => bound && !failed.Contains(part);
+
+    // True where Fleet Manager's records may change: a single-player game or the host.
+    private static bool Host(string part) => !(bool)Call(part, remoteClient, null);
+
+    internal static void Bind(Harmony harmony, Assembly source = null)
+    {
+        StationConstructionRally.ResetNotices();
+        detected = true; // OtherMods saw Fleet Manager's completion patch.
+        if (bound)
+        {
+            failed.Clear(); // A new campaign: try again after a failed call.
+            reported.Clear();
+            return;
+        }
+        if (bindFailed) return;
+        // Every lookup gives its parameter types, and all of them run inside the try: a renamed or
+        // overloaded member must turn the bridge off, not throw into the campaign start.
+        string missing;
+        try { missing = Lookup(source); }
+        catch (Exception e) { missing = "a lookup failed - " + e.Message; }
+        if (missing != null)
+        {
+            BindFail(missing);
+            return;
+        }
+        string patchFailure = ModBridge.PatchAll(harmony, new MethodBase[] { queueDays },
+            postfix: new HarmonyMethod(typeof(FleetManagerCompat), nameof(QueueDays)));
+        if (patchFailure != null)
+        {
+            BindFail("could not patch its queue estimate " + patchFailure);
+            return;
+        }
+        bound = true;
+        Main.mod?.Logger.Log("TI Fleet Manager is installed; commissions, rallies and its reserve work together with shared station queues.");
+    }
+
+    // Finds every Fleet Manager member. Returns why the bridge cannot bind, or null.
+    private static string Lookup(Assembly source)
+    {
+        Type Find(string name) => ModBridge.Find(source, "TIFleetRework." + name);
+        Type registry = Find("FleetRegistry"), hierarchy = Find("FleetHierarchyOperations"), commission = Find("FleetCommissionManager"),
+            order = Find("TIFleetCommissionOrder"), bridge = Find("MPBridge"), battlegroup = Find("FleetBattlegroup"),
+            organise = Find("AutoOrganiseFleetAction");
+        if (registry == null || hierarchy == null || commission == null || order == null || bridge == null || battlegroup == null
+            || organise == null || !typeof(TIGameState).IsAssignableFrom(order))
+            return "a type is missing.";
+        isInReserve = AccessTools.Method(registry, "IsInReserve", new[] { typeof(TISpaceFleetState) });
+        reserveOrder = AccessTools.Method(registry, "GetReserveOrder", new[] { typeof(TISpaceFleetState) });
+        divisionForShip = AccessTools.Method(registry, "GetDivisionForShip", new[] { typeof(TISpaceShipState) });
+        squadronsForFleet = AccessTools.Method(registry, "GetSquadronsForFleet", new[] { typeof(TISpaceFleetState) });
+        distribute = AccessTools.Method(hierarchy, "DistributeShipsByType", new[] { typeof(TISpaceFleetState), typeof(List<TISpaceShipState>) });
+        motherFleet = AccessTools.Method(hierarchy, "ResolveMotherFleet", new[] { typeof(TISpaceFleetState) });
+        reassess = AccessTools.Method(battlegroup, "Reassess", new[] { typeof(TISpaceFleetState) });
+        pushHierarchy = AccessTools.Method(organise, "PushFleetHierarchy", new[] { typeof(string), typeof(TISpaceFleetState) });
+        pushChanged = AccessTools.Method(bridge, "PushChanged", new[] { typeof(string), typeof(GameStateID[]) });
+        queueDays = AccessTools.Method(commission, "SumQueueDays", new[] { typeof(TIFactionState), typeof(TIHabModuleState) });
+        targetFleet = AccessTools.Method(order, "GetTargetFleet", Type.EmptyTypes);
+        orders = AccessTools.Method(typeof(GameStateManager), nameof(GameStateManager.IterateByClass), new[] { typeof(bool) })?.MakeGenericMethod(order);
+        remoteClient = AccessTools.PropertyGetter(bridge, "IsRemoteClient");
+        orderYard = AccessTools.Field(order, "shipyardID");
+        orderDesign = AccessTools.Field(order, "shipTemplateDataName");
+        orderDelivered = AccessTools.Field(order, "deliveredShipID");
+        if (isInReserve?.ReturnType != typeof(bool) || reserveOrder == null || reserveOrder.ReturnType == typeof(void) || divisionForShip == null || !typeof(ICollection).IsAssignableFrom(squadronsForFleet?.ReturnType)
+            || distribute == null || motherFleet?.ReturnType != typeof(TISpaceFleetState) || reassess == null || pushHierarchy == null || pushChanged == null
+            || queueDays?.ReturnType != typeof(float) || targetFleet?.ReturnType != typeof(TISpaceFleetState)
+            || orders == null || remoteClient?.ReturnType != typeof(bool) || orderYard?.FieldType != typeof(GameStateID)
+            || orderDesign?.FieldType != typeof(string) || orderDelivered?.FieldType != typeof(GameStateID))
+            return "a member is missing or has changed.";
+        return null;
+    }
+
+    private static void BindFail(string why)
+    {
+        bindFailed = true;
+        Main.mod?.Logger.Error("TI Fleet Manager compatibility is off: " + why);
+    }
+
+    internal static void Report(string what, Exception e)
+    {
+        if (reported.Add(what + "|" + e.GetType().FullName))
+            Main.mod?.Logger.Error("TI Fleet Manager support: " + what + " failed - " + e);
+    }
+
+    // Only a failure inside Fleet Manager turns a part of the bridge off.
+    private static object Call(string part, MethodInfo method, object instance, params object[] args)
+    {
+        try { return method.Invoke(instance, args); }
+        catch (Exception e)
+        {
+            if (failed.Add(part))
+                Main.mod?.Logger.Error("TI Fleet Manager " + part + " are off until the next campaign loads: "
+                    + method.DeclaringType?.Name + "." + method.Name + " - " + (e.InnerException ?? e));
+            throw new Off();
+        }
+    }
+
+    private static T Run<T>(string part, Func<T> body, T fallback)
+    {
+        if (!Ready(part)) return fallback;
+        try { return body(); }
+        catch (Off) { return fallback; }
+        catch (Exception e)
+        {
+            Report(part, e);
+            return fallback;
+        }
+    }
+
+    // Reads only, so a remote client hides reserve fleets too.
+    internal static bool InReserve(TISpaceFleetState fleet) =>
+        fleet != null && Run(Reads, () => (bool)Call(Reads, isInReserve, null, fleet), false);
+
+    // The oldest open order of the design on the station. With a shared queue the yard on an order
+    // means nothing, so the station's orders are filled in order, as Fleet Manager fills a yard's.
+    internal static Order Pick(IEnumerable<Order> open, string design, ICollection<int> station) =>
+        open.Where(o => o.design == design && station.Contains(o.yard)).OrderBy(o => o.id).FirstOrDefault();
+
+    // Open orders, read as Fleet Manager's FindNextOrder reads them: by yard and design only,
+    // not by faction, so the order chosen here is always the one Fleet Manager fills. After a
+    // station is captured, the old owner's open orders on its yards are filled first, as with
+    // Fleet Manager alone.
+    private static Dictionary<Order, TIGameState> Open() =>
+        ((IEnumerable)Call(Orders, orders, null, false)).Cast<TIGameState>()
+            .Where(o => o != null && !o.archived && (int)(GameStateID)orderDelivered.GetValue(o) == 0)
+            .ToDictionary(o => new Order { id = (int)o.ID, yard = (int)(GameStateID)orderYard.GetValue(o), design = (string)orderDesign.GetValue(o) });
+
+    private static HashSet<int> Station(TIFactionState faction, TIHabModuleState yard) =>
+        new HashSet<int>(StationConstruction.Yards(faction, yard.ref_hab).Select(y => (int)y.ID));
+
+    // A failed push leaves the moved orders moved; the order part of the bridge is then off.
+    private static void Push(IEnumerable<TIGameState> changed)
+    {
+        try { Call(Orders, pushChanged, null, "commission-order", changed.Select(o => o.ID).ToArray()); }
+        catch (Off) { }
+    }
+
+    private static HashSet<int> AtYard(TIHabModuleState yard) => new HashSet<int> { (int)yard.ID };
+
+    // Moves the order Fleet Manager should fill onto the building yard, and returns the fleet it
+    // will deliver this ship to, or null. held is true when the rally must leave the ship alone
+    // because Fleet Manager may deliver it. Nothing here can lead to a rally of such a ship: any
+    // error turns the order work off and falls back to Unsure.
+    internal static TISpaceFleetState ClaimOrder(TIFactionState faction, TIHabModuleState yard, ShipConstructionQueueItem item,
+        out bool held)
+    {
+        held = false;
+        if (!detected || item == null || item.isRefit) return null;
+        if (Ready(Orders))
+        {
+            try { return Claim(faction, yard, item); }
+            catch (Off) { }
+            catch (Exception e)
+            {
+                Report(Orders, e);
+                failed.Add(Orders);
+            }
+        }
+        held = Unsure(yard, item);
+        return null;
+    }
+
+    // On a remote multiplayer client this faction is not the host's active player, so the host
+    // leaves its orders alone and Fleet Manager fills the oldest open order at the building yard.
+    // The client reads that same order and moves nothing, so it does not rally a ship the host
+    // delivers.
+    private static TISpaceFleetState Claim(TIFactionState faction, TIHabModuleState yard, ShipConstructionQueueItem item)
+    {
+        if (!StationConstruction.Enabled(faction, yard)) return null;
+        var open = Open();
+        bool host = Host(Orders);
+        var pick = Pick(open.Keys, item.shipDesignTemplateName, host ? Station(faction, yard) : AtYard(yard));
+        if (pick == null) return null;
+        var order = open[pick];
+        var target = Call(Orders, targetFleet, order) as TISpaceFleetState;
+        var fleet = target != null && !target.archived ? target : null;
+        if (pick.yard != (int)yard.ID && host)
+        {
+            orderYard.SetValue(order, yard.ID);
+            Push(new[] { order });
+        }
+        return fleet;
+    }
+
+    // Fleet Manager's own rule, read only: it fills the oldest open order of the design at the
+    // building yard. Holds the ship when such an order is there, or when nothing can be read.
+    private static bool Unsure(TIHabModuleState yard, ShipConstructionQueueItem item)
+    {
+        if (!bound) return true;
+        try { return Pick(Open().Keys, item.shipDesignTemplateName, AtYard(yard)) != null; }
+        catch { return true; }
+    }
+
+    // A refit of a ship in a reserve fleet. Fleet Manager's Patch_ReserveRefit acts only when the
+    // old ship's fleet has a reserve order (GetReserveOrder), and then puts the refitted ship into
+    // the old ship's division, so the rally must not move it. For any other fleet the refitted
+    // ship is not tracked and may rally. This is read before the completion, while the old ship
+    // still exists. When it cannot be read, or the bind failed, the ship is held.
+    internal static bool Tracked(ShipConstructionQueueItem item)
+    {
+        var original = item?.originalSpaceShipState;
+        if (!detected || item == null || !item.isRefit || original == null || original.archived) return false;
+        return Run(Refits, () => Call(Refits, reserveOrder, null, original.fleet) != null, true);
+    }
+
+    // Every open order on a lost yard moves to the survivor and stays open, as the yard's waiting
+    // work does.
+    internal static void MoveOrders(TIFactionState faction, TIHabModuleState lost, TIHabModuleState survivor) => Run(Orders, () =>
+    {
+        if (!StationConstruction.Enabled(faction, lost) || !Host(Orders)) return false;
+        var moved = Open().Where(o => o.Key.yard == (int)lost.ID).Select(o => o.Value).ToList();
+        foreach (var order in moved) orderYard.SetValue(order, survivor.ID);
+        if (moved.Count > 0) Push(moved);
+        return true;
+    }, false);
+
+    // New ships are sorted as Fleet Manager's own Auto-Organise sorts them: into the squadrons of
+    // the mother fleet when the fleet is detached from one, else of the fleet itself. Only ships
+    // whose owner fleet (the mother fleet, or the fleet itself) has squadrons are sorted.
+    internal static void Organize(TISpaceFleetState fleet, List<TISpaceShipState> ships) => Run(Sorting, () =>
+    {
+        if (!Host(Sorting)) return false;
+        var owner = Call(Sorting, motherFleet, null, fleet) as TISpaceFleetState ?? fleet;
+        if (((ICollection)Call(Sorting, squadronsForFleet, null, owner)).Count == 0) return false;
+        var loose = ships.Where(s => s.fleet == fleet && Call(Sorting, divisionForShip, null, s) == null).ToList();
+        if (loose.Count == 0) return false;
+        Call(Sorting, distribute, null, owner, loose);
+        Call(Sorting, reassess, null, fleet);
+        Call(Sorting, pushHierarchy, null, "auto-organise", fleet);
+        if (owner != fleet) Call(Sorting, pushHierarchy, null, "auto-organise", owner);
+        return true;
+    }, false);
+
+    // Fleet Manager sums each yard's own queue; a shared station queue keeps its waiting work on
+    // one yard. Give it the dispatcher's free time for the yard instead. Nothing may throw into
+    // Fleet Manager from here.
+    private static void QueueDays(TIFactionState __0, TIHabModuleState __1, ref float __result)
+    {
+        if (!Ready(Orders)) return;
+        try
+        {
+            if (StationConstruction.Enabled(__0, __1) && StationConstruction.FreeTimes(__0, __1).TryGetValue(__1, out float free))
+                __result = free;
+        }
+        catch (Exception e) { Report("queue estimate", e); }
+    }
+}
+
+// TI Space Nations (Workshop 3818604132, assembly TISpaceNations) gives the United Nations, a
+// planetary union and a union's members their claims. Each of the methods below asks a nation's
+// claims whether it already has one and, if not, calls SetClaim. The getters hand them the claims
+// the nation borrows through a held capital too, so a claim that is only borrowed - and maybe
+// hostile, and gone with the capital - would stop the real one being granted. They get the same
+// rewrite as the game's own claim writers in InheritedCapitalClaims and read the nation's own
+// lists. CataTweaks has no reference to Space Nations: each method is found by name once OtherMods
+// sees its patches. If one is missing or no longer reads the claims, one line goes to the log and
+// none is patched, so CataTweaks then behaves as it does without Space Nations.
+internal static class SpaceNationsCompat
+{
+    internal const string Owner = "TISpaceNations";
+    private static bool bound, failed;
+
+    internal static void Bind(Harmony harmony, Assembly source = null)
+    {
+        if (bound || failed) return;
+        // Every lookup gives its parameter types, and all of them run inside the try, as in
+        // FleetManagerCompat: a renamed or overloaded member must turn the bridge off, not throw
+        // into the campaign start.
+        List<MethodBase> methods;
+        try
+        {
+            methods = Lookup(source);
+        }
+        catch (Exception e)
+        {
+            Fail("a lookup failed - " + e.Message);
+            return;
+        }
+        if (methods == null)
+        {
+            Fail("a type or member is missing or has changed.");
+            return;
+        }
+        // All or none: a grant left half rewritten would read some claims one way and some the other.
+        string patchFailure = ModBridge.PatchAll(harmony, methods, transpiler: InheritedCapitalClaims.OwnListsTranspiler);
+        if (patchFailure != null)
+        {
+            Fail("could not patch its claim grants " + patchFailure);
+            return;
+        }
+        bound = true;
+        Main.mod?.Logger.Log("TI Space Nations is installed; its claim grants read each nation's own claims.");
+    }
+
+    // Finds the six claim grants. Returns null when one is missing or no longer reads the claims.
+    private static List<MethodBase> Lookup(Assembly source)
+    {
+        Type Find(string name) => ModBridge.Find(source, "TISpaceNations." + name);
+        Type unitedNations = Find("UnitedNations.UnitedNationsService"), unions = Find("UnitedNations.PlanetaryUnionService"),
+            founding = Find("Colonies.ColonyNationFoundingService"), settlement = Find("Colonies.SettlementService");
+        if (unitedNations == null || unions == null || founding == null || settlement == null)
+            return null;
+        Type nation = typeof(TINationState), faction = typeof(TIFactionState), region = typeof(TIRegionState);
+        var methods = new List<MethodBase>
+        {
+            AccessTools.Method(unions, "HandleUnification", new[] { nation, faction, nation }),
+            AccessTools.Method(unions, "Absorb", new[] { nation, faction, nation }),
+            AccessTools.Method(unions, "ClaimAllColonyRegions", new[] { nation, typeof(string) }),
+            AccessTools.Method(founding, "ClaimForExistingUnion", new[] { typeof(TISpaceBodyState), region }),
+            AccessTools.Method(settlement, "ClaimForExistingUnion", new[] { nation, region }),
+        };
+        // The Global Assembly's test is a lambda inside MissingEarthClaims, so it is found by the
+        // name the compiler gives it.
+        methods.AddRange(unitedNations.GetNestedTypes(AccessTools.all).SelectMany(AccessTools.GetDeclaredMethods)
+            .Where(m => m.Name.StartsWith("<MissingEarthClaims>")));
+        return methods.Count == 6 && methods.All(m => m != null && InheritedCapitalClaims.ReadsClaimLists(m)) ? methods : null;
+    }
+
+    private static void Fail(string why)
+    {
+        if (failed) return;
+        failed = true;
+        Main.mod?.Logger.Error("TI Space Nations compatibility is off: " + why);
     }
 }
 
@@ -6711,31 +7706,16 @@ internal static class CampaignOptionsRows
         new Option
         {
             Name = "councilPool",
-            Label = "Spy Slots Become Councilor Slots",
-            Tip = "The council screen's eight slots become one pool shared between your councilors "
-                + "and councilors you have turned in other factions. Every spy you hold costs a "
-                + "councilor slot: no spies seats eight, two spies seats six.\n\n"
-                + "Seats seven and eight are unlocked by two projects, Deep Cover Handlers and "
-                + "Shadow Cabinet, which continue the chain after Covert Operations. With this "
-                + "off, both projects are hidden.",
+            Label = "UI.CataTweaks.Campaign.councilPool.Label",
+            Tip = "UI.CataTweaks.Campaign.councilPool.Tooltip",
             Default = () => Main.settings.spySlotsAsCouncilSlots,
             Locked = () => OtherMods.ExpandedCouncil,
         },
         new Option
         {
             Name = "restoredEmpires",
-            Label = "Restored Empires Claims",
-            Tip = "Adds claim chains and projects that give old powers a route back to the map.\n\n"
-                + "The Sun Never Sets extends the United Kingdom past the settler dominions, and "
-                + "Commonwealth Restored gains Delhi, Calcutta and Ireland. New Liberia lets the "
-                + "Dominion of America reach the West African coast. Both apply in every scenario, "
-                + "though New Liberia opens only a few regions outside Broken Earth.\n\n"
-                + "Mare Nostrum and Imperium Sine Fine give Rome the Mediterranean world, the "
-                + "eastern roads and both American seaboards. They appear in Broken Earth only, "
-                + "which is the one scenario the Roman Republic exists in, and the only one where "
-                + "these chains reach the whole map.\n\n"
-                + "Claims on territories that fought their way out are hostile; small dependencies "
-                + "are peaceful. With this off, the projects are hidden and the claims are inert.",
+            Label = "UI.CataTweaks.Campaign.restoredEmpires.Label",
+            Tip = "UI.CataTweaks.Campaign.restoredEmpires.Tooltip",
             Default = () => Main.settings.restoredEmpires,
         },
     };
@@ -6841,13 +7821,19 @@ internal static class CampaignOptionsRows
             label.enableAutoSizing = title.enableAutoSizing;
             label.fontStyle = title.fontStyle;
             label.alignment = title.alignment;
-            label.SetText(option.Label);
+            label.SetText(Loc.T(option.Label));
         }
 
         bool locked = option.Locked();
+        string tip = option.Name == "councilPool"
+            ? Loc.T(option.Tip,
+                Loc.T("TIProjectTemplate.displayName.Project_CataTweaks_CouncilSize7"),
+                Loc.T("TIProjectTemplate.displayName.Project_CataTweaks_CouncilSize8"),
+                Loc.T("TIProjectTemplate.displayName.Project_CovertOperations"))
+            : Loc.T(option.Tip);
         VanillaOptionsRows.Tooltip(cell, locked && option.Name == "councilPool"
-            ? option.Tip + "\n\n" + Loc.T("UI.CataTweaks.CouncilPoolYieldsToExpandedCouncil")
-            : option.Tip);
+            ? tip + "\n\n" + Loc.T("UI.CataTweaks.CouncilPoolYieldsToExpandedCouncil")
+            : tip);
 
         Toggle toggle = cell.GetComponentInChildren<Toggle>(true);
         // A fresh event drops the editor-wired call to OnToggleVariableProjectUnlocks.

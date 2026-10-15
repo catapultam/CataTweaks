@@ -45,6 +45,12 @@ When you save a hab as a template, the template takes the name in brackets and r
 template that has that name. The Apply button stays enabled when the hab already has the modules
 of the template, so you can apply a template that changes nothing and rename the hab.
 
+Template names containing commas, parentheses or quotes are quoted in the suffix so saving and
+reapplying preserve the full template name.
+
+**Alphabetical hab templates.** The template manager and the normal, bulk and quick-apply
+dropdowns sort by template name, ignoring case.
+
 **Priority presets overwrite in place.** When you save a preset with the name of an existing
 custom preset, it replaces that preset. The new preset stays the default preset if the old one was
 the default. Control points that use the old preset move to the new one. Built-in presets are not
@@ -77,6 +83,8 @@ Free active shipyards take the next compatible ship; each yard keeps its own con
 the queue too. Ships already building keep their progress, and clearing the queue removes only
 waiting work. Selection, removal, reordering, payment from Earth, location filters, and adding to
 the fastest queue work across the station. Surface bases retain their individual queues.
+A ship that another mod refuses to start keeps its place and does not block the ships behind it. It
+is tried again in each compatible yard each game day.
 
 The queue uses the game's existing save data. Existing queues merge when work is added or on the
 next daily update. Losing one yard preserves the station's waiting work while handling that yard's
@@ -104,6 +112,16 @@ still need in-game verification. If the selected fleet changes course after a ra
 the game handles the maneuver through its normal change-trajectory prompt or cannot-chase notice.
 The tweak does not automatically approve a replacement trajectory. Accepting a new transfer to
 the same fleet preserves automatic merging; aborting it clears automatic merging.
+
+With TI Fleet Manager installed, a ship built for one of its commission orders goes to the
+commission fleet, and the station rally does not take it. When the rally is on and the station
+has a rally fleet, the completion notice says so. Fleets
+in Fleet Manager's reserve are not offered as rally targets, because Fleet Manager does not let
+ships join them. If a selected fleet goes into the reserve later, the selection is cleared with a
+notice, and a ship already on its way stays where it arrives. A rallied ship that joins a fleet
+is sorted into Fleet Manager squadrons, as Fleet Manager's Auto-Organise sorts it: into the
+squadrons of the mother fleet when the fleet is detached from one, else of the fleet itself. If
+that fleet has no squadrons, the ship is not sorted.
 
 **Dividers between stations in the ship construction screen.** With shared station queues disabled,
 the list shows a line between the
@@ -179,7 +197,9 @@ between the two nations in the claim. The other conditions do not change.
 dormant nation, you can use the claims of that nation. Your claim on the capital must not be
 hostile. You lose the borrowed claims when you lose the capital, or when your claim on it becomes
 hostile. A claim that the other nation held as hostile stays hostile for you. A nation that still
-holds territory is excluded. A region you take through a borrowed claim is held by a hostile
+holds territory is excluded. Some nations share an original capital: TWN and WUR both have
+Shanghai, and YEM and YMS both have Yemen. Each of them that is dormant lends its claims through
+that capital. A region you take through a borrowed claim is held by a hostile
 claim, so you must legitimize a capital you take that way before you can borrow its claims.
 A unification is not a conquest: a region that comes with it, and that you then borrow a
 peaceful claim on, is held peacefully, so a claim the joining nation legitimized stays
@@ -187,9 +207,10 @@ legitimized.
 Once no region is held by a hostile claim, investment in Government and Unity also legitimizes the
 claims you borrow as hostile, one at a time: the claim becomes peaceful for the nation you borrow
 it from, so it stays peaceful for whoever holds that capital. A project that needs a nation to
-exist, such as Greater Indonesia, is also available while that nation is dormant and its capital
-is held without a hostile claim: its claims go to the dormant nation, and whoever holds the
-capital borrows them. The region screen goes on crediting the claim to the nation it came
+exist, such as Greater Indonesia, can also be offered while that nation is dormant and its
+capital is held without a hostile claim. Each faction gets one roll for it, and a roll that fails
+marks it as missed. If the project is completed, its claims go to the dormant nation, and
+whoever holds the capital borrows them. The region screen goes on crediting the claim to the nation it came
 from rather than to you, so which capital is carrying it stays visible. Save files do not change.
 
 **A nation left on a dormant nation's capital becomes that nation.** When a war ends and a nation
@@ -200,6 +221,16 @@ Australia takes Perth from Westralia, Westralia keeps only Java, and becomes Ind
 faction keeps its control points and their priorities. Stats, armies, nuclear weapons, space
 funding and accumulated investment move across. Alliances, rivalries and federation membership
 do not. The change happens on the next day after the nation is at peace with everyone.
+A nation never becomes a nation that joined it by choice, for example through a unification or
+an event that annexes it. If South Korea unifies with North Korea, then loses Seoul and its new
+capital is Pyongyang, it stays South Korea: North Korea joined it. Only nations that joined by choice
+are excluded. Another dormant nation with the same original capital is still an heir: if a China
+that unified with Taiwan has Shanghai as its new capital, and the End of China project has opened
+Huanan's claim on Shanghai, it becomes Huanan, which never joined it, even though Taiwan's original
+capital is also Shanghai. A nation that joined by choice and later
+becomes independent again is no longer a member. Each nation's record of the nations that joined
+it is kept in its save entry, under `CataTweaks_MergedNations`. A save made before this record
+existed has no record of earlier unifications, so for those the old behaviour stays.
 
 **Repeatable management project scaling.** Each repeat of Management Research, Audience Research,
 Commercial Research and Operations Research pays its base reward plus this percentage, for each
@@ -265,21 +296,44 @@ the council size and the council screen. The option's tooltip says so. A campaig
 pool before you installed Expanded Council keeps the setting in its save: the pool stands aside
 while Expanded Council is there and comes back if you remove it.
 
-**Restored Empires claims.** Claim chains and four projects for old powers. This was a separate
+**Restored Empires claims.** Claim chains and eight projects for old powers. This was a separate
 mod and is now part of CataTweaks.
 
-- The Sun Never Sets (United Kingdom, 25,000) claims the Empire and the Commonwealth beyond the
-  settler dominions. The standard project Commonwealth Restored also gains Delhi, Calcutta and
-  Ireland.
+- The Sun Never Sets (United Kingdom, 25,000) claims the thirteen colonies as represented by
+  the game's eastern North American regions, the Caribbean islands, and British India including
+  Burma. Dynastic claims cover continental France, Germany, Spain, Portugal, the Low Countries,
+  Scandinavia, Greece, Romania and European Russia. It adds no claims in Africa, the Pacific,
+  Argentina, or the rest of Southeast Asia. The map has no separate Falklands region.
+  Commonwealth Restored also gains Delhi and Calcutta, and Ireland outside Broken Earth.
 
 - New Liberia (Liberia, 20,000) claims Sierra Leone, the Ivory Coast, Accra, Togo-Benin and
   Libreville. The Dominion of America claims Liberia and Jamaica behind the standard project
   Greater Dominion. It reaches that coast when it releases Liberia, lets it grow, and absorbs it
-  again.
+  again, or uses the separate capital-borrowing tweak.
 
-- Mare Nostrum (Rome, 10,000) and Imperium Sine Fine (Rome, 25,000) claim the Mediterranean world,
-  the eastern roads, Aksum and both American seaboards. Both appear in Broken Earth only, which is
-  the one scenario that has the Roman Republic.
+- Rome has six independent regional conquest projects, available only in Broken Earth. All
+  require Great Nations, cost 35,000 RP each, and grant the researching faction +10 control
+  point capacity each: 210,000 RP and +60 capacity for all six. They grant broad territorial
+  claims for incremental conquest, rather than just access to capitals.
+
+  | Project | Regions | Coverage |
+  |---|---:|---|
+  | All Roads Lead to Rome | 62 | Continental Europe, including European Russia |
+  | Scipio’s Legacy | 79 | Africa and adjacent islands |
+  | Beyond Alexander | 26 | India, Pakistan, Bangladesh, Nepal, Bhutan, Sri Lanka and the Maldives |
+  | Beyond the Pillars | 46 | North America, Central America, Greenland and the Caribbean |
+  | Under Southern Stars | 26 | South America |
+  | Empire Without End | 101 | The rest of Asia, including the Middle East, Siberia and Southeast Asia |
+
+  These 340 claims do not overlap. Claims on Italy, Milan and Naples are peaceful; the remaining
+  claims are hostile. Continental Europe excludes the British Isles, Iceland and the Azores;
+  Oceania is outside these six branches. Existing saves retain Mare Nostrum's completion as
+  All Roads Lead to Rome and Imperium Sine Fine's completion as Empire Without End.
+
+In Broken Earth, the UK starts with hostile claims on Jamaica and Ireland, and the Dominion of
+America starts with a hostile claim on Jamaica. The Sun Never Sets makes both UK claims peaceful;
+Greater Dominion makes the Dominion's Jamaica claim peaceful. These are claims, not starting
+ownership. They remain subject to the Restored Empires campaign option.
 
 A claim on a territory that fought for independence is hostile. A claim on a small dependency that
 left by agreement is peaceful. For a hostile claim you must conquer the territory, then use a
@@ -309,10 +363,58 @@ rows are duplicated.
 - [Alien Threat Analysis](https://steamcommunity.com/sharedfiles/filedetails/?id=3810805075) and
   [Cooperative Missions](https://steamcommunity.com/sharedfiles/filedetails/?id=3810950621): no
   overlap. The two mods patch nothing CataTweaks changes.
+- [TI Fleet Manager](https://steamcommunity.com/sharedfiles/filedetails/?id=3731957572): works
+  with shared station queues and the rally. Commissioned ships reach their commission fleet
+  whichever yard on the station builds them; a ship fills the oldest open order for its design
+  on the station. With shared queues off, CataTweaks leaves the orders alone. In multiplayer, the
+  host does not share a remote player's queue, so that player's ships follow Fleet Manager's own
+  rule: a ship fills the oldest open order for its design on the yard that built it. When a
+  station loses a yard, every open order on that yard moves to a surviving yard and stays open,
+  so each still takes the next ship of its design built at the station. When the last yard is
+  lost, the orders are left as they are, as with Fleet Manager alone. Fleet Manager's commission
+  time estimate follows the shared queue. Commission orders take precedence over the rally, and
+  reserve fleets are not rally targets, as described above.
+- [TI Space Nations](https://steamcommunity.com/sharedfiles/filedetails/?id=3818604132): works
+  with borrowed capital claims and with the dormant capital rule. The United Nations and a
+  planetary union are made by choice, so they do not become one of their members when they lose
+  their capital. This is true only for members that joined after this version: a United Nations
+  or union founded in an older save can still become one of its older members. When Space
+  Nations gives the United Nations or a union its claims, it reads that nation's own claims, so a
+  claim that the nation only borrows does not stop it. With the Global Assembly the United
+  Nations claims every region on Earth, and Demand Claim ignores the target's other wars, so the
+  United Nations can demand any region that is not a capital from a nation it is not at war with.
+  The target can still refuse. Both mods work as designed there. A known effect, also true before
+  this version: a dormant United Nations with the Global Assembly lends peaceful claims on every
+  region on Earth to any nation that holds its original capital with a peaceful claim. A dormant
+  planetary union does the same for the regions it claims on its body.
+- [TI Crew Extended](https://steamcommunity.com/sharedfiles/filedetails/?id=3701228969): works
+  with shared station queues and the rally. TI Crew Extended refuses to start a ship with an
+  invalid design; that ship keeps its place and does not block the ships behind it, as described
+  above. A ship without enough crew is held in its yard when it is complete; the shared queue
+  counts that yard as busy.
 
-None of them is required. CataTweaks recognises Expanded Council by the patches it has applied,
-not by its version. If that check fails, CataTweaks behaves as it does without Expanded Council,
-and the spy slot pool stays available.
+None of them is required. CataTweaks recognises Expanded Council, TI Fleet Manager and TI Space
+Nations by the patches they have applied, not by their version. If that check fails, CataTweaks
+behaves as it does without them, and the spy slot pool stays available. If a later TI Fleet
+Manager or TI Space Nations changes what CataTweaks reads, CataTweaks writes one line to the log
+and behaves as it does without it, except that with TI Fleet Manager the station rally then holds
+back every new ship, as described below. If a TI Fleet Manager call fails during play, CataTweaks
+writes one line to the log and turns off only that part of its TI Fleet Manager support
+(commission orders, the reserve check, the reserve refit check, or rally sorting) until the next
+campaign loads. A failed
+multiplayer update of a moved order counts as a commission order failure, and also stops the
+commission time estimate. The rally never takes a ship that TI Fleet Manager may deliver or keep
+in its fleet hierarchy:
+- If CataTweaks' TI Fleet Manager support could not bind, the rally holds back every new station
+  ship, refits included, because nothing can be read.
+- If commission order support is off or the claim failed, the rally follows TI Fleet Manager's
+  own rule: it holds back a new ship when an open commission order for its design is on the yard
+  that built it. If that cannot be read, it holds back every new ship that is not a refit.
+- It holds back a refit of a ship in a reserve fleet, because TI Fleet Manager keeps the
+  refitted ship in that fleet's division, and a refit for which this cannot be read. Refits of
+  ships in other fleets may rally.
+
+A ship that is held back gets the normal completion notice.
 
 ---
 
@@ -324,7 +426,7 @@ and the spy slot pool stays available.
 Plugin.cs                    every patch, and the Settings class
 HabNamer.cs                  hab and template naming
 CataTweaks.csproj            builds the DLL against the game assemblies
-TIProjectTemplate.json       6 projects (2 council seats, 4 Restored Empires)
+TIProjectTemplate.json       10 projects (2 council seats, 8 Restored Empires)
 TIBilateralTemplate.json     391 claim rows
 Localization/<lang>/         project names, summaries and descriptions
 ModInfo.json                 UMM manifest
@@ -336,9 +438,9 @@ test/                        standalone check for the hab namer
 .github/workflows/ci.yml     runs tools/validate.py and tools/SyntaxCheck
 ```
 
-The claim rows are not spread evenly across scenarios: 61 rows each for the untagged, `2026_`,
-`2070_` and `2003_` namespaces, and 147 for `1962_`, because the 85 Rome rows exist in Broken
-Earth only.
+The claim rows are not spread evenly across scenarios: 77 rows each for the untagged, `2026_`,
+`2070_` and `2003_` namespaces, and 421 for `1962_`, because Rome’s 340 regional claims and the
+Broken Earth starting-claim overrides exist there only.
 
 ## Building
 
@@ -375,9 +477,28 @@ had to clip anything until this tab made the list longer than the panel.
 
 Every setting applies immediately, which is only possible because no patch uses Harmony's
 `Prepare()`. Harmony evaluates that once at patch time, so a setting behind it could not change
-without a restart. Three patches hold state of their own: the solar mirror cache, the preset
-validity cache and the repeatable capacity cache. The first is released from `Settings.OnChange`
-when its setting is cleared.
+without a restart. These patches keep state of their own between calls:
+
+- Caches built from the game: the solar mirror cache, the preset validity cache, the repeatable
+  capacity cache, and the capital map of borrowed capital claims (`capitalOf`, with
+  `InheritedCapitalClaims.mappedNations` and `capture`).
+- Campaign records: the table of ship starts that another mod refused, the rally targets, the set
+  of rally notices sent today, and the pending set (`DormantCapitalIdentity.pending`) and merger
+  record of the dormant capital rule.
+- Flags: `InheritedCapitalClaims.ready`, `saving` and `occupying`, the shipyard dispatcher's
+  depth counters and `StationConstruction.dispatching`, what `OtherMods` detected, the
+  `detected`, `bound` and `bindFailed` state of `FleetManagerCompat` with its set of parts that
+  failed (`failed`) and of errors already logged (`reported`), and the bound and failed state of
+  `SpaceNationsCompat`.
+- Thread-static state for one completion or transfer call, restored by a finalizer:
+  `FleetManagerCommission.fleet` and `held`, and `StationConstructionRally.completingYard`,
+  `notification` and `adoptingTargetTrajectory`.
+- UI and mission state that holds game states: the control point rows and banks of the diplomacy
+  screen, `PactConfirm`'s open question, `FriendlyPurge`'s victim and attacker, and the nations
+  `NationCycle` shows.
+
+The solar mirror cache is released from `Settings.OnChange` when its setting is cleared. The merger
+record is kept up while its setting is off, so it is complete when the setting is turned on again.
 
 ## How the campaign options are stored
 
@@ -426,6 +547,12 @@ The work is done by `Borrowed`, which reads only the backing fields, so it never
 patched getters. It filters each of the source's claims through `TIRegionState.ClaimedBy`,
 because a claim whose unlock project is unresearched can be present without being usable.
 
+A capital can be the original capital of more than one nation: vanilla shares Shanghai and
+Yemen, and a mod that founds a nation by annexing another can seat both on one region. The
+capital map keeps every nation for each region, and every dormant one lends. Where two sources
+disagree on a claim's hostility, the peaceful reading wins, as it does between two capitals.
+Legitimizing removes the hostile claim at every source that lends it hostile.
+
 Every method that writes to either list reaches it through its getter, so those methods are
 transpiled to load the backing field instead: `SetClaim`, `RemoveClaim`, `RemoveHostileClaim`,
 `SetCapital`, `TransferRegionsControlTo`, `InitWithTemplate`, `SetAllBilaterals` and
@@ -437,8 +564,29 @@ it gains peacefully in a unification would come out hostile, and that hostile cl
 hides a peaceful borrowed one. `AbsorbNation` is bracketed: it notes which of the joining
 nation's regions the absorber claimed before, and afterwards makes peaceful each new hostile
 claim on one of them that a dormant nation lends peacefully through a capital the absorber holds
-without a hostile claim, repeating until nothing changes. Vanilla calls `AbsorbNation` after a
-conquest only on a nation that is already dormant, so conquests are not affected.
+without a hostile claim, repeating until nothing changes. Conquests are not affected. Vanilla
+calls `AbsorbNation` after a conquest on a nation that is already dormant, with one exception: an
+occupation led by the alien nation can absorb a loser that still lives, into the alien nation or
+into a human nation in its alliance. So every absorb inside `CompleteOccupationofRegion` counts as
+a conquest; that occupation test, not the alien-absorber test, catches the human ally. The alien
+nation's own annexations are left out because the absorber is the alien nation.
+
+The same bracket records each voluntary merger for the dormant capital rule, whatever the
+borrowed-claims setting is: a living joiner, a human absorber, and no `CompleteOccupationofRegion`
+under way. That method absorbs a living loser when the alien nation leads the occupation, and the
+region can then go to a human nation in the alien nation's alliance, so every absorb inside it
+counts as a conquest. The same test keeps those conquests hostile above. Membership is
+transitive. The record is saved on the absorber as `CataTweaks_MergedNations`, a list of nation
+IDs. Each daily update removes every living nation from every member list, whichever path
+revived it, and removes the list of every dormant nation, which holds no members any more.
+
+TI Space Nations grants claims from its own code: it asks a nation's claims whether it has one,
+then calls `SetClaim`. Six of its methods get the same rewrite as the game's writers above, so
+they read the nation's own lists: `PlanetaryUnionService.HandleUnification`, `Absorb` and
+`ClaimAllColonyRegions`, `ColonyNationFoundingService.ClaimForExistingUnion`,
+`SettlementService.ClaimForExistingUnion`, and the lambda inside
+`UnitedNationsService.MissingEarthClaims`. They are found by name when Space Nations' patches are
+seen. If one is missing or no longer reads the claims, none is patched.
 
 `SaveAllGameStates` sets a flag for its duration, in a finalizer so a failed save clears it, and
 the getters return the nation's own lists while it is set. The capital-capture list is the one
@@ -453,8 +601,9 @@ when no region is held by a hostile claim, and `OnLegitimizeClaimPriorityComplet
 new-claims notification. The priority tooltip's legitimize line is swapped for
 `UI.CataTweaks.LegitimizeBorrowedClaims` when its target is a borrowed claim.
 
-The 45 projects gated on a nation (`requiresNation`) have no effects of their own; they only
-unlock claims. `PrereqsSatisfied` is transpiled so its one `extant` test becomes
+Projects gated on a nation (`requiresNation`) can also run while its capital is held peacefully.
+Rome’s regional projects grant their native capacity effects to the researching faction.
+`PrereqsSatisfied` is transpiled so its one `extant` test becomes
 `PresentThroughCapital`, which also accepts a dormant nation whose original capital is held
 without a hostile claim. Vanilla rolls such a project when a prerequisite completes and when the
 nation gains independence; a gate that opens because a capital changed hands has no such moment,
