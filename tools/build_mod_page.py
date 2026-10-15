@@ -13,14 +13,14 @@ ORDER = [
      'subcontinent from a Britain that has only done the cheap project. Ireland sits here too, '
      'gated rather than granted at the start.'),
     ('Project_TheSunNeverSets', 'GBR', 'The Sun Never Sets', 'new', None),
-    ('Project_MareNostrum', 'SPR', 'Mare Nostrum', 'new', None),
-    ('Project_ImperiumSineFine', 'SPR', 'Imperium Sine Fine', 'new', None),
+    *((project, 'SPR', S['loc'][project][0], 'new', None)
+      for project, details in S['meta'].items() if 'theatre' in details),
     ('Project_GreaterDominion', 'CSA', 'Greater Dominion', 'vanilla, extended',
      'Monrovia joins the Dominion\'s claims: the one colony the Republic actually founded, and the '
      'hinge the whole American route turns on.'),
     ('Project_NewLiberia', 'LBR', 'New Liberia', 'new', None),
 ]
-BLOCK = {(b['project'], b['nation']): b for b in S['blocks']}
+BLOCK = {(b['project'], b['nation'], b['scope']): b for b in S['blocks']}
 
 
 def project(pid, nation, title, kind, prose):

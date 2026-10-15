@@ -1,8 +1,8 @@
 """Claim graph for any scenario namespace: untagged (Modern), 2026_, 2070_, 2003_, 1962_."""
 import json, os, re
 
-BASE = r'C:\Program Files (x86)\Steam\steamapps\common\Terra Invicta\TerraInvicta_Data\StreamingAssets\Templates'
-DLC = r'C:\Program Files (x86)\Steam\steamapps\common\Terra Invicta\DLC_Content\DarkSkies'
+from names import BASE, DLC
+
 SCEN = {
     'Modern (2022)': ('', BASE),
     '2026': ('2026_', BASE),

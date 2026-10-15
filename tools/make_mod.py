@@ -1,58 +1,130 @@
-"""Generate the Restored Empires mod.
+"""Regenerate CataTweaks claim rows.
 
 Claims are authored once in map-layer region names and emitted per scenario, because every
 scenario prefixes its template names (2026_, 2070_, 2003_, 1962_; the Modern start is untagged)
-and rows from one namespace are inert in another. Rome exists only in Broken Earth, so its two
+and rows from one namespace are inert in another. Rome exists only in Broken Earth, so its six regional
 projects are emitted there alone; the British and Liberian lines exist everywhere.
 """
-import json, os
+import json
+from pathlib import Path
 from names import SCENARIOS, region_map, nations
 
-OUT = r'C:\Users\alex\Documents\GitHub\RestoredEmpires'
+OUT = Path(__file__).resolve().parents[1] / "TIBilateralTemplate.json"
 SUN, MARE, FAR, LIBERIA = ('Project_TheSunNeverSets', 'Project_MareNostrum',
                            'Project_ImperiumSineFine', 'Project_NewLiberia')
 COMMONWEALTH, DOMINION = 'Project_CommonwealthRestored', 'Project_GreaterDominion'   # vanilla
 
-# (region, hostile). Hostile where a population fought its way out of the Empire; peaceful for
-# dependencies that left by agreement, or never did.
+# (region, hostile). Hostile for contested foreign territories and former colonies that fought
+# for independence; peaceful for British dependencies that left by agreement, or never did.
 # Delhi and Calcutta (Commonwealth members) and Ireland, which left but was never foreign.
 RAJ = [('NewDelhi', 1), ('Kolkata', 1), ('Ireland', 1)]
-EMPIRE = [
+# The map combines several historical colonies into each region. Include the eastern seaboard
+# and its inland colonial hinterland, but not Louisiana/the Mississippi Delta or western NA.
+THIRTEEN_COLONIES = [
+    ('NewEngland', 1), ('NewYork', 1), ('Shenandoah', 1), ('Cumberland', 1), ('Dixie', 1),
+]
+CARIBBEAN = [
+    ('Bahamas', 0), ('Jamaica', 0), ('BritishWestIndies', 0),
+    ('Cuba', 1), ('WestHispanola', 1), ('EastHispanola', 1), ('AmericanCaribbean', 1),
+    ('WestIndies', 1), ('FrenchWestIndies', 1), ('DutchCaribbean', 1),
+]
+# British India including princely states and Burma before its administrative separation in
+# 1937. Delhi and Calcutta remain on the prerequisite Commonwealth Restored project.
+BRITISH_INDIA = [
     ('Faridabad', 1), ('Mumbai', 1), ('Chennai', 1), ('Bangalore', 1), ('Hyderabad', 1),
-    ('Gujarat', 1), ('Odisha', 1), ('AndhraPradesh', 1), ('Indore', 1), ('Punjab', 1),
-    ('Sindh', 1), ('Bangladesh', 1), ('SriLanka', 1), ('Maldives', 0),
-    ('MalayPeninsula', 1), ('Singapore', 0), ('SarawakandSabah', 0), ('Brunei', 0),
-    ('Ghana', 1), ('SierraLeone', 1), ('Senegambia', 1), ('Lagos', 1), ('PortHarcourt', 1),
-    ('WestCameroon', 1), ('Cameroon', 1), ('Kenya', 1), ('Uganda', 1), ('Tanzania', 1),
-    ('WestTanzania', 1), ('RwandaBurundi', 1), ('Seychelles', 0), ('Mauritius', 0),
-    ('Zambia', 1), ('Zimbabwe', 1), ('Malawi', 1), ('Botswana', 0), ('Namibia', 1),
-    ('CapeTown', 1), ('Johannesburg', 1), ('Lesotho', 0), ('Eswatini', 0), ('Mozambique', 1),
-    ('NorthMozambique', 1), ('Jamaica', 0), ('Bahamas', 0), ('Guyana', 0), ('PapuaNewGuinea', 0),
-    ('Dixie', 1), ('Shenandoah', 1), ('Cumberland', 1), ('MississippiDelta', 1),
+    ('Gujarat', 1), ('Odisha', 1), ('AndhraPradesh', 1), ('Indore', 1), ('Jaipur', 1),
+    ('Raipur', 1), ('Bihar', 1), ('Assam', 1), ('ArunchalPradesh', 1), ('JammuandKashmir', 1),
+    ('Punjab', 1), ('Sindh', 1), ('Baluchistan', 1), ('Peshawar', 1), ('Bangladesh', 1),
+    ('Myanmar', 1), ('UpperMyanmar', 1),
 ]
-MEDITERRANEAN = [
-    ('Naples', 0), ('Milan', 0), ('Spain', 1), ('Barcelona', 1), ('LeonGalicia', 1),
-    ('Portugal', 1), ('Paris', 1), ('Lyon', 1), ('Toulouse', 1), ('Nantes', 1),
-    ('Switzerland', 1), ('Austria', 1), ('Slovenia', 1), ('CroatiaSlovenia', 1),
-    ('BosniaMontenegro', 1), ('Albania', 1), ('Greece', 1), ('NorthMacedonia', 1), ('Kosovo', 1),
-    ('Belgrade', 1), ('Bulgaria', 1), ('Romania', 1), ('Transylvania', 1), ('Hungary', 1),
-    ('Tunisia', 1), ('Algeria', 1), ('Libya', 1), ('Cyrenaica', 1), ('Morocco', 1), ('Egypt', 1),
-    ('Alexandria', 1), ('Luxor', 1), ('Anatolia', 1), ('Istanbul', 1), ('Syria', 1),
-    ('Lebanon', 1), ('Israel', 1), ('Palestine', 1), ('Jordan', 1), ('Belgium', 1),
-    ('Netherlands', 1), ('Germany', 1),
+# Alternate-history dynastic claims: the selected continental crowns, rather than every
+# country with a remote royal ancestor. Russia is limited to its European core on the map.
+# No overseas French/Dutch possessions, Spanish islands, or Falklands mainland proxy.
+DYNASTIC_EUROPE = [
+    ('Paris', 1), ('Nantes', 1), ('Lyon', 1), ('Toulouse', 1),
+    ('Germany', 1), ('EastGermany', 1), ('Bavaria', 1),
+    ('Spain', 1), ('Barcelona', 1), ('LeonGalicia', 1), ('BasqueCountry', 1), ('Portugal', 1),
+    ('Belgium', 1), ('Netherlands', 1), ('Denmark', 1), ('Norway', 1), ('Sweden', 1),
+    ('Greece', 1), ('Romania', 1), ('Transylvania', 1),
+    ('Moskva', 1), ('Novgorod', 1), ('Karelia', 1), ('Arkhangelsk', 1), ('Kirov', 1),
+    ('Volga', 1), ('Voronezh', 1), ('Rostovskaya', 1), ('NorthCaucasus', 1), ('Kaliningrad', 1),
 ]
-BEYOND = [
-    ('England', 1), ('EnglishMidlands', 1), ('Wales', 1), ('Scotland', 1), ('Crimea', 1),
-    ('Armenia', 1), ('Georgia', 1), ('Baghdad', 1), ('Mosul', 1), ('Diyarbakir', 1),
-    ('Sudan', 1), ('NorthernSudan', 1), ('Ethiopia', 1),
-    ('Halifax', 1), ('Quebec', 1), ('NewEngland', 1), ('NewYork', 1), ('Shenandoah', 1),
-    ('Cumberland', 1), ('Dixie', 1), ('MississippiDelta', 1), ('Bahamas', 1), ('Cuba', 1),
-    ('WestHispanola', 1), ('EastHispanola', 1), ('Jamaica', 1), ('AmericanCaribbean', 1),
-    ('WestIndies', 1), ('FrenchWestIndies', 1), ('BritishWestIndies', 1), ('DutchCaribbean', 1),
-    ('Guyana', 1), ('Suriname', 1), ('FrenchGuiana', 1), ('Belem', 1), ('Fortaleza', 1),
-    ('Recife', 1), ('RiodeJaneiro', 1), ('SaoPaulo', 1), ('PortoAlegre', 1), ('Uruguay', 1),
-    ('Pampas', 1), ('Patagonia', 1),
+EMPIRE = THIRTEEN_COLONIES + CARIBBEAN + BRITISH_INDIA + DYNASTIC_EUROPE
+
+# Six independent, broad conquest branches. Preserve the two original project IDs for saved
+# completions, while repurposing them for Europe and Asia. All regions are assigned once.
+ROME_COST = 35000
+ROME_CAP_EFFECT = 'Effect_ControlPointMaintenanceBonus10'
+ROME_REGIONS = {
+    'Europe': '''
+        Albania Arkhangelsk Austria Barcelona BasqueCountry Bavaria Belarus Belgium Belgrade
+        BosniaMontenegro Bulgaria Crimea CroatiaSlovenia Czechia Denmark Donetsk EastGermany Estonia
+        Finland Gdansk Germany Greece Hungary Istanbul Italy Kaliningrad Karelia Katowice Kharkiv
+        Kiev Kirov Kosovo Latvia LeonGalicia Lithuania Lyon Milan Moldova Montenegro Moskva Nantes
+        Naples Netherlands NorthCaucasus NorthMacedonia Norway Novgorod Odesa Paris Poland Portugal
+        Romania Rostovskaya Slovakia Slovenia Spain Sweden Switzerland Toulouse Transylvania Volga
+        Voronezh
+        '''.split(),
+    'Africa': '''
+        Alexandria Algeria Angola Botswana BurkinaFaso CaboVerde Cameroon CanaryIslands CapeTown
+        CentralAfricanRepublic Chad CongoBrazzaville Cyrenaica Darfur DireDiwa Djibouti EastAngola
+        Egypt EquatorialGuinea Eritrea Eswatini Ethiopia FrenchRatnakara Gambia Gao Ghana Guinea
+        GuineaBissau IvoryCoast Johannesburg Kano Kenya Kinshasa Kisangani Lagos Lesotho Liberia
+        Libya Logone LowerGuinea Lubumbashi Luxor Madagascar Malawi Mali Mauritania Mauritius
+        Mekelle Mombasa Morocco Mozambique Namibia Niger NorthMozambique NorthernChad NorthernSudan
+        PortHarcourt Ratnakara RwandaBurundi SaoTomePrincipe Senegambia Seychelles SierraLeone
+        Somalia Somaliland SouthAlgeria SouthSudan Sudan Tanzania Togo TogoBenin Tunisia Uganda
+        WestCameroon WestTanzania WesternSahara Zambia Zanzibar Zimbabwe
+        '''.split(),
+    'India': '''
+        AndhraPradesh ArunchalPradesh Assam Baluchistan Bangalore Bangladesh Bhutan Bihar Chennai
+        Faridabad Gujarat Himalayas Hyderabad Indore Jaipur JammuandKashmir Kolkata Maldives Mumbai
+        NewDelhi Odisha Peshawar Punjab Raipur Sindh SriLanka
+        '''.split(),
+    'NorthAmerica': '''
+        Alaska Alberta AmericanCaribbean Bahamas Belize Boise BritishColumbia BritishWestIndies
+        California CanadianArctic Cascadia CostaRica Cuba Cumberland Dakota Dixie DutchCaribbean
+        EastHispanola ElSalvador FrenchWestIndies Greenland Guatemala Halifax HighPlains Honduras
+        Jamaica Manitoba Merida MexicoCity MississippiDelta Monterrey NewEngland NewYork Nicaragua
+        Ontario Panama Prairies Quebec RockyMountains RustBelt Shenandoah Texas Tijuana
+        WestHispanola WestIndies Yukon
+        '''.split(),
+    'SouthAmerica': '''
+        Amazonia Arequipa Belem Bolivia Brasilia Colombia Cuiaba Ecuador Fortaleza FrenchGuiana
+        GranChaco Guyana NorthernChile Pampas Paraguay Patagonia Peru PortoAlegre Recife
+        RiodeJaneiro SaoPaulo SouthernChile Suriname Uruguay Venezuela Villavicencio
+        '''.split(),
+    'Asia': '''
+        Aceh Aden Afghanistan Ahvaz Almaty Anatolia Anhui Armenia Astana Azerbaijan Baghdad Beijing
+        Borneo Brunei Cambodia Chongqing Diyarbakir EastTimor Fujian Gansu Georgia Guangzhou Guizhou
+        GulfStates Hangzhou Hanoi Hijaz HoChiMinhCity Hokkaido HongKong Hunan InnerMongolia Irkutsk
+        Isfahan Israel Java Jilin Jordan Kamchatka Karakalpakstan Kuwait Kyrgyzstan KyushuandShikoku
+        Laos Lebanon LesserSundas Liaoning Luzon MalayPeninsula Manchuria Mashhad
+        MoluccasandSulawesi Mongolia Mosul Myanmar Najd Nanchang Nanning NorthHonshu NorthKorea
+        NorthKrasnoyarsk NorthThailand NorthUrals Novosibirsk Oman Palestine Qassimah Qinghai
+        RussianFarEast Ryukus Sakha SakhalinKurils SarawakandSabah Shandong Shanghai Shanxi
+        Singapore SouthHonshu SouthKorea SouthThailand Sulawesi Sumatra Syria Tabriz Taiwan
+        Tajikistan Tehran Tibet Turkmenistan UnitedArabEmirates UpperMyanmar Urals Uzbekistan
+        ViasyasyMindanao Visayas Wuhan Xian Xinjiang Yemen Yunnan Zhengzhou
+        '''.split(),
+}
+ROMAN_THEATRES = [
+    ('Project_MareNostrum', 'All Roads Lead to Rome', 'Europe'),
+    ('Project_CataTweaks_RomanAfrica', 'Scipio’s Legacy', 'Africa'),
+    ('Project_CataTweaks_RomanIndia', 'Beyond Alexander', 'India'),
+    ('Project_CataTweaks_RomanNorthAmerica', 'Beyond the Pillars', 'NorthAmerica'),
+    ('Project_CataTweaks_RomanSouthAmerica', 'Under Southern Stars', 'SouthAmerica'),
+    ('Project_ImperiumSineFine', 'Empire Without End', 'Asia'),
 ]
+# Continental Europe excludes the British Isles, Iceland and the Azores. Oceania is outside
+# these six regions; North America includes Central America, Greenland and the Caribbean.
+ROMAN_UNCLAIMED_REGIONS = '''
+    AmericanPacific Azores England EnglishMidlands FrenchPacific Iceland Ireland Melanesia
+    Micronesia NewGuinea NewSouthWales NewZealand NorthernAustralia NorthernIreland
+    PapuaNewGuinea Polynesia Queensland Scotland SouthernAustralia TeWaipounamu Victoria Wales
+    Westralia
+    '''.split()
+
 FREEDMEN = [('SierraLeone', 0), ('IvoryCoast', 0), ('Ghana', 0), ('TogoBenin', 0), ('LowerGuinea', 0)]
 
 # (project, nation, claims, scope). 'all' = every scenario, 'be' = Broken Earth only,
@@ -60,12 +132,21 @@ FREEDMEN = [('SierraLeone', 0), ('IvoryCoast', 0), ('Ghana', 0), ('TogoBenin', 0
 BLOCKS = [
     (COMMONWEALTH, 'GBR', RAJ, 'all'),
     (SUN, 'GBR', EMPIRE, 'all'),
-    (MARE, 'SPR', MEDITERRANEAN, 'be'),
-    (FAR, 'SPR', BEYOND, 'be'),
+    *((project, 'SPR', [(r, 0 if r in {'Italy', 'Milan', 'Naples'} else 1)
+                        for r in ROME_REGIONS[theatre]], 'be')
+      for project, title, theatre in ROMAN_THEATRES),
     (LIBERIA, 'LBR', FREEDMEN, 'all'),
-    (DOMINION, 'CSA', [('Liberia', 0)], 'all'),
+    (DOMINION, 'CSA', [('Liberia', 0), ('Jamaica', 0)], 'all'),
     ('', 'RNA', [('Jamaica', 0)], 'be'),        # ungated: in Broken Earth nothing else claims Kingston
 ]
+
+# Hostile starting claims in Broken Earth, with projects that subsequently make them peaceful.
+# Vanilla SetClaim(region, false) removes hostility even when the nation already owns the claim.
+BROKEN_EARTH_START_CLAIMS = {
+    ('GBR', 'Jamaica'): SUN,
+    ('CSA', 'Jamaica'): DOMINION,
+    ('GBR', 'Ireland'): SUN,
+}
 
 PROJECTS = [
     {'friendlyName': 'The Sun Never Sets', 'dataName': SUN, 'techCategory': 'SocialScience',
@@ -73,16 +154,13 @@ PROJECTS = [
      'prereqs': [COMMONWEALTH, 'GreatNations'], 'oneTimeGlobally': True, 'repeatable': False,
      'requiresNation': 'GBR', 'factionAvailableChance': 100, 'initialUnlockChance': 0,
      'deltaUnlockChance': 5, 'maxUnlockChance': 50, 'resourcesGranted': []},
-    {'friendlyName': 'Mare Nostrum', 'dataName': MARE, 'techCategory': 'SocialScience',
-     'AI_techRole': 'EarthPolitics', 'AI_projectRole': 'ExpandNation', 'researchCost': 10000,
-     'prereqs': ['UnityMovements'], 'oneTimeGlobally': True, 'repeatable': False,
-     'requiresNation': 'SPR', 'factionAvailableChance': 100, 'initialUnlockChance': 0,
-     'deltaUnlockChance': 5, 'maxUnlockChance': 50, 'resourcesGranted': []},
-    {'friendlyName': 'Imperium Sine Fine', 'dataName': FAR, 'techCategory': 'SocialScience',
-     'AI_techRole': 'EarthPolitics', 'AI_projectRole': 'ExpandNation', 'researchCost': 25000,
-     'prereqs': [MARE, 'GreatNations'], 'oneTimeGlobally': True, 'repeatable': False,
-     'requiresNation': 'SPR', 'factionAvailableChance': 100, 'initialUnlockChance': 0,
-     'deltaUnlockChance': 5, 'maxUnlockChance': 50, 'resourcesGranted': []},
+    *({'friendlyName': title, 'dataName': project, 'techCategory': 'SocialScience',
+       'AI_techRole': 'EarthPolitics', 'AI_projectRole': 'ExpandNation', 'researchCost': ROME_COST,
+       'prereqs': ['GreatNations'], 'effects': [ROME_CAP_EFFECT],
+       'oneTimeGlobally': True, 'repeatable': False, 'requiresNation': 'SPR',
+       'factionAvailableChance': 100, 'initialUnlockChance': 0, 'deltaUnlockChance': 5,
+       'maxUnlockChance': 50, 'resourcesGranted': []}
+      for project, title, theatre in ROMAN_THEATRES),
     {'friendlyName': 'New Liberia', 'dataName': LIBERIA, 'techCategory': 'SocialScience',
      'AI_techRole': 'EarthPolitics', 'AI_projectRole': 'ExpandNation', 'researchCost': 20000,
      'prereqs': [DOMINION, 'GreatNations'], 'oneTimeGlobally': True, 'repeatable': False,
@@ -92,30 +170,14 @@ PROJECTS = [
 
 LOC = {
     SUN: ('The Sun Never Sets',
-          'We reassert the claims of the whole Empire, not merely the settler dominions.',
-          'Commonwealth Restored brought back the easy half: the dominions that never really left, '
-          'whose flags still carry ours in the corner. The rest of the map was always the point. '
-          'Delhi and Dhaka, Lagos and Nairobi, the Cape and the Straits, the sugar islands, and the '
-          'thirteen colonies that got away - all of it administered once from a single square mile '
-          'of London. We are not asking for it back. We are filing the paperwork that says it never '
-          'stopped being ours, and letting the rest follow.'),
-    MARE: ('Mare Nostrum',
-           'The Republic reasserts its authority over the Mediterranean world.',
-           'Every road still runs to this city, whatever the milestones have been repainted to say. '
-           'The sea between the provinces is not a border and never was; it is the courtyard of a '
-           'single house whose tenants have grown forgetful. Hispania, Gaul, Africa, Achaea, Asia, '
-           'Aegyptus, Syria - the names survive on our maps because nobody has ever invented better '
-           'ones. We begin with the sea, because the sea is ours.'),
-    FAR: ('Imperium Sine Fine',
-          'Britannia, the eastern roads, Aksum - and the far shore of the Ocean.',
-          'Virgil promised an empire without end, and the surveyors took him literally. Britannia at '
-          'the cold edge, Armenia and Mesopotamia where the legions marched and mostly regretted it, '
-          'Nubia up the river, and Aksum at the far end of the Red Sea run, where our coins turn up '
-          'in the dirt because our merchants got there first. And then the Ocean, which the ancients '
-          'took for the edge of the world and which turns out to be merely wide. There is land on '
-          'the other side of it, currently administered by people who arrived there fifteen '
-          'centuries after we stopped looking. An empire without end does not recognise an ocean as '
-          'an end. It recognises an unsurveyed province.'),
+          'Reassert claims on the thirteen colonies, the Caribbean, British India and selected European crowns.',
+          'Commonwealth Restored brought back the settler dominions. Now we turn to the thirteen '
+          'colonies, the Caribbean islands and British India, including Burma. In Europe, the '
+          'Crown invokes its dynastic connections: France, Germany, Spain, Portugal, the Low '
+          'Countries, Scandinavia, Greece, Romania and European Russia. The claim ends at these '
+          'shores and crowns; it is not a mandate for the rest of the former Empire. We file '
+          'the paperwork, and let the rest follow. In Broken Earth, completing this project also '
+          'makes our starting claims on Jamaica and Ireland peaceful.'),
     LIBERIA: ('New Liberia',
               'Monrovia, Freetown and Libreville: one coast, one founding idea.',
               'Three powers had the same notion within forty years of each other, and none of them '
@@ -125,6 +187,21 @@ LOC = {
               'all three. The descendants of those settlements have more in common with each other '
               'than with the empires that dropped them here, and they have started saying so.'),
 }
+
+for project, title, theatre in ROMAN_THEATRES:
+    area = {'Europe': 'continental Europe, including European Russia',
+            'Africa': 'Africa and its adjacent islands',
+            'India': 'the Indian subcontinent, including Pakistan, Bangladesh, Nepal, Bhutan, Sri Lanka and the Maldives',
+            'NorthAmerica': 'North America, Central America, Greenland and the Caribbean',
+            'SouthAmerica': 'South America',
+            'Asia': 'the rest of Asia, including the Middle East, Siberia, East Asia and Southeast Asia'}[theatre]
+    italian = ' Claims on the Italian core are peaceful.' if theatre == 'Europe' else ''
+    LOC[project] = (title, f'Broad claims in {area}. +10 control point capacity.',
+                   f'Grants territorial claims throughout {area} for incremental conquest. '
+                   f'New foreign claims are hostile.{italian} Requires Great Nations and is independent '
+                   'of the other Roman regional projects. Completing this project grants the researching '
+                   'faction +10 control point capacity. Available only in Broken Earth.')
+
 
 
 def build():
@@ -143,11 +220,20 @@ def build():
                 if region not in rm:              # scenario lacks the region: skip, never guess
                     skipped.append(region)
                     continue
-                tag = project.replace('Project_', '') if project else 'Irredenta'
+                claim_project = project
+                if be and (nation, region) in BROKEN_EARTH_START_CLAIMS:
+                    start_tag = f'Claim{prefix}{nation}_{region}_Irredenta'
+                    rows.append({'dataName': start_tag, 'relationType': 'Claim',
+                                 'nation1': prefix + nation, 'region1': rm[region],
+                                 'hostileClaim': True})
+                    made += 1
+                    claim_project = BROKEN_EARTH_START_CLAIMS[nation, region]
+                    hostile = 0
+                tag = claim_project.replace('Project_', '') if claim_project else 'Irredenta'
                 row = {'dataName': f'Claim{prefix}{nation}_{region}_{tag}', 'relationType': 'Claim',
                        'nation1': prefix + nation, 'region1': rm[region]}
-                if project:
-                    row['projectUnlockName'] = project
+                if claim_project:
+                    row['projectUnlockName'] = claim_project
                 if hostile:
                     row['hostileClaim'] = True
                 rows.append(row)
@@ -158,30 +244,7 @@ def build():
 
 if __name__ == '__main__':
     rows, per_scenario = build()
-    modinfo = {
-        'title': 'Restored Empires',
-        'author': 'alex',
-        'description': (
-            'Old powers get a route back to the whole map, each by a different road. The Sun Never '
-            'Sets (United Kingdom) claims the Empire and Commonwealth beyond the settler dominions; '
-            'Delhi and Calcutta join vanilla Commonwealth Restored. New Liberia (Liberia) unites '
-            'Monrovia, Freetown and Libreville, and Monrovia joins vanilla Greater Dominion, so the '
-            'Dominion of America reaches Africa by releasing Liberia and taking it back. Commonwealth '
-            'Restored also gains Delhi, Calcutta and Ireland. In Broken Earth only, Mare Nostrum and '
-            'Imperium Sine Fine give Rome the Mediterranean world, the eastern roads, Aksum and both '
-            'American seaboards, and the Civil Defense Administration claims Jamaica - which nothing '
-            'else in that scenario claims. Claims on territories that fought their way out are '
-            'hostile; the small dependencies are peaceful. Covers all five starts.')
-    }
-    os.makedirs(os.path.join(OUT, 'Localization', 'en'), exist_ok=True)
-    w = lambda p, s: open(os.path.join(OUT, p), 'w', encoding='utf-8', newline='\r\n').write(s)
-    w('ModInfo.json', json.dumps(modinfo, indent=2))
-    w('TIProjectTemplate.json', json.dumps(PROJECTS, indent=2))
-    w('TIBilateralTemplate.json', json.dumps(rows, indent=2))
-    w(os.path.join('Localization', 'en', 'TIProjectTemplate.en'), '\n'.join(
-        f'TIProjectTemplate.{k}.{d}={v}' for d, (n, s, desc) in LOC.items()
-        for k, v in (('displayName', n), ('summary', s), ('description', desc))) + '\n')
-
-    print(f'{len(rows)} claim rows -> {OUT}')
+    OUT.write_text(json.dumps(rows, indent=2) + "\n", encoding="utf-8")
+    print(f"{len(rows)} claim rows -> {OUT}")
     for label, (n, skipped) in per_scenario.items():
         print(f'  {label:24s} {n:3d} rows' + (f'   skipped: {skipped}' if skipped else ''))

@@ -95,6 +95,26 @@ def check_localization(projects):
     # Every UI key English has, in every language, for the same reason: a key the game cannot
     # find prints itself, so a mod UI string missing one translation is fourteen ways to be wrong.
     ui_keys = read_keys(os.path.join(root, "en", "UICataTweaks.en"))
+    # Settings rows derive their keys from field names, so checking literal Loc.T calls would
+    # miss an untranslated new row. Cover every drawn bool/float, including the two reused keys.
+    with open(os.path.join(ROOT, "Plugin.cs"), encoding="utf-8") as handle:
+        source = handle.read()
+    settings = source.split("public class Settings", 1)[1].split("public static class Main", 1)[0]
+    for field in re.findall(r'\[Draw\([^\n]+\)\]\s+public (?:bool|float) (\w+)', settings):
+        if field in ("pooledStationConstruction", "shipyardRally"):
+            stem = "PooledConstruction" if field == "pooledStationConstruction" else "Rally"
+            required = ["UI.CataTweaks." + stem + suffix for suffix in ("Setting", "Tooltip")]
+        else:
+            required = ["UI.CataTweaks.Setting." + field + suffix for suffix in (".Label", ".Tooltip")]
+        for key in required:
+            if key not in ui_keys:
+                fail("settings row has no localization: " + key)
+
+    def ui_values(path):
+        with open(path, encoding="utf-8") as handle:
+            return dict(line.strip().split("=", 1) for line in handle if "=" in line)
+
+    english = ui_values(os.path.join(root, "en", "UICataTweaks.en"))
     for language in languages:
         path = os.path.join(root, language, "UICataTweaks." + language)
         if not os.path.exists(path):
@@ -102,6 +122,10 @@ def check_localization(projects):
             continue
         for key in sorted(ui_keys - read_keys(path)):
             fail(language + " has no " + key)
+        values = ui_values(path)
+        for key in ui_keys & values.keys():
+            if set(re.findall(r'\{\d+\}', english[key])) != set(re.findall(r'\{\d+\}', values[key])):
+                fail(language + " has mismatched placeholders for " + key)
     print(str(len(languages)) + " of 14 languages, " + str(len(ui_keys)) + " UI keys")
     if len(languages) != 14:
         fail("Terra Invicta ships 14 languages and the game has no English fallback")
@@ -144,8 +168,70 @@ def check_claims(claims, project_names):
                 break
         families.setdefault(stripped, set()).add(prefix_of(name[len("Claim"):]))
     for family, found in sorted(families.items()):
+        # In Broken Earth, Ireland starts hostile and is made peaceful by The Sun Never Sets.
+        # The other four scenarios retain its Commonwealth Restored claim.
+        if family == "ClaimGBR_Ireland_CommonwealthRestored":
+            if found != set(SCENARIOS) - {"1962_"}:
+                fail(family + " must exist in the four non-Broken-Earth scenarios")
+            continue
         if len(found) not in (1, len(SCENARIOS)):
             fail(family + " exists in " + str(len(found)) + " scenarios, not 1 or 5")
+
+    for nation, region, project in (
+        ("GBR", "Jamaica", "Project_TheSunNeverSets"),
+        ("GBR", "Ireland", "Project_TheSunNeverSets"),
+        ("CSA", "Jamaica", "Project_GreaterDominion"),
+    ):
+        rows = [r for r in claims if r.get("nation1") == "1962_" + nation
+                and r.get("region1") == "1962_" + region]
+        starting = [r for r in rows if not r.get("projectUnlockName") and r.get("hostileClaim")]
+        peaceful = [r for r in rows if r.get("projectUnlockName") == project and not r.get("hostileClaim")]
+        if len(rows) != 2 or len(starting) != 1 or len(peaceful) != 1:
+            fail("Broken Earth " + nation + " must start with a hostile claim on " + region
+                 + " and gain a peaceful claim through " + project)
+
+
+def check_roman_projects(projects, claims):
+    roman = [p for p in projects if p.get("requiresNation") == "SPR"]
+    ids = {p["dataName"] for p in roman}
+    if len(roman) != 6:
+        fail("Rome must have six regional conquest projects")
+    if sum(p.get("researchCost", 0) for p in roman) < 200000:
+        fail("Rome's regional projects must cost at least 200,000 RP combined")
+    for project in roman:
+        name = project["dataName"]
+        if project.get("prereqs") != ["GreatNations"]:
+            fail(name + " must unlock independently after Great Nations")
+        if project.get("effects") != ["Effect_ControlPointMaintenanceBonus10"]:
+            fail(name + " must grant +10 control point capacity")
+        if project.get("repeatable") or not project.get("oneTimeGlobally"):
+            fail(name + " must be a unique, non-repeatable conquest project")
+        rows = [r for r in claims if r.get("projectUnlockName") == name]
+        if not rows:
+            fail(name + " has no territorial claims")
+        if any(r.get("nation1") != "1962_SPR" or prefix_of(r.get("region1", "")) != "1962_"
+               for r in rows):
+            fail(name + " must grant claims only to Rome in Broken Earth")
+    regions = [r.get("region1") for r in claims if r.get("projectUnlockName") in ids]
+    if len(regions) != len(set(regions)):
+        fail("Rome's regional conquest projects have overlapping claims")
+    # Anchor regions catch swapped theatres and accidental reintroduction of capital-only lists.
+    anchors = {
+        "Project_MareNostrum": ["Paris", "EastGermany", "Moskva"],
+        "Project_CataTweaks_RomanAfrica": ["Egypt", "Lagos", "CapeTown"],
+        "Project_CataTweaks_RomanIndia": ["NewDelhi", "Mumbai", "SriLanka"],
+        "Project_CataTweaks_RomanNorthAmerica": ["NewYork", "MexicoCity", "Jamaica"],
+        "Project_CataTweaks_RomanSouthAmerica": ["Colombia", "SaoPaulo", "Pampas"],
+        "Project_ImperiumSineFine": ["Beijing", "Anatolia", "Java"],
+    }
+    # Use the authored map names in dataName; Broken Earth renames some actual region templates.
+    for name, expected in anchors.items():
+        rows = [r for r in claims if r.get("projectUnlockName") == name]
+        for region in expected:
+            if not any(r.get("dataName", "").startswith("Claim1962_SPR_" + region + "_") for r in rows):
+                fail(name + " is missing its regional claim on " + region)
+        if len(rows) < 20:
+            fail(name + " must grant broad regional claims")
 
 
 def check_modinfo():
@@ -184,6 +270,7 @@ def main():
     names = check_projects(projects)
     check_localization(projects)
     check_claims(claims, names)
+    check_roman_projects(projects, claims)
     check_modinfo()
     notifications = read_json("TINotificationTemplate.json")
     rally = next((item for item in notifications if item.get("dataName") == "CataTweaks_ShipRally"), None)

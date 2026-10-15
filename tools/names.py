@@ -1,8 +1,9 @@
 """Per-scenario region naming. Claims are authored once in map-layer names and translated."""
 import json, os, re
 
-BASE = r'C:\Program Files (x86)\Steam\steamapps\common\Terra Invicta\TerraInvicta_Data\StreamingAssets\Templates'
-DLC = r'C:\Program Files (x86)\Steam\steamapps\common\Terra Invicta\DLC_Content\DarkSkies'
+GAME = os.environ.get('TERRA_INVICTA_DIR', r'C:\Program Files (x86)\Steam\steamapps\common\Terra Invicta')
+BASE = os.path.join(GAME, 'TerraInvicta_Data', 'StreamingAssets', 'Templates')
+DLC = os.path.join(GAME, 'DLC_Content', 'DarkSkies')
 SCENARIOS = [
     ('Modern (2022)', '', BASE),
     ('2026', '2026_', BASE),

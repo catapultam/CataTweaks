@@ -66,14 +66,17 @@
     "resourcesGranted": []
   },
   {
-    "friendlyName": "Mare Nostrum",
+    "friendlyName": "All Roads Lead to Rome",
     "dataName": "Project_MareNostrum",
     "techCategory": "SocialScience",
     "AI_techRole": "EarthPolitics",
     "AI_projectRole": "ExpandNation",
-    "researchCost": 10000,
+    "researchCost": 35000,
     "prereqs": [
-      "UnityMovements"
+      "GreatNations"
+    ],
+    "effects": [
+      "Effect_ControlPointMaintenanceBonus10"
     ],
     "oneTimeGlobally": true,
     "repeatable": false,
@@ -85,15 +88,105 @@
     "resourcesGranted": []
   },
   {
-    "friendlyName": "Imperium Sine Fine",
+    "friendlyName": "Scipio\u2019s Legacy",
+    "dataName": "Project_CataTweaks_RomanAfrica",
+    "techCategory": "SocialScience",
+    "AI_techRole": "EarthPolitics",
+    "AI_projectRole": "ExpandNation",
+    "researchCost": 35000,
+    "prereqs": [
+      "GreatNations"
+    ],
+    "effects": [
+      "Effect_ControlPointMaintenanceBonus10"
+    ],
+    "oneTimeGlobally": true,
+    "repeatable": false,
+    "requiresNation": "SPR",
+    "factionAvailableChance": 100,
+    "initialUnlockChance": 0,
+    "deltaUnlockChance": 5,
+    "maxUnlockChance": 50,
+    "resourcesGranted": []
+  },
+  {
+    "friendlyName": "Beyond Alexander",
+    "dataName": "Project_CataTweaks_RomanIndia",
+    "techCategory": "SocialScience",
+    "AI_techRole": "EarthPolitics",
+    "AI_projectRole": "ExpandNation",
+    "researchCost": 35000,
+    "prereqs": [
+      "GreatNations"
+    ],
+    "effects": [
+      "Effect_ControlPointMaintenanceBonus10"
+    ],
+    "oneTimeGlobally": true,
+    "repeatable": false,
+    "requiresNation": "SPR",
+    "factionAvailableChance": 100,
+    "initialUnlockChance": 0,
+    "deltaUnlockChance": 5,
+    "maxUnlockChance": 50,
+    "resourcesGranted": []
+  },
+  {
+    "friendlyName": "Beyond the Pillars",
+    "dataName": "Project_CataTweaks_RomanNorthAmerica",
+    "techCategory": "SocialScience",
+    "AI_techRole": "EarthPolitics",
+    "AI_projectRole": "ExpandNation",
+    "researchCost": 35000,
+    "prereqs": [
+      "GreatNations"
+    ],
+    "effects": [
+      "Effect_ControlPointMaintenanceBonus10"
+    ],
+    "oneTimeGlobally": true,
+    "repeatable": false,
+    "requiresNation": "SPR",
+    "factionAvailableChance": 100,
+    "initialUnlockChance": 0,
+    "deltaUnlockChance": 5,
+    "maxUnlockChance": 50,
+    "resourcesGranted": []
+  },
+  {
+    "friendlyName": "Under Southern Stars",
+    "dataName": "Project_CataTweaks_RomanSouthAmerica",
+    "techCategory": "SocialScience",
+    "AI_techRole": "EarthPolitics",
+    "AI_projectRole": "ExpandNation",
+    "researchCost": 35000,
+    "prereqs": [
+      "GreatNations"
+    ],
+    "effects": [
+      "Effect_ControlPointMaintenanceBonus10"
+    ],
+    "oneTimeGlobally": true,
+    "repeatable": false,
+    "requiresNation": "SPR",
+    "factionAvailableChance": 100,
+    "initialUnlockChance": 0,
+    "deltaUnlockChance": 5,
+    "maxUnlockChance": 50,
+    "resourcesGranted": []
+  },
+  {
+    "friendlyName": "Empire Without End",
     "dataName": "Project_ImperiumSineFine",
     "techCategory": "SocialScience",
     "AI_techRole": "EarthPolitics",
     "AI_projectRole": "ExpandNation",
-    "researchCost": 25000,
+    "researchCost": 35000,
     "prereqs": [
-      "Project_MareNostrum",
       "GreatNations"
+    ],
+    "effects": [
+      "Effect_ControlPointMaintenanceBonus10"
     ],
     "oneTimeGlobally": true,
     "repeatable": false,

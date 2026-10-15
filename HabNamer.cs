@@ -7,11 +7,17 @@ namespace CataTweaks;
 // Saving a hab as a template pulls the template name back out of the parentheses.
 public static class HabNamer
 {
-    private static readonly Regex Suffix = new Regex(@"^(.*?)\s*\(([^(),]+),[^()]*\)$");
+    // Quote names containing delimiters, escaping quotes and backslashes inside the quotes.
+    // Keep reading the unquoted suffixes written by previous versions.
+    private static readonly Regex Suffix = new Regex(
+        @"^(.*?)\s*\((?:""((?:[^""\\]|\\[""\\])*)""|([^(),]+)),(?:[^()]|\((?<depth>)|\)(?<-depth>))*(?(depth)(?!))\)$");
 
     public static string Name(string habName, string slug, string location)
     {
-        return $"{BaseOf(habName)} ({slug}, {location})";
+        string encoded = slug.IndexOfAny(new[] { ',', '(', ')', '"', '\\' }) >= 0
+            ? "\"" + slug.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\""
+            : slug;
+        return $"{BaseOf(habName)} ({encoded}, {location})";
     }
 
     // The custom name: everything before a trailing "(Template, Location)".
@@ -26,7 +32,14 @@ public static class HabNamer
         Match m = Suffix.Match(habName);
         if (m.Success)
         {
-            return m.Groups[2].Value.Trim();
+            if (!m.Groups[2].Success)
+                return m.Groups[3].Value.Trim();
+            string encoded = m.Groups[2].Value;
+            // Name() never quotes a plain slug. A plain, fully quoted legacy slug therefore
+            // includes those literal quotes, rather than using them as encoding delimiters.
+            return encoded.IndexOfAny(new[] { ',', '(', ')', '"', '\\' }) >= 0
+                ? Regex.Replace(encoded, @"\\([""\\])", "$1")
+                : "\"" + encoded + "\"";
         }
         // Legacy formats from earlier mod versions / vanilla: "Name-Body-3", "Name 3", "Name-3".
         m = new Regex("^(.+)-" + Regex.Escape(body) + @"-\d+$").Match(habName);
