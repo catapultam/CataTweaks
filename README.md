@@ -22,7 +22,8 @@ Then subscribe on the Workshop, or copy this folder into `Terra Invicta/Mods/Ena
 
 CataTweaks adds its own tab to the game's Settings screen. The tab works in the main menu and in
 a loaded campaign. Every setting has a tooltip, and changes apply the moment you click them.
-There is no restart and no reload.
+A drag of the solar cap slider applies its power change when you release it. There is no
+restart and no reload.
 
 Two settings belong to a campaign rather than to you. They also appear at the bottom of New Game
 / Customize Campaign, and the value you choose there is stored in the save. A campaign therefore
@@ -458,6 +459,9 @@ runs the two checks that need no game instead: `tools/validate.py` for the templ
 localization, version consistency and house style, and `tools/SyntaxCheck` to parse the sources
 with Roslyn.
 
+One DLL supports game 1.0.53b and the 1.0.62 beta. `tools/RefCheck` checks a built DLL against
+the assemblies of each version; see `tools/README.md`.
+
 ## How the settings screen is built
 
 The options screen is hand-wired. Each vanilla setting is a separate serialized `Toggle` or
@@ -487,7 +491,7 @@ without a restart. These patches keep state of their own between calls:
   record of the dormant capital rule.
 - Flags: `InheritedCapitalClaims.ready`, `saving` and `occupying`, the shipyard dispatcher's
   depth counters and `StationConstruction.dispatching`, what `OtherMods` detected, the
-  `detected`, `bound` and `bindFailed` state of `FleetManagerCompat` with its set of parts that
+  `bound` and `bindFailed` state of `FleetManagerCompat` with its set of parts that
   failed (`failed`) and of errors already logged (`reported`), and the bound and failed state of
   `SpaceNationsCompat`.
 - Thread-static state for one completion or transfer call, restored by a finalizer:

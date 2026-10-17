@@ -10,6 +10,15 @@ translations before any files are written. Checked-in translations are the sourc
 `SyntaxCheck/` parses the C# sources with Roslyn. CI calls it too, because the mod itself
 cannot be compiled without the game assemblies.
 
+`dotnet run --project tools/RefCheck -c Release -- <CataTweaks.dll> <Managed> [<Managed> ...]`
+resolves the built DLL against the game assemblies of each version given: every type, method
+and field it references, and each member it finds by name, as Harmony finds it. A `[HarmonyPatch]`
+target must be declared on its type, an `AccessTools` lookup may be on a base type, each kind
+(method, field, property getter or setter) is found only as that kind, and a method named without
+parameter types must have no overload. A name in `TargetMethods`, also in a loop or a `Select`, is
+paired with that method's one `AccessTools` call. A member found by shape at run time, as
+`GameVersions` does, is not seen. It needs the game assemblies, so CI cannot run it.
+
 `dotnet run --project tools/ConstructionCheck -c Release` checks the shared station queue against
 the installed game's types. It validates patch targets and exercises the real dispatcher with
 game pricing, eligibility, and payment stubbed at their boundaries. Checks cover parallel slots,

@@ -10,8 +10,7 @@ from pathlib import Path
 from names import SCENARIOS, region_map, nations
 
 OUT = Path(__file__).resolve().parents[1] / "TIBilateralTemplate.json"
-SUN, MARE, FAR, LIBERIA = ('Project_TheSunNeverSets', 'Project_MareNostrum',
-                           'Project_ImperiumSineFine', 'Project_NewLiberia')
+SUN, LIBERIA = 'Project_TheSunNeverSets', 'Project_NewLiberia'
 COMMONWEALTH, DOMINION = 'Project_CommonwealthRestored', 'Project_GreaterDominion'   # vanilla
 
 # (region, hostile). Hostile for contested foreign territories and former colonies that fought
@@ -53,8 +52,8 @@ EMPIRE = THIRTEEN_COLONIES + CARIBBEAN + BRITISH_INDIA + DYNASTIC_EUROPE
 
 # Six independent, broad conquest branches. Preserve the two original project IDs for saved
 # completions, while repurposing them for Europe and Asia. All regions are assigned once.
-ROME_COST = 35000
-ROME_CAP_EFFECT = 'Effect_ControlPointMaintenanceBonus10'
+# Continental Europe excludes the British Isles, Iceland and the Azores. Oceania is outside
+# these six regions; North America includes Central America, Greenland and the Caribbean.
 ROME_REGIONS = {
     'Europe': '''
         Albania Arkhangelsk Austria Barcelona BasqueCountry Bavaria Belarus Belgium Belgrade
@@ -108,22 +107,15 @@ ROME_REGIONS = {
         ViasyasyMindanao Visayas Wuhan Xian Xinjiang Yemen Yunnan Zhengzhou
         '''.split(),
 }
+# Project -> theatre. Titles, costs and text are in TIProjectTemplate.json and its localization.
 ROMAN_THEATRES = [
-    ('Project_MareNostrum', 'All Roads Lead to Rome', 'Europe'),
-    ('Project_CataTweaks_RomanAfrica', 'Scipio’s Legacy', 'Africa'),
-    ('Project_CataTweaks_RomanIndia', 'Beyond Alexander', 'India'),
-    ('Project_CataTweaks_RomanNorthAmerica', 'Beyond the Pillars', 'NorthAmerica'),
-    ('Project_CataTweaks_RomanSouthAmerica', 'Under Southern Stars', 'SouthAmerica'),
-    ('Project_ImperiumSineFine', 'Empire Without End', 'Asia'),
+    ('Project_MareNostrum', 'Europe'),
+    ('Project_CataTweaks_RomanAfrica', 'Africa'),
+    ('Project_CataTweaks_RomanIndia', 'India'),
+    ('Project_CataTweaks_RomanNorthAmerica', 'NorthAmerica'),
+    ('Project_CataTweaks_RomanSouthAmerica', 'SouthAmerica'),
+    ('Project_ImperiumSineFine', 'Asia'),
 ]
-# Continental Europe excludes the British Isles, Iceland and the Azores. Oceania is outside
-# these six regions; North America includes Central America, Greenland and the Caribbean.
-ROMAN_UNCLAIMED_REGIONS = '''
-    AmericanPacific Azores England EnglishMidlands FrenchPacific Iceland Ireland Melanesia
-    Micronesia NewGuinea NewSouthWales NewZealand NorthernAustralia NorthernIreland
-    PapuaNewGuinea Polynesia Queensland Scotland SouthernAustralia TeWaipounamu Victoria Wales
-    Westralia
-    '''.split()
 
 FREEDMEN = [('SierraLeone', 0), ('IvoryCoast', 0), ('Ghana', 0), ('TogoBenin', 0), ('LowerGuinea', 0)]
 
@@ -134,7 +126,7 @@ BLOCKS = [
     (SUN, 'GBR', EMPIRE, 'all'),
     *((project, 'SPR', [(r, 0 if r in {'Italy', 'Milan', 'Naples'} else 1)
                         for r in ROME_REGIONS[theatre]], 'be')
-      for project, title, theatre in ROMAN_THEATRES),
+      for project, theatre in ROMAN_THEATRES),
     (LIBERIA, 'LBR', FREEDMEN, 'all'),
     (DOMINION, 'CSA', [('Liberia', 0), ('Jamaica', 0)], 'all'),
     ('', 'RNA', [('Jamaica', 0)], 'be'),        # ungated: in Broken Earth nothing else claims Kingston
@@ -147,62 +139,6 @@ BROKEN_EARTH_START_CLAIMS = {
     ('CSA', 'Jamaica'): DOMINION,
     ('GBR', 'Ireland'): SUN,
 }
-
-PROJECTS = [
-    {'friendlyName': 'The Sun Never Sets', 'dataName': SUN, 'techCategory': 'SocialScience',
-     'AI_techRole': 'EarthPolitics', 'AI_projectRole': 'ExpandNation', 'researchCost': 25000,
-     'prereqs': [COMMONWEALTH, 'GreatNations'], 'oneTimeGlobally': True, 'repeatable': False,
-     'requiresNation': 'GBR', 'factionAvailableChance': 100, 'initialUnlockChance': 0,
-     'deltaUnlockChance': 5, 'maxUnlockChance': 50, 'resourcesGranted': []},
-    *({'friendlyName': title, 'dataName': project, 'techCategory': 'SocialScience',
-       'AI_techRole': 'EarthPolitics', 'AI_projectRole': 'ExpandNation', 'researchCost': ROME_COST,
-       'prereqs': ['GreatNations'], 'effects': [ROME_CAP_EFFECT],
-       'oneTimeGlobally': True, 'repeatable': False, 'requiresNation': 'SPR',
-       'factionAvailableChance': 100, 'initialUnlockChance': 0, 'deltaUnlockChance': 5,
-       'maxUnlockChance': 50, 'resourcesGranted': []}
-      for project, title, theatre in ROMAN_THEATRES),
-    {'friendlyName': 'New Liberia', 'dataName': LIBERIA, 'techCategory': 'SocialScience',
-     'AI_techRole': 'EarthPolitics', 'AI_projectRole': 'ExpandNation', 'researchCost': 20000,
-     'prereqs': [DOMINION, 'GreatNations'], 'oneTimeGlobally': True, 'repeatable': False,
-     'requiresNation': 'LBR', 'factionAvailableChance': 100, 'initialUnlockChance': 0,
-     'deltaUnlockChance': 5, 'maxUnlockChance': 50, 'resourcesGranted': []},
-]
-
-LOC = {
-    SUN: ('The Sun Never Sets',
-          'Reassert claims on the thirteen colonies, the Caribbean, British India and selected European crowns.',
-          'Commonwealth Restored brought back the settler dominions. Now we turn to the thirteen '
-          'colonies, the Caribbean islands and British India, including Burma. In Europe, the '
-          'Crown invokes its dynastic connections: France, Germany, Spain, Portugal, the Low '
-          'Countries, Scandinavia, Greece, Romania and European Russia. The claim ends at these '
-          'shores and crowns; it is not a mandate for the rest of the former Empire. We file '
-          'the paperwork, and let the rest follow. In Broken Earth, completing this project also '
-          'makes our starting claims on Jamaica and Ireland peaceful.'),
-    LIBERIA: ('New Liberia',
-              'Monrovia, Freetown and Libreville: one coast, one founding idea.',
-              'Three powers had the same notion within forty years of each other, and none of them '
-              'thought to compare notes. The Americans put freed slaves ashore at Monrovia, the '
-              'British at Freetown, the French at Libreville - the free town, in case the point was '
-              'missed. Between them lies the Kru coast, whose sailors crewed the ships that carried '
-              'all three. The descendants of those settlements have more in common with each other '
-              'than with the empires that dropped them here, and they have started saying so.'),
-}
-
-for project, title, theatre in ROMAN_THEATRES:
-    area = {'Europe': 'continental Europe, including European Russia',
-            'Africa': 'Africa and its adjacent islands',
-            'India': 'the Indian subcontinent, including Pakistan, Bangladesh, Nepal, Bhutan, Sri Lanka and the Maldives',
-            'NorthAmerica': 'North America, Central America, Greenland and the Caribbean',
-            'SouthAmerica': 'South America',
-            'Asia': 'the rest of Asia, including the Middle East, Siberia, East Asia and Southeast Asia'}[theatre]
-    italian = ' Claims on the Italian core are peaceful.' if theatre == 'Europe' else ''
-    LOC[project] = (title, f'Broad claims in {area}. +10 control point capacity.',
-                   f'Grants territorial claims throughout {area} for incremental conquest. '
-                   f'New foreign claims are hostile.{italian} Requires Great Nations and is independent '
-                   'of the other Roman regional projects. Completing this project grants the researching '
-                   'faction +10 control point capacity. Available only in Broken Earth.')
-
-
 
 def build():
     rows, per_scenario = [], {}

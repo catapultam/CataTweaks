@@ -12,9 +12,12 @@ public static class HabNamer
     private static readonly Regex Suffix = new Regex(
         @"^(.*?)\s*\((?:""((?:[^""\\]|\\[""\\])*)""|([^(),]+)),(?:[^()]|\((?<depth>)|\)(?<-depth>))*(?(depth)(?!))\)$");
 
+    // A slug with one of these is quoted.
+    private static readonly char[] Delimiters = { ',', '(', ')', '"', '\\' };
+
     public static string Name(string habName, string slug, string location)
     {
-        string encoded = slug.IndexOfAny(new[] { ',', '(', ')', '"', '\\' }) >= 0
+        string encoded = slug.IndexOfAny(Delimiters) >= 0
             ? "\"" + slug.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\""
             : slug;
         return $"{BaseOf(habName)} ({encoded}, {location})";
@@ -37,7 +40,7 @@ public static class HabNamer
             string encoded = m.Groups[2].Value;
             // Name() never quotes a plain slug. A plain, fully quoted legacy slug therefore
             // includes those literal quotes, rather than using them as encoding delimiters.
-            return encoded.IndexOfAny(new[] { ',', '(', ')', '"', '\\' }) >= 0
+            return encoded.IndexOfAny(Delimiters) >= 0
                 ? Regex.Replace(encoded, @"\\([""\\])", "$1")
                 : "\"" + encoded + "\"";
         }

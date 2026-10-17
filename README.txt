@@ -19,6 +19,7 @@ Where the settings are
 Every feature has its own switch on the game's own Settings screen,
 under a CataTweaks tab, in the main menu and in a loaded campaign alike.
 Changes take effect the moment you click them: no restart, no reload.
+A drag of the solar cap slider applies its power change on release.
 Each row has a tooltip describing what it does.
 
 Two settings belong to a campaign rather than to you, so they live at

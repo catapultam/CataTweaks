@@ -60,6 +60,8 @@ internal static class Program
         if (value is TIGameState state) state.ID = new GameStateID(++nextID);
         return value;
     }
+    // A type of the mod, by its name without the namespace.
+    private static Type Mod(string name) => typeof(Settings).Assembly.GetType("CataTweaks." + name, true);
     private static object Call(string name, params object[] args) => AccessTools.Method(pool, name, args.Select(a => a.GetType()).ToArray()).Invoke(null, args);
     private static void Assert(bool condition, string message)
     {
@@ -153,10 +155,9 @@ internal static class Program
 
     private static void CampaignRegressionChecks()
     {
-        var mod = typeof(Settings).Assembly;
         var settings = new Settings();
         AccessTools.Field(typeof(Main), "settings").SetValue(null, settings);
-        var refresh = AccessTools.Method(mod.GetType("CataTweaks.StationSolarMirrorRefresh", true), "RefreshAll");
+        var refresh = AccessTools.Method(Mod("StationSolarMirrorRefresh"), "RefreshAll");
         var solarHarness = new Harmony("CataTweaks.SolarSettingsCheck");
         Stub(solarHarness, refresh, nameof(SolarRefresh));
         Action applySolar = () => AccessTools.Method(typeof(Settings), "ApplySolarOptions").Invoke(settings, null);
@@ -189,7 +190,7 @@ internal static class Program
             Assert(solarRefreshes == 4, "Loaded solar options establish a baseline without reactivating modules");
         }
         finally { solarHarness.Unpatch(refresh, HarmonyPatchType.Prefix, solarHarness.Id); }
-        var flags = mod.GetType("CataTweaks.CampaignFlags", true);
+        var flags = Mod("CampaignFlags");
         var customizations = Bare<ScenarioCustomizations>();
         Action freeze = () => AccessTools.Method(flags, "FreezeDefaults").Invoke(null, new object[] { customizations });
         freeze();
@@ -200,12 +201,12 @@ internal static class Program
         freeze();
         Assert(customizations.customFactionText["CataTweaks.restoredEmpires"].customDisplayName == "1",
             "Changing new-campaign defaults cannot change the loaded campaign");
-        AccessTools.Method(flags, "Write").Invoke(null, new object[] { customizations, "restoredEmpires", false });
+        AccessTools.Method(flags, "Write").Invoke(null, new object[] { customizations, "CataTweaks.restoredEmpires", false });
         freeze();
         Assert(customizations.customFactionText["CataTweaks.restoredEmpires"].customDisplayName == "0",
             "An explicitly disabled campaign option survives migration");
 
-        var cap = mod.GetType("CataTweaks.RepeatableCapScalesWithCost", true);
+        var cap = Mod("RepeatableCapScalesWithCost");
         var entryType = cap.GetNestedType("Cached", BindingFlags.NonPublic);
         var cacheField = AccessTools.Field(cap, "cache");
         var cache = cacheField.GetValue(null);
@@ -232,21 +233,19 @@ internal static class Program
         var weak = AddUnloadedFaction(cache, entryType);
         GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect();
         Assert(!weak.IsAlive, "Capacity cache does not keep an unloaded faction alive");
-        AccessTools.Method(cap, "Reset").Invoke(null, null);
-        Assert(!ReferenceEquals(cache, cacheField.GetValue(null)), "Campaign reset replaces the capacity cache");
-        var presets = mod.GetType("CataTweaks.ReapplyPresetsOnValidityChange", true);
+        var presets = Mod("ReapplyPresetsOnValidityChange");
         var validity = (System.Collections.IDictionary)AccessTools.Field(presets, "lastInvalid").GetValue(null);
         validity[new GameStateID(999)] = new HashSet<PriorityType>();
         AccessTools.Method(presets, "Reset").Invoke(null, null);
         Assert(validity.Count == 0, "Campaign reset removes validity snapshots before IDs can be reused");
-        var mirrorOutput = mod.GetType("CataTweaks.StationSolarMirrorOutput", true);
+        var mirrorOutput = Mod("StationSolarMirrorOutput");
         Func<int, int, float, int> lit = (unlit, bonus, limit) =>
             (int)AccessTools.Method(mirrorOutput, "WithMirrors").Invoke(null, new object[] { unlit, bonus, limit });
         Assert(lit(40, 1, 2f) == 41, "Mirror cap uses distance-adjusted output and cannot reduce natural output");
         Assert(lit(4, 100, 2f) == 8, "Mirror cap remains relative to a distant station's solar output");
         Assert(lit(40, 100, 1f) == 40, "A one-times cap leaves an unaffected station's supply unchanged");
 
-        var identity = mod.GetType("CataTweaks.DormantCapitalIdentity", true);
+        var identity = Mod("DormantCapitalIdentity");
         var pending = (HashSet<TINationState>)AccessTools.Field(identity, "pending").GetValue(null);
         var nation = Bare<TINationState>();
         pending.Add(nation);
@@ -283,7 +282,7 @@ internal static class Program
         AccessTools.Field(typeof(TemplateManager), "templatesByName").SetValue(manager, missions);
         AccessTools.Field(typeof(TemplateManager), "self").SetValue(null, manager);
         CampaignRegressionChecks();
-        pool = typeof(Settings).Assembly.GetType("CataTweaks.StationConstruction", true);
+        pool = Mod("StationConstruction");
         var harmony = new Harmony("CataTweaks.ConstructionCheck");
         // Unity's Mono implements engine ECalls that desktop CLR cannot JIT. Check target
         // existence here; attaching UI/completion patches must be smoke-tested inside Unity.
@@ -297,7 +296,7 @@ internal static class Program
             Assert(targets.All(m => m != null), type.Name + " has valid game patch targets");
         }
         Func<string, string, int> priority = (type, method) => ((HarmonyPriority)AccessTools.Method(
-            typeof(Settings).Assembly.GetType("CataTweaks." + type, true), method).GetCustomAttributes(typeof(HarmonyPriority), false)
+            Mod(type), method).GetCustomAttributes(typeof(HarmonyPriority), false)
             .Single()).info.priority;
         Assert(priority("StationConstructionRallyCompletion", "Postfix") == Priority.Last,
             "The rally merge runs after Fleet Manager's completion postfix has found the new fleet");
@@ -392,7 +391,7 @@ internal static class Program
         Assert((float)finish.Invoke(null, new object[] { f.faction, f.high, design }) == 11f,
             "A paid job held at zero days keeps its yard busy for at least one day");
 
-        var add = typeof(Settings).Assembly.GetType("CataTweaks.StationConstructionAdd", true);
+        var add = Mod("StationConstructionAdd");
         var addPrefix = AccessTools.Method(add, "Prefix");
         var addPostfix = AccessTools.Method(add, "Postfix");
         f = Fixture(); afford = false; b = Enqueue(f.faction, f.high);
@@ -415,20 +414,17 @@ internal static class Program
         addPostfix.Invoke(null, post);
         Assert((bool)post[4] && a.costPaid && b.costPaid && a.shipyard != b.shipyard,
             "A direct enqueue into any yard succeeds and joins the shared queue");
-        var startPriority = AccessTools.Method(typeof(Settings).Assembly.GetType("CataTweaks.StationConstructionStart", true), "Prefix")
-            .GetCustomAttributes(typeof(HarmonyPriority), false).Cast<HarmonyPriority>().SingleOrDefault();
-        Assert(startPriority?.info.priority == Priority.First, "The start block runs before other mods' start prefixes");
+        Assert(priority("StationConstructionStart", "Prefix") == Priority.First, "The start block runs before other mods' start prefixes");
 
         f = Fixture();
         var action = Bare<AddShipDesignToConstructionQueueAction>();
         var actionYard = AccessTools.Field(typeof(AddShipDesignToConstructionQueueAction), "shipyard");
         actionYard.SetValue(action, f.low);
-        AccessTools.Method(typeof(Settings).Assembly.GetType("CataTweaks.StationConstructionAddYard", true), "Prefix")
-            .Invoke(null, new object[] { action });
+        var addYard = AccessTools.Method(Mod("StationConstructionAddYard"), "Prefix");
+        addYard.Invoke(null, new object[] { action });
         Assert((TIHabModuleState)actionYard.GetValue(action) == f.high, "The add action targets the anchor yard before any enqueue prefix runs");
         station = false; actionYard.SetValue(action, f.low);
-        AccessTools.Method(typeof(Settings).Assembly.GetType("CataTweaks.StationConstructionAddYard", true), "Prefix")
-            .Invoke(null, new object[] { action });
+        addYard.Invoke(null, new object[] { action });
         Assert((TIHabModuleState)actionYard.GetValue(action) == f.low, "Bases keep the chosen yard");
 
         f = Fixture(); a = Enqueue(f.faction, f.high);
@@ -448,14 +444,14 @@ internal static class Program
 
         f = Fixture(); a = Enqueue(f.faction, f.high, paid: true);
         b = Enqueue(f.faction, f.high); c = Enqueue(f.faction, f.high);
-        var lostYard = typeof(Settings).Assembly.GetType("CataTweaks.StationConstructionLostYard", true);
+        var lostYard = Mod("StationConstructionLostYard");
         AccessTools.Method(lostYard, "Prefix").Invoke(null, new object[] { f.faction, f.high });
         Assert(f.faction.GetShipyardQueue(f.high).SequenceEqual(new[] { a }), "Lost yard retains only its paid construction for vanilla cancellation");
         Assert(f.faction.GetShipyardQueue(f.low).SequenceEqual(new[] { b, c }) && b.shipyard == f.low && c.shipyard == f.low,
             "Lost yard preserves pending items and their ownership in order");
 
         f = Fixture(); a = Enqueue(f.faction, f.high);
-        var settings = (Settings)AccessTools.Field(typeof(Settings).Assembly.GetType("CataTweaks.Main"), "settings").GetValue(null);
+        var settings = (Settings)AccessTools.Field(Mod("Main"), "settings").GetValue(null);
         settings.pooledStationConstruction = false;
         Call("Dispatch", f.faction, f.hab);
         Assert(!a.costPaid && ReferenceEquals(View(f.faction, f.high), f.faction.GetShipyardQueue(f.high)), "Disabled setting restores vanilla queue access");
@@ -492,7 +488,7 @@ internal static class Program
         normalize.Invoke(options, new object[] { null });
         Assert(!options.stationDividers && !options.pooledStationConstruction, "Both optional shipyard modes may be disabled");
 
-        var progress = AccessTools.Method(typeof(Settings).Assembly.GetType("CataTweaks.StationConstructionProgress", true), "Fraction");
+        var progress = AccessTools.Method(Mod("StationConstructionProgress"), "Fraction");
         Func<ShipConstructionQueueItem, float> fraction = item => (float)progress.Invoke(null, new object[] { item });
         Assert(fraction(null) == 0f, "Idle slot progress is empty");
         a.resourcesCost = Bare<TIResourcesCost>(); a.resourcesCost.SetCompletionTime_Days(100f);
@@ -507,7 +503,7 @@ internal static class Program
         a.resourcesCost.SetCompletionTime_Days(100f); a.daysToCompletion = 25f; a.costPaid = false;
         Assert(fraction(a) == 0f, "Unstarted work has no slot progress");
 
-        var sectionHeight = AccessTools.Method(typeof(Settings).Assembly.GetType("CataTweaks.StationConstructionSlots", true), "BuildingHeight");
+        var sectionHeight = AccessTools.Method(Mod("StationConstructionSlots"), "BuildingHeight");
         Func<int, float, float, float> height = (count, row, available) =>
             (float)sectionHeight.Invoke(null, new object[] { count, row, available });
         Assert(height(1, 24f, 240f) == 24f, "One slot uses one full-height construction row");
@@ -517,7 +513,7 @@ internal static class Program
         Assert(height(2, 24f, 20f) == 10f, "Small available areas preserve space for both sections");
         Assert(height(2, 24f, 0f) == 0f, "Not-yet-sized card geometry is safe");
 
-        var gridType = typeof(Settings).Assembly.GetType("CataTweaks.StationConstructionGrid", true);
+        var gridType = Mod("StationConstructionGrid");
         var cardHeight = AccessTools.Method(gridType, "CardHeight");
         var contentWidth = AccessTools.Method(gridType, "ContentWidth");
         Assert((float)cardHeight.Invoke(null, new object[] { 720f, 12f, 16f }) == 692f,
@@ -532,7 +528,7 @@ internal static class Program
             "A single card does not create unnecessary horizontal overflow");
         Assert((float)contentWidth.Invoke(null, new object[] { 0, 300f, 10f, 20f, 600f }) == 600f,
             "Filtering out all shipyards preserves valid viewport-sized content");
-        var tooltipJob = AccessTools.Method(typeof(Settings).Assembly.GetType("CataTweaks.StationConstructionHabTooltip", true), "CurrentJob");
+        var tooltipJob = AccessTools.Method(Mod("StationConstructionHabTooltip"), "CurrentJob");
         Func<TIFactionState, TIHabModuleState, ShipConstructionQueueItem> currentJob = (faction, yard) =>
             (ShipConstructionQueueItem)tooltipJob.Invoke(null, new object[] { faction, yard });
         f = Fixture();
@@ -570,8 +566,8 @@ internal static class Program
 
     private static void CheckRally()
     {
-        var rally = typeof(Settings).Assembly.GetType("CataTweaks.StationConstructionRally", true);
-        var settings = (Settings)AccessTools.Field(typeof(Settings).Assembly.GetType("CataTweaks.Main"), "settings").GetValue(null);
+        var rally = Mod("StationConstructionRally");
+        var settings = (Settings)AccessTools.Field(Mod("Main"), "settings").GetValue(null);
         Func<bool> enabled = () => (bool)AccessTools.Property(rally, "Enabled").GetValue(null);
         settings.pooledStationConstruction = settings.shipyardRally = true;
         Assert(enabled(), "Rally is enabled when its own option and shared queues are on");
@@ -581,7 +577,7 @@ internal static class Program
         Assert(!enabled(), "Rally remains off when both options are off");
         settings.shipyardRally = true;
         Assert(!enabled(), "The rally option cannot run without shared queues");
-        var dependencies = (Dictionary<string, string>)AccessTools.Field(typeof(Settings).Assembly.GetType("CataTweaks.VanillaOptionsRows"), "DependsOn").GetValue(null);
+        var dependencies = (Dictionary<string, string>)AccessTools.Field(Mod("VanillaOptionsRows"), "DependsOn").GetValue(null);
         Assert(dependencies[nameof(Settings.shipyardRally)] == nameof(Settings.pooledStationConstruction),
             "The rally settings control is disabled while its shared-queue prerequisite is off");
         settings.pooledStationConstruction = true;
@@ -644,11 +640,11 @@ internal static class Program
         Assert(!fuelFailure(new TransferResult(TransferResult.Outcome.Fail_InsufficientAcceleration), -1, 1000), "A thrust failure is not mislabeled as insufficient delta-v");
         Assert(!fuelFailure(null, 1, 1000) && !fuelFailure(null, double.NaN, 1000), "Unknown or exactly affordable fuel requirements do not get a false fuel warning");
 
-        var cancelPatch = typeof(Settings).Assembly.GetType("CataTweaks.StationConstructionRallyAbort", true);
+        var cancelPatch = Mod("StationConstructionRallyAbort");
         AccessTools.Method(cancelPatch, "Prefix").Invoke(null, new object[] { fleet });
         Assert(target(fleet) == 0, "Aborting a rally transfer cancels automatic merging");
         set(fleet, 43);
-        var reroutePatch = typeof(Settings).Assembly.GetType("CataTweaks.StationConstructionRallyReroute", true);
+        var reroutePatch = Mod("StationConstructionRallyReroute");
         AccessTools.Method(reroutePatch, "Prefix").Invoke(null, new object[] { fleet, affordable });
         Assert(target(fleet) == 0, "Changing the transfer destination cancels automatic merging");
         set(fleet, 43);
@@ -664,7 +660,7 @@ internal static class Program
         AccessTools.Field(reportType, "failure").SetValue(report, "Insufficient delta-v.");
         AccessTools.Field(rally, "notification").SetValue(null, report);
         var notification = new NotificationQueueItem { templateName = "LogShipComplete", itemDetail = "Native completion dialogue." };
-        var eventPatch = typeof(Settings).Assembly.GetType("CataTweaks.StationConstructionRallyEvent", true);
+        var eventPatch = Mod("StationConstructionRallyEvent");
         AccessTools.Method(eventPatch, "Prefix").Invoke(null, new object[] { notification });
         Assert(notification.itemDetail == "Insufficient delta-v.\n\nNative completion dialogue." && notification.templateName == "LogShipComplete",
             "A failed rally prepends its reason and retains the native ship-constructed dialogue");
@@ -700,13 +696,13 @@ internal static class Program
 
     private static void CheckFleetManager()
     {
-        var compat = typeof(Settings).Assembly.GetType("CataTweaks.FleetManagerCompat", true);
-        var rally = typeof(Settings).Assembly.GetType("CataTweaks.StationConstructionRally", true);
-        var settings = (Settings)AccessTools.Field(typeof(Settings).Assembly.GetType("CataTweaks.Main"), "settings").GetValue(null);
+        var compat = Mod("FleetManagerCompat");
+        var rally = Mod("StationConstructionRally");
+        var settings = (Settings)AccessTools.Field(Mod("Main"), "settings").GetValue(null);
         var failedParts = (ICollection<string>)AccessTools.Field(compat, "failed").GetValue(null);
         Action reset = () =>
         {
-            foreach (string flag in new[] { "detected", "bound", "bindFailed" }) AccessTools.Field(compat, flag).SetValue(null, false);
+            foreach (string flag in new[] { "bound", "bindFailed" }) AccessTools.Field(compat, flag).SetValue(null, false);
             failedParts.Clear();
         };
         Func<string, bool> flagOf = name => (bool)AccessTools.Field(compat, name).GetValue(null);
@@ -831,14 +827,15 @@ internal static class Program
         commission(f.high, "Frigate", commissionFleet);
         var head = Enqueue(f.faction, f.low, paid: true); head.shipDesignTemplateName = "Frigate";
         RallyCall("SetTarget", f.hab, 4242);
-        var claimPatch = typeof(Settings).Assembly.GetType("CataTweaks.FleetManagerCommission", true);
+        var claimPatch = Mod("FleetManagerCommission");
         var claimArgs = new object[] { f.faction, f.low, false, null, null };
         AccessTools.Method(claimPatch, "Prefix").Invoke(null, claimArgs);
         Assert((TISpaceFleetState)AccessTools.Field(claimPatch, "fleet").GetValue(null) == commissionFleet,
             "The completion prefix claims the order for the queue head");
         AccessTools.Field(rally, "completingYard").SetValue(null, f.low);
         var noticeArgs = new object[] { Bare<TISpaceShipState>(), false, null };
-        AccessTools.Method(typeof(Settings).Assembly.GetType("CataTweaks.StationConstructionRallyNotification", true), "Prefix").Invoke(null, noticeArgs);
+        var notification = AccessTools.Method(Mod("StationConstructionRallyNotification"), "Prefix");
+        notification.Invoke(null, noticeArgs);
         var report = AccessTools.Field(rally, "notification").GetValue(null);
         var reportType = rally.GetNestedType("Report", BindingFlags.NonPublic);
         Assert(report != null && !(bool)AccessTools.Field(reportType, "started").GetValue(report)
@@ -848,7 +845,6 @@ internal static class Program
         Assert(AccessTools.Field(claimPatch, "fleet").GetValue(null) == null, "The finalizer restores the claim");
         AccessTools.Method(claimPatch, "Finalizer").Invoke(null, new object[] { null });
         AccessTools.Field(rally, "notification").SetValue(null, null);
-        var notification = AccessTools.Method(typeof(Settings).Assembly.GetType("CataTweaks.StationConstructionRallyNotification", true), "Prefix");
         var thrower = new Harmony("CataTweaks.ConstructionCheck.NoticeThrows");
         thrower.Patch(AccessTools.Method(rally, "Commissioned"), prefix: new HarmonyMethod(typeof(Program), nameof(Throws)));
         AccessTools.Field(claimPatch, "fleet").SetValue(null, commissionFleet);
@@ -890,36 +886,34 @@ internal static class Program
         failedParts.Clear();
         Assert(!claimHeld(f.low, other).held, "With the order work on, nothing is held back");
         reset();
-        AccessTools.Field(compat, "detected").SetValue(null, true);
         AccessTools.Field(compat, "bindFailed").SetValue(null, true);
         var unbound = claimHeld(f.low, other);
         Assert(unbound.fleet == null && unbound.held, "When Fleet Manager is there but the bind failed, every new ship is held back");
         built.isRefit = true;
         Assert(!claimHeld(f.low, built).held, "A refit is never held back by an order");
         built.isRefit = false;
-        var tracked = AccessTools.Method(compat, "Tracked");
         var refit = Bare<ShipConstructionQueueItem>(); refit.isRefit = true; refit.originalSpaceShipState = Bare<TISpaceShipState>();
         var refitFleet = Bare<TISpaceFleetState>(); refit.originalSpaceShipState.fleet = refitFleet;
-        Assert((bool)tracked.Invoke(null, new object[] { refit }), "When the bind failed, a refit is held back too");
+        Assert(claimHeld(f.low, refit).held, "When the bind failed, a refit is held back too");
         reset();
-        Assert(!(bool)tracked.Invoke(null, new object[] { refit }), "Without Fleet Manager no refit is held back");
+        Assert(!claimHeld(f.low, refit).held, "Without Fleet Manager no refit is held back");
         bind(stubs, typeof(TIFleetRework.MPBridge).Assembly);
         TIFleetRework.FleetRegistry.tracked.Add(refit.originalSpaceShipState);
-        Assert(!(bool)tracked.Invoke(null, new object[] { refit }),
+        Assert(!claimHeld(f.low, refit).held,
             "A refit of a ship in a division of a fleet outside the reserve may rally: Fleet Manager does not keep the refitted ship");
         TIFleetRework.FleetRegistry.reserveOrders.Add(refitFleet);
-        Assert((bool)tracked.Invoke(null, new object[] { refit }),
+        Assert(claimHeld(f.low, refit).held,
             "A refit of a ship in a reserve fleet is held back from the rally, as Fleet Manager keeps it in the fleet's division");
         var notRefit = Bare<ShipConstructionQueueItem>(); notRefit.originalSpaceShipState = refit.originalSpaceShipState;
-        Assert(!(bool)tracked.Invoke(null, new object[] { notRefit }),
+        Assert(!claimHeld(f.low, notRefit).held,
             "A new ship is never held as a reserve refit, even with an old ship from a reserve fleet on the item");
         var gone = Bare<ShipConstructionQueueItem>(); gone.isRefit = true; gone.originalSpaceShipState = Bare<TISpaceShipState>();
         gone.originalSpaceShipState.fleet = refitFleet;
         AccessTools.Property(typeof(TIGameState), "archived").SetValue(gone.originalSpaceShipState, true);
-        Assert(!(bool)tracked.Invoke(null, new object[] { gone }),
+        Assert(!claimHeld(f.low, gone).held,
             "A refit whose old ship is archived is not held, as Fleet Manager's refit patch skips it");
         var orphan = Bare<ShipConstructionQueueItem>(); orphan.isRefit = true;
-        Assert(!(bool)tracked.Invoke(null, new object[] { orphan }),
+        Assert(!claimHeld(f.low, orphan).held,
             "A refit with no old ship is not held, as Fleet Manager's refit patch has nothing to keep");
         var refitHead = Enqueue(f.faction, f.low, paid: true); refitHead.isRefit = true;
         refitHead.originalSpaceShipState = refit.originalSpaceShipState;
@@ -933,19 +927,19 @@ internal static class Program
         TIFleetRework.FleetRegistry.reserveOrders.Clear();
         TIFleetRework.FleetRegistry.throwOrder = true;
         TIFleetRework.FleetRegistry.reserve.Add(refitFleet);
-        Assert((bool)tracked.Invoke(null, new object[] { refit }) && failedParts.Contains("reserve refit check")
+        Assert(claimHeld(f.low, refit).held && failedParts.Contains("reserve refit check")
             && !failedParts.Contains("reserve check") && (bool)AccessTools.Method(compat, "InReserve").Invoke(null, new object[] { refitFleet }),
             "When the reserve order cannot be read, the refit is held back, and the rally picker's reserve check keeps working");
         TIFleetRework.FleetRegistry.throwOrder = false;
         TIFleetRework.FleetRegistry.reserve.Clear();
         failedParts.Clear();
-        Assert(!(bool)tracked.Invoke(null, new object[] { built }), "A new ship is not held back as a tracked refit");
+        Assert(!claimHeld(f.low, built).held, "A new ship is not held back as a tracked refit");
         AccessTools.Field(rally, "notification").SetValue(null, null);
         AccessTools.Field(rally, "completingYard").SetValue(null, null);
         RallyCall("SetTarget", f.hab, 0);
 
         // Losing a yard: every open order on it moves to the survivor and stays open.
-        var lostYard = AccessTools.Method(typeof(Settings).Assembly.GetType("CataTweaks.StationConstructionLostYard", true), "Prefix");
+        var lostYard = AccessTools.Method(Mod("StationConstructionLostYard"), "Prefix");
         registered.Clear();
         f = Fixture();
         var fleetC = Bare<TISpaceFleetState>(); var fleetD = Bare<TISpaceFleetState>();
@@ -1035,15 +1029,15 @@ internal static class Program
         f = Fixture();
         var refusedEverywhere = Enqueue(f.faction, f.high);
         foreach (var refusing in new[] { f.high, f.low })
-            AccessTools.Method(pool, "Refuse").Invoke(null, new object[] { refusedEverywhere, refusing });
-        var refusedFree = (IDictionary)AccessTools.Method(pool, "FreeTimes").Invoke(null, new object[] { f.faction, f.high });
+            Call("Refuse", refusedEverywhere, refusing);
+        var refusedFree = (IDictionary)Call("FreeTimes", f.faction, f.high);
         Assert((float)refusedFree[f.high] == 11f && (float)refusedFree[f.low] == 0f,
             "An item every yard refused today counts in its fastest yard, starting on the next day");
         f = Fixture();
         var busy = Enqueue(f.faction, f.low, paid: true); busy.daysToCompletion = 60f;
         var refusedByFree = Enqueue(f.faction, f.high);
-        AccessTools.Method(pool, "Refuse").Invoke(null, new object[] { refusedByFree, f.high });
-        refusedFree = (IDictionary)AccessTools.Method(pool, "FreeTimes").Invoke(null, new object[] { f.faction, f.high });
+        Call("Refuse", refusedByFree, f.high);
+        refusedFree = (IDictionary)Call("FreeTimes", f.faction, f.high);
         Assert((float)refusedFree[f.high] == 11f && (float)refusedFree[f.low] == 60f,
             "A free yard that refused the item today is still used from the next day, before a yard busy for 60 days");
 
@@ -1051,7 +1045,7 @@ internal static class Program
         f = Fixture();
         Enqueue(f.faction, f.high, paid: true);
         var stubDays = AccessTools.Method(typeof(TIFleetRework.FleetCommissionManager), "SumQueueDays");
-        var free = (IDictionary)AccessTools.Method(pool, "FreeTimes").Invoke(null, new object[] { f.faction, f.high });
+        var free = (IDictionary)Call("FreeTimes", f.faction, f.high);
         Assert((float)stubDays.Invoke(null, new object[] { f.faction, f.low }) == (float)free[f.low],
             "With a shared queue Fleet Manager's queue days are the dispatcher's free time");
         settings.pooledStationConstruction = false;
@@ -1078,7 +1072,7 @@ internal static class Program
         Enqueue(f.faction, f.high, paid: true);
         Enqueue(f.faction, f.high);
         var realDays = AccessTools.Method(real.GetType("TIFleetRework.FleetCommissionManager", true), "SumQueueDays");
-        free = (IDictionary)AccessTools.Method(pool, "FreeTimes").Invoke(null, new object[] { f.faction, f.high });
+        free = (IDictionary)Call("FreeTimes", f.faction, f.high);
         Assert((float)realDays.Invoke(null, new object[] { f.faction, f.high }) == (float)free[f.high]
             && (float)free[f.high] != f.faction.GetShipyardQueue(f.high).Sum(i => i.daysToCompletion),
             "The queue estimate postfix attaches to Fleet Manager's SumQueueDays and replaces its result");
@@ -1087,20 +1081,34 @@ internal static class Program
     }
 
     private static object RallyCall(string method, params object[] args) =>
-        AccessTools.Method(typeof(Settings).Assembly.GetType("CataTweaks.StationConstructionRally", true), method).Invoke(null, args);
+        AccessTools.Method(Mod("StationConstructionRally"), method).Invoke(null, args);
 
-    // Serves Space Nations' type names from a namespace of stand-ins in this program.
+    // Serves Space Nations' type names from the stand-ins in this program, except one type that
+    // can be replaced.
     private sealed class MappedAssembly : Assembly
     {
-        private readonly string prefix;
-        internal MappedAssembly(string prefix) => this.prefix = prefix;
-        public override Type GetType(string name, bool throwOnError) =>
-            typeof(Program).Assembly.GetType(prefix + name.Substring("TISpaceNations.".Length), throwOnError);
+        private readonly string replaced;
+        private readonly Type replacement;
+        internal MappedAssembly(string replaced = null, Type replacement = null)
+        {
+            this.replaced = replaced;
+            this.replacement = replacement;
+        }
+        public override Type GetType(string name, bool throwOnError) => name == replaced ? replacement
+            : typeof(Program).Assembly.GetType("SpaceNationsStandIns." + name.Substring("TISpaceNations.".Length), throwOnError);
+    }
+
+    // The planetary union stand-in, except that ClaimAllColonyRegions no longer reads the claims.
+    private static class StalePlanetaryUnionService
+    {
+        public static bool HandleUnification(TINationState enacting, TIFactionState faction, TINationState joining) => enacting.claims.Count > 0;
+        public static void Absorb(TINationState union, TIFactionState faction, TINationState nation) => union.claims.Clear();
+        public static void ClaimAllColonyRegions(TINationState union, string body) { }
     }
 
     private static bool seenOccupying;
     private static void DuringOccupation() =>
-        seenOccupying = (bool)AccessTools.Field(typeof(Settings).Assembly.GetType("CataTweaks.InheritedCapitalClaims", true), "occupying").GetValue(null);
+        seenOccupying = (bool)AccessTools.Field(Mod("InheritedCapitalClaims"), "occupying").GetValue(null);
 
     private static TINationState Nation(TIRegionState capital, bool extant, bool alien = false)
     {
@@ -1114,8 +1122,8 @@ internal static class Program
 
     private static void CheckCapitalClaims()
     {
-        var claims = typeof(Settings).Assembly.GetType("CataTweaks.InheritedCapitalClaims", true);
-        var identity = typeof(Settings).Assembly.GetType("CataTweaks.DormantCapitalIdentity", true);
+        var claims = Mod("InheritedCapitalClaims");
+        var identity = Mod("DormantCapitalIdentity");
         var shanghai = Bare<TIRegionState>(); var yemen = Bare<TIRegionState>();
         var twn = Nation(shanghai, false); var wur = Nation(shanghai, false); var yem = Nation(yemen, true);
         var map = (Dictionary<TIRegionState, List<TINationState>>)AccessTools.Method(claims, "MapCapitals")
@@ -1239,7 +1247,7 @@ internal static class Program
 
     private static void CheckSpaceNations()
     {
-        var compat = typeof(Settings).Assembly.GetType("CataTweaks.SpaceNationsCompat", true);
+        var compat = Mod("SpaceNationsCompat");
         var bind = AccessTools.Method(compat, "Bind");
         var bound = AccessTools.Field(compat, "bound");
         var failed = AccessTools.Field(compat, "failed");
@@ -1253,14 +1261,15 @@ internal static class Program
             Assert(!(bool)bound.GetValue(null) && (bool)failed.GetValue(null), "Missing Space Nations types turn the bridge off instead of failing");
             failed.SetValue(null, false);
         }
-        // Stand-ins with Space Nations' names: one set where every grant reads the claim getters,
-        // and one where ClaimAllColonyRegions no longer does.
+        // Stand-ins with Space Nations' names, where every grant reads the claim getters, and the
+        // same with a planetary union whose ClaimAllColonyRegions no longer does.
         var lookup = AccessTools.Method(compat, "Lookup");
-        var found = (List<MethodBase>)lookup.Invoke(null, new object[] { new MappedAssembly("SpaceNationsStandIns.Reading.") });
+        var stale = new MappedAssembly("TISpaceNations.UnitedNations.PlanetaryUnionService", typeof(StalePlanetaryUnionService));
+        var found = (List<MethodBase>)lookup.Invoke(null, new object[] { new MappedAssembly() });
         Assert(found?.Count == 6, "The stand-ins that read the claim getters resolve to six grants");
-        Assert(lookup.Invoke(null, new object[] { new MappedAssembly("SpaceNationsStandIns.Stale.") }) == null,
+        Assert(lookup.Invoke(null, new object[] { stale }) == null,
             "A grant that no longer reads the claim getters fails the lookup");
-        bind.Invoke(null, new object[] { null, new MappedAssembly("SpaceNationsStandIns.Stale.") });
+        bind.Invoke(null, new object[] { null, stale });
         Assert(!(bool)bound.GetValue(null) && (bool)failed.GetValue(null), "A grant that no longer reads the claim getters turns the bridge off");
         failed.SetValue(null, false);
         if (!File.Exists(dll))
@@ -1274,7 +1283,7 @@ internal static class Program
         Assert((bool)bound.GetValue(null) && !(bool)failed.GetValue(null), "Every Space Nations claim grant CataTweaks rewrites still resolves and patches");
         var patched = harmony.GetPatchedMethods().ToList();
         Assert(patched.Count == 6, "All six Space Nations claim grants are rewritten");
-        var reads = AccessTools.Method(typeof(Settings).Assembly.GetType("CataTweaks.InheritedCapitalClaims", true)
+        var reads = AccessTools.Method(Mod("InheritedCapitalClaims")
             .GetNestedType("WritersUseOwnLists", BindingFlags.NonPublic), "Reads");
         foreach (MethodBase method in patched)
         {
@@ -1298,7 +1307,6 @@ namespace TIFleetRework
 {
     public class TIFleetCommissionOrder : TIGameState
     {
-        public GameStateID targetFleetID;
         public GameStateID shipyardID;
         public string shipTemplateDataName;
         public GameStateID deliveredShipID;
@@ -1354,7 +1362,7 @@ namespace TIFleetRework
 }
 
 // Stand-ins with Space Nations' claim grant names and signatures, served by MappedAssembly.
-namespace SpaceNationsStandIns.Reading.UnitedNations
+namespace SpaceNationsStandIns.UnitedNations
 {
     public static class UnitedNationsService
     {
@@ -1368,32 +1376,7 @@ namespace SpaceNationsStandIns.Reading.UnitedNations
         public static void ClaimAllColonyRegions(TINationState union, string body) => union.hostileClaims.Clear();
     }
 }
-namespace SpaceNationsStandIns.Reading.Colonies
-{
-    public static class ColonyNationFoundingService
-    {
-        public static void ClaimForExistingUnion(TISpaceBodyState body, TIRegionState region) => ((TINationState)null).claims.Remove(region);
-    }
-    public static class SettlementService
-    {
-        public static void ClaimForExistingUnion(TINationState nation, TIRegionState region) => nation.claims.Remove(region);
-    }
-}
-namespace SpaceNationsStandIns.Stale.UnitedNations
-{
-    public static class UnitedNationsService
-    {
-        public static IEnumerable<TIRegionState> MissingEarthClaims(TINationState unitedNations, IEnumerable<TIRegionState> regions) =>
-            regions.Where(region => !unitedNations.claims.Contains(region));
-    }
-    public static class PlanetaryUnionService
-    {
-        public static bool HandleUnification(TINationState enacting, TIFactionState faction, TINationState joining) => enacting.claims.Count > 0;
-        public static void Absorb(TINationState union, TIFactionState faction, TINationState nation) => union.claims.Clear();
-        public static void ClaimAllColonyRegions(TINationState union, string body) { }
-    }
-}
-namespace SpaceNationsStandIns.Stale.Colonies
+namespace SpaceNationsStandIns.Colonies
 {
     public static class ColonyNationFoundingService
     {

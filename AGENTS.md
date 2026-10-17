@@ -29,7 +29,17 @@ which is English throughout.
 
     dotnet build -c Release          # needs the game installed; CI cannot run it
     python tools/validate.py         # templates, claim rows, localization
-    dotnet run --project tools/SyntaxCheck -c Release
+    dotnet run --project tools/SyntaxCheck -c Release -- Plugin.cs HabNamer.cs
+    dotnet run --project tools/RefCheck -c Release -- \
+        bin/Release/net48/CataTweaks.dll <Managed> ...
+
+One `CataTweaks.dll` ships for game 1.0.53b and the 1.0.62 beta, but it builds against one of
+them. `tools/RefCheck` resolves the built DLL against each version's `TerraInvicta_Data/Managed`
+folder, and must report 0 missing for both before a release; `package.py` does not run it. Keep
+a copy of each outside the repository, laid out as `<version>/TerraInvicta_Data/Managed`, so
+that `-p:GameDir=` with the path of the `<version>` folder also builds against it. A game method
+whose parameters differ between versions is called through `GameVersions`, not by a compiled
+call. RefCheck and SyntaxCheck need the .NET 10 SDK.
 
 `python tools/package.py [destination ...]` builds, validates, writes `dist/`, and fills each
 destination given - the game's `Mods/Enabled/CataTweaks` is one.

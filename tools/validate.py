@@ -11,8 +11,11 @@ import json
 import os
 import re
 import sys
+from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, "tools"))
+from localize import read  # noqa: E402
 SCENARIOS = ["", "2026_", "2070_", "2003_", "1962_"]
 problems = []
 
@@ -55,14 +58,13 @@ def check_projects(projects):
     return seen
 
 
-def read_keys(path):
-    """The keys of a localization file: everything left of the first = on a line that has one."""
-    keys = set()
-    with open(path, encoding="utf-8") as handle:
-        for line in handle:
-            if "=" in line:
-                keys.add(line.split("=", 1)[0].strip())
-    return keys
+def read_values(path):
+    """A localization file's key -> value, or an empty dict after a failure."""
+    try:
+        return read(Path(path))
+    except ValueError as error:
+        fail(str(error))
+        return {}
 
 
 def check_localization(projects):
@@ -85,7 +87,7 @@ def check_localization(projects):
         if not os.path.exists(path):
             fail(language + " has no TIProjectTemplate." + language)
             continue
-        keys = read_keys(path)
+        keys = read_values(path)
         for project in projects:
             name = project.get("dataName")
             for kind in ("displayName", "summary", "description"):
@@ -94,7 +96,8 @@ def check_localization(projects):
                     fail(language + " has no " + kind + " for " + name)
     # Every UI key English has, in every language, for the same reason: a key the game cannot
     # find prints itself, so a mod UI string missing one translation is fourteen ways to be wrong.
-    ui_keys = read_keys(os.path.join(root, "en", "UICataTweaks.en"))
+    english = read_values(os.path.join(root, "en", "UICataTweaks.en"))
+    ui_keys = english.keys()
     # Settings rows derive their keys from field names, so checking literal Loc.T calls would
     # miss an untranslated new row. Cover every drawn bool/float, including the two reused keys.
     with open(os.path.join(ROOT, "Plugin.cs"), encoding="utf-8") as handle:
@@ -110,19 +113,14 @@ def check_localization(projects):
             if key not in ui_keys:
                 fail("settings row has no localization: " + key)
 
-    def ui_values(path):
-        with open(path, encoding="utf-8") as handle:
-            return dict(line.strip().split("=", 1) for line in handle if "=" in line)
-
-    english = ui_values(os.path.join(root, "en", "UICataTweaks.en"))
     for language in languages:
         path = os.path.join(root, language, "UICataTweaks." + language)
         if not os.path.exists(path):
             fail(language + " has no UICataTweaks." + language)
             continue
-        for key in sorted(ui_keys - read_keys(path)):
+        values = read_values(path)
+        for key in sorted(ui_keys - values.keys()):
             fail(language + " has no " + key)
-        values = ui_values(path)
         for key in ui_keys & values.keys():
             if set(re.findall(r'\{\d+\}', english[key])) != set(re.findall(r'\{\d+\}', values[key])):
                 fail(language + " has mismatched placeholders for " + key)

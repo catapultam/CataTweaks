@@ -1,6 +1,8 @@
 """Collect everything the artifact needs: per-project claim lists, per-scenario verified reach."""
 import json
+from pathlib import Path
 import make_mod as M
+from localize import KINDS, read
 from names import SCENARIOS, region_map, nations
 from scen import graph, reach
 
@@ -60,14 +62,21 @@ PROJECT_META = {
                  'holder': 'Dominion of America', 'scope': 'All five scenarios'},
 }
 
-for project, title, theatre in M.ROMAN_THEATRES:
-    PROJECT_META[project] = {'cost': f'{M.ROME_COST:,}', 'gate': 'Great Nations',
+# The claim projects this mod adds, from the files it ships.
+ROOT = Path(__file__).resolve().parent.parent
+claimed = {project for project, _, _, _ in M.BLOCKS}
+projects = {p['dataName']: p for p in json.loads((ROOT / 'TIProjectTemplate.json').read_text(encoding='utf-8-sig'))
+            if p['dataName'] in claimed}
+text = read(ROOT / 'Localization/en/TIProjectTemplate.en')
+loc = {p: [text[f'TIProjectTemplate.{kind}.{p}'] for kind in KINDS] for p in projects}
+
+for project, theatre in M.ROMAN_THEATRES:
+    PROJECT_META[project] = {'cost': f"{projects[project]['researchCost']:,}", 'gate': 'Great Nations',
                              'holder': 'Republic of Rome', 'scope': 'Broken Earth only',
                              'control_point_capacity': 10, 'theatre': theatre}
 
-out = {'blocks': blocks, 'scenarios': scen, 'loc': {k: list(v) for k, v in M.LOC.items()},
-       'meta': PROJECT_META, 'total_rows': len(rows),
-       'projects': {p['dataName']: p for p in M.PROJECTS}}
+out = {'blocks': blocks, 'scenarios': scen, 'loc': loc, 'meta': PROJECT_META, 'total_rows': len(rows),
+       'projects': projects}
 json.dump(out, open('mod_summary.json', 'w', encoding='utf-8'), ensure_ascii=False)
 print('rows', len(rows), '| scenarios', [(s['label'], s['rows']) for s in scen])
 for s in scen:
