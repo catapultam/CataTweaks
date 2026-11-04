@@ -1,3 +1,29 @@
+# CataTweaks 3.4.4
+
+- Added compatibility with Systematic Hab Names. While that mod is loaded and enabled, applying
+  a hab template renames the hab to Name (Template). For example: M-MAR-1 Tempe Terra (Mining).
+  The short form has no location, because the name from that mod already gives it. Without that
+  mod, the name stays Name (Template, Orbit, Body). If you switch off that mod in the Unity Mod
+  Manager window, the long form stays. The long form also stays if the assembly of that mod
+  loads but its own load step fails. In these two cases, a line in the Unity Mod Manager log
+  tells you. If the assembly does not load, no line appears.
+- Text in brackets at the end of a hab name is a template name in two cases. First, all of the
+  text can be the name of one of your saved templates. Second, the text can have a comma. Then
+  the template name is the text before the first comma, as before. Other text in brackets stays
+  part of the custom name, so Station (Alpha) does not change. When you apply a template again,
+  CataTweaks replaces the old template name in both forms. The names do not stack, also after
+  you add or remove Systematic Hab Names. If you delete or rename a template, its old name in
+  the short form becomes part of the custom name. CataTweaks cannot find a template name that
+  contains brackets, so the next template name goes after it.
+- Rename all my habs now in Systematic Hab Names keeps the name of the saved template of each
+  hab. Apply and Rename all my habs now always read the short form (Template). Save reads it
+  only while Systematic Hab Names is enabled.
+- With Systematic Hab Names, you can save a hab that has no template name in brackets. Then the
+  template keeps the name that the game gives it. CataTweaks does not shorten S-MAR-MED-1 to
+  S-MAR-MED. Without that mod, saving a hab as a template works as in 3.4.3.
+- A hab name that is empty or only spaces before you apply a template no longer starts with a
+  space.
+
 # CataTweaks 3.4.3
 
 - Fixed missing fleet detection and ship construction/refit completion notifications.

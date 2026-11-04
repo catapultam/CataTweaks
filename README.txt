@@ -48,6 +48,42 @@ Quality of life and UI
   template, so you can apply a template that changes nothing and
   rename the hab.
 
+  When Systematic Hab Names (Workshop 3814154107) is loaded and
+  enabled, CataTweaks renames the hab to Name (Template). For example:
+  M-MAR-1 Tempe Terra (Mining) or S-MAR-MED-1 (Shipyard). The short
+  form has no location, because the Systematic Hab Names name already
+  gives it. Habs that Systematic Hab Names did not name also get the
+  short form, for example a hab that you named yourself. If you switch
+  off Systematic Hab Names in the Unity Mod Manager window, CataTweaks
+  uses the long form. CataTweaks also uses the long form if the
+  Systematic Hab Names assembly loads but its own load step fails. In
+  these two cases, CataTweaks writes a line about it in the Unity Mod
+  Manager log. If the assembly does not load, CataTweaks writes no
+  line.
+
+  Text in brackets at the end of a hab name is a template name in two
+  cases. First, all of the text can be the name of one of your saved
+  templates. Second, the text can have a comma. Then the template name
+  is the text before the first comma, as in 3.4.3. For example,
+  Station (Alpha, Beta) has the template name Alpha. Other text in
+  brackets stays part of the custom name. For example, Station (Alpha)
+  stays a custom name when you have no template with the name Alpha.
+  When you apply a template again, CataTweaks replaces the old
+  template name in both forms. This also occurs after you add or
+  remove Systematic Hab Names. If you delete or rename a template, its
+  old name in the short form becomes part of the custom name. The next
+  template name then goes after it. CataTweaks cannot find a template
+  name that contains brackets in a hab name. Each new template name
+  then goes after it.
+
+  Rename all my habs now in Systematic Hab Names keeps the name of the
+  saved template of each hab. Apply and Rename all my habs now always
+  read the short form (Template). Save reads it only while Systematic
+  Hab Names is enabled. With Systematic Hab Names, you can save a hab
+  that has no template name in brackets. Then the template keeps the
+  name that the game gives it. Without Systematic Hab Names, saving a
+  hab as a template works as in 3.4.3.
+
 - Priority presets overwrite in place. When you save a preset with the
   name of an existing custom preset, it replaces that preset. The new
   preset stays the default preset if the old one was the default.
@@ -369,8 +405,9 @@ on the next start. A Settings.txt from the version before that is read
 once and then renamed to Settings.txt.migrated.
 
 Works alongside Expanded Council (the spy slot pool is off while it
-is installed), Alien Threat Analysis and Cooperative Missions. None of them is
-required.
+is installed), Systematic Hab Names, Alien Threat Analysis and
+Cooperative Missions. None of them is required. With Systematic Hab
+Names enabled, hab template naming uses the short form.
 
 If you still have the separate Restored Empires mod installed, remove
 it. If you do not, its claim rows are duplicated.

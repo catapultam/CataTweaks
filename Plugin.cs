@@ -39,9 +39,10 @@ public class Settings : UnityModManager.ModSettings, IDrawable
     [Draw("Remember campaign options between sessions", Tooltip = "The Customize Campaign screen opens with the options from your last campaign. A custom faction name is saved for each faction, and appears again when you select that faction.")]
     public bool persistCampaignOptions = true;
 
-    // Habs renamed "Name (Template, Location)" when a saved template is applied, and saving a hab
-    // as a template round-trips that name plus its map icon, overwriting the old one in place.
-    [Draw("Hab template naming", Tooltip = "When you apply a hab template, the hab is renamed to Name (Template, Orbit, Body) and takes the map icon of the template. When you save a hab as a template, the template takes the name in brackets and replaces the template that has that name. You can apply a template that changes nothing, to rename a hab.")]
+    // Applying a saved template renames the hab "Name (Template, Location)", or "Name (Template)"
+    // with Systematic Hab Names. Saving a hab as a template round-trips that name and the map
+    // icon, and overwrites the old template in place.
+    [Draw("Hab template naming", Tooltip = "When you apply a hab template, the hab is renamed to Name (Template, Orbit, Body) and takes the map icon of the template. When you save a hab as a template, the template takes the name in brackets and replaces the template that has that name. You can apply a template that changes nothing, to rename a hab. With Systematic Hab Names enabled, the name is Name (Template), because the name already gives the location. Apply reads the short form only when the text in brackets is the name of a saved template. Save reads the short form only while Systematic Hab Names is enabled.")]
     public bool habTemplateNaming = true;
 
     // Saving a priority preset under an existing custom preset's name overwrites it, instead of
@@ -349,6 +350,14 @@ public static class Main
         {
             modEntry.Logger.Error("Review Failed Projects tweak could not attach - " + e.Message);
         }
+        try
+        {
+            ModToggleWatch.Watch();
+        }
+        catch (Exception e)
+        {
+            modEntry.Logger.Warning("Could not watch for mod toggles - " + e.Message);
+        }
         // Read now rather than from the first claim query that needs it, which would land the
         // file read and its regex in the middle of a frame.
         _ = ModTemplates.Claims.Count;
@@ -381,8 +390,28 @@ internal static class HabLocation
     }
 }
 
-// Tweak 1: habs renamed to "Custom Name (Template, Location)" when a saved hab template is
-// applied; the custom name is whatever the hab was called before (minus an older suffix).
+// The template tag of a hab name. With Systematic Hab Names the name already gives the location,
+// so the tag is "(Template)"; else it is "(Template, Location)". Apply reads both forms in both
+// modes, so a change to or from that mod replaces the tag and does not stack it.
+internal static class HabTag
+{
+    // A "(Template)" tag counts only when the owner has a saved template of that name.
+    internal static Func<string, bool> IsTemplate(TIFactionState faction)
+    {
+        return name => name != null
+            && faction?.habDesigns?.Any(d => d.displayName?.Trim() == name.Trim()) == true;
+    }
+
+    internal static string Name(TIHabState hab, string slug)
+    {
+        return HabNamer.Name(hab.displayName, slug,
+            OtherMods.SystematicHabNames ? null : HabLocation.Of(hab), IsTemplate(hab.faction));
+    }
+}
+
+// Tweak 1: applying a saved hab template renames the hab "Custom Name (Template, Location)", or
+// "Custom Name (Template)" with Systematic Hab Names. The custom name is the old hab name, minus
+// an older tag in either form.
 [HarmonyPatch(typeof(ApplyHabTemplateAction), nameof(ApplyHabTemplateAction.Execute))]
 internal static class RenameOnTemplateApply
 {
@@ -398,7 +427,7 @@ internal static class RenameOnTemplateApply
         {
             return;
         }
-        hab.SetDisplayName(HabNamer.Name(hab.displayName, design.displayName, HabLocation.Of(hab)));
+        hab.SetDisplayName(HabTag.Name(hab, design.displayName));
         // Tweak 1c: restore the icon the template remembers (see Tweak 2c). Set directly rather
         // than via ChangeHabBio, which also renames and clears the icon when given an empty one.
         if (!string.IsNullOrEmpty(design.symbolTexture))
@@ -409,7 +438,7 @@ internal static class RenameOnTemplateApply
 }
 
 // Tweak 1b: the Apply button stays enabled when the hab already has the template's modules
-// but its name doesn't carry the "(Template, Location)" suffix (built by hand, renamed, or
+// but its name doesn't carry the template tag (built by hand, renamed, or
 // from a pre-mod save). Vanilla disables it because nothing would be built; applying then just
 // renames the hab via Tweak 1 (ApplySavedTemplate is a no-op with nothing to build).
 [HarmonyPatch(typeof(HabitatsScreenController), nameof(HabitatsScreenController.OnHabTemplateSelected))]
@@ -437,7 +466,7 @@ internal static class ApplyTemplateForRename
         {
             return;
         }
-        string newName = HabNamer.Name(hab.displayName, design.displayName, HabLocation.Of(hab));
+        string newName = HabTag.Name(hab, design.displayName);
         if (newName == hab.displayName)
         {
             return;
@@ -453,13 +482,15 @@ internal static class ApplyTemplateForRename
 }
 
 // Tweak 2a: saving a hab as a template names the template after the template name inside
-// the hab's "(Template, Location)" suffix instead of vanilla's "name-description" plus a
-// timestamp on collision. Round-trips with Tweak 1: update hab "Freeport (Mining, ...)",
-// save, and the "Mining" template is overwritten in place.
+// the hab's template tag instead of vanilla's "name-description" plus a timestamp on
+// collision. Round-trips with Tweak 1: update hab "Freeport (Mining, ...)", save, and the
+// "Mining" template is overwritten in place. Only Systematic Hab Names mode reads a "(Template)"
+// tag here. In that mode with no tag, the vanilla name stays: the legacy strips would turn
+// "S-MAR-MED-1" into "S-MAR-MED".
 [HarmonyPatch(typeof(TIHabState), nameof(TIHabState.ConvertToTemplate))]
 internal static class HabTemplateCleanName
 {
-    private static void Postfix(TIHabState __instance, TIHabTemplate __result)
+    private static void Postfix(TIHabState __instance, TIFactionState faction, TIHabTemplate __result)
     {
         if (!Main.settings.habTemplateNaming)
         {
@@ -469,7 +500,15 @@ internal static class HabTemplateCleanName
         {
             return;
         }
-        __result.SetDisplayName(HabNamer.SlugOf(__instance.displayName, HabLocation.Body(__instance)));
+        // Without that mod, this code does not read a "(Template)" tag. So a typed name such as
+        // "Freeport (Mining)" does not replace the "Mining" template.
+        bool shn = OtherMods.SystematicHabNames;
+        string slug = HabNamer.SlugOf(__instance.displayName, HabLocation.Body(__instance),
+            shn ? HabTag.IsTemplate(faction) : _ => false, legacy: !shn);
+        if (slug != null)
+        {
+            __result.SetDisplayName(slug);
+        }
         // Tweak 2c: remember the hab's custom map icon on the template, so applying it restores
         // the icon alongside the modules and name. symbolTexture is inert for hab designs
         // (TIHabState.iconResource overrides it with the faction station/base icon) and already
@@ -6648,6 +6687,8 @@ internal static class RestoredEmpires
 // Other mods CataTweaks makes room for. Each is recognised by what it has actually patched, under
 // the Harmony id it registers, never by its version: any release that takes over the same methods
 // is recognised, one that stops touching them is left alone, and a failed check means not there.
+// Systematic Hab Names is the exception: CataTweaks recognises it by its own enabled flag
+// (see below).
 //
 // Checked afresh when the start menu comes up and again when a campaign is ready, both after Unity
 // Mod Manager has loaded every mod; readers in between take the last answer. Before the first
@@ -6659,6 +6700,36 @@ internal static class OtherMods
     // council screen of its own, with the two spy seats fixed at the end. The spy slot pool would
     // fight it over both - which cap wins would come down to patch order - so it stands aside.
     internal static bool ExpandedCouncil { get; private set; }
+
+    // Systematic Hab Names (Workshop 3814154107) names habs by place. So the hab template tag
+    // drops the location (see HabTag), and its "Rename all my habs now" keeps the tag.
+    //
+    // Its patches do not show that it names habs. When its Load fails part way, some patches stay
+    // but it names nothing. Its off switch in the mod manager also keeps the patches. So it is
+    // active only while its own Main.enabled is true, read at each use. Template save reads this
+    // on each hab screen refresh (vanilla CanSaveHab calls ConvertToTemplate), so the getter does
+    // one field read only. The type search is in ResolveSystematicHabNames.
+    internal static bool SystematicHabNames
+    {
+        get
+        {
+            try
+            {
+                return shnEnabled != null && (bool)shnEnabled.GetValue(null);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+    }
+    private static FieldInfo shnEnabled;
+    private static bool shnNoField;
+    // Set when the first Detect does not find that mod, so later Detect calls skip the slow
+    // type search. The mod manager listener ignores it, because it runs when that mod loads.
+    private static bool shnTypeMissing;
+    private static bool? shnLoggedActive;
+    private static bool renameAllAttached;
 
     [HarmonyPatch(typeof(GameControl), nameof(GameControl.CompleteInit))]
     [HarmonyPostfix]
@@ -6674,6 +6745,60 @@ internal static class OtherMods
         {
             Main.mod?.Logger.Log("Expanded Council is installed; the spy slot pool stands aside for it.");
         }
+        DetectSystematicHabNames();
+    }
+
+    // Finds Main.enabled of that mod, and attaches the rename button patch one time. Does
+    // nothing while that mod is not loaded. Not in Main.Load: that mod can load after this one.
+    // Only Detect and the mod manager listener call this, because the type search is slow.
+    private static void ResolveSystematicHabNames(bool fromListener)
+    {
+        if (shnEnabled != null || shnNoField || (shnTypeMissing && !fromListener))
+        {
+            return;
+        }
+        try
+        {
+            Type main = AccessTools.TypeByName("SystematicHabNames.Main");
+            if (main == null)
+            {
+                shnTypeMissing = true;
+                return;
+            }
+            shnEnabled = AccessTools.Field(main, "enabled");
+            if (shnEnabled == null)
+            {
+                shnNoField = true;
+                Main.mod?.Logger.Error("Systematic Hab Names has no Main.enabled; "
+                    + "hab template tags keep the location.");
+                return;
+            }
+            if (!renameAllAttached)
+            {
+                renameAllAttached = true;
+                KeepTagsOnRenameAll.Attach();
+            }
+        }
+        catch (Exception e)
+        {
+            Main.mod?.Logger.Error("Could not check for Systematic Hab Names - " + e.Message);
+        }
+    }
+
+    // Writes a log line when that mod is loaded and its state changes from the last line.
+    internal static void DetectSystematicHabNames(bool fromListener = false)
+    {
+        ResolveSystematicHabNames(fromListener);
+        bool active = SystematicHabNames;
+        if (shnEnabled == null || shnLoggedActive == active)
+        {
+            return;
+        }
+        shnLoggedActive = active;
+        Main.mod?.Logger.Log(active
+            ? "Systematic Hab Names is active; hab template tags drop the location."
+            : "Systematic Hab Names is loaded but not enabled (switched off, or its load failed); "
+                + "hab template tags keep the location.");
     }
 
     private static bool Patched(string owner, params MethodBase[] methods)
@@ -6687,6 +6812,122 @@ internal static class OtherMods
         {
             Main.mod?.Logger.Error("Could not check for " + owner + " - " + e.Message);
             return false;
+        }
+    }
+}
+
+// The mod manager tells each listener when a mod loads, or when you switch a mod on or off.
+// This finds Systematic Hab Names when it loads after this mod, or when you enable it during a
+// session. Detect finds it when it loads before this mod, and its rename button does nothing until
+// a game is loaded. Unity Mod Manager 0.26 and later only: a class of its own, so an older manager
+// fails here alone and Main.Load writes a warning.
+internal static class ModToggleWatch
+{
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    internal static void Watch()
+    {
+        UnityModManager.toggleModsListen += OnToggle;
+    }
+
+    private static void OnToggle(UnityModManager.ModEntry entry, bool on)
+    {
+        try
+        {
+            if (entry?.Info?.Id == "SystematicHabNames")
+            {
+                OtherMods.DetectSystematicHabNames(fromListener: true);
+            }
+        }
+        catch (Exception e)
+        {
+            Main.mod?.Logger.Error("Could not check for Systematic Hab Names - " + e.Message);
+        }
+    }
+}
+
+// Systematic Hab Names' "Rename all my habs now" sets each name of the player's habs to "".
+// Then it names them again, and the template tags are gone. The prefix records the tag of each
+// hab, and the postfix puts it back on the new name.
+//
+// No [HarmonyPatch] attribute: the target is in the other mod, so OtherMods attaches this by
+// hand when it finds that mod. If the target is not there, it writes to the log and stops.
+internal static class KeepTagsOnRenameAll
+{
+    internal static void Attach()
+    {
+        try
+        {
+            MethodInfo target = AccessTools.Method(
+                AccessTools.TypeByName("SystematicHabNames.Main"), "RenameAllPlayerHabs");
+            if (target == null)
+            {
+                Main.mod?.Logger.Error("Could not find SystematicHabNames.Main.RenameAllPlayerHabs; "
+                    + "its rename button will remove hab template tags.");
+                return;
+            }
+            new Harmony(Main.mod.Info.Id).Patch(target,
+                prefix: new HarmonyMethod(AccessTools.Method(typeof(KeepTagsOnRenameAll), nameof(Prefix))),
+                postfix: new HarmonyMethod(AccessTools.Method(typeof(KeepTagsOnRenameAll), nameof(Postfix))));
+        }
+        catch (Exception e)
+        {
+            Main.mod?.Logger.Error("Hab template tags could not attach to Systematic Hab Names - " + e.Message);
+        }
+    }
+
+    // Keeps only tags of saved templates. A comma form with no saved template is typed or old
+    // text, and that mod overwrites it. As a short tag, Apply would not find it, and tags would
+    // stack.
+    private static void Prefix(out Dictionary<TIHabState, string> __state)
+    {
+        __state = null;
+        try
+        {
+            TIFactionState player = GameControl.control?.activePlayer;
+            if (!Main.settings.habTemplateNaming || player?.habs == null)
+            {
+                return;
+            }
+            Func<string, bool> isTemplate = HabTag.IsTemplate(player);
+            __state = new Dictionary<TIHabState, string>();
+            foreach (TIHabState hab in player.habs)
+            {
+                if (hab != null && !string.IsNullOrEmpty(hab.displayName)
+                    && HabNamer.TrySplit(hab.displayName, isTemplate, out _, out string slug)
+                    && isTemplate(slug))
+                {
+                    __state[hab] = slug;
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            __state = null;
+            Main.mod?.Logger.Error("Could not record hab template tags - " + e.Message);
+        }
+    }
+
+    // Outside the try/catch of that mod's method, so it has its own.
+    private static void Postfix(Dictionary<TIHabState, string> __state)
+    {
+        if (__state == null)
+        {
+            return;
+        }
+        try
+        {
+            foreach (KeyValuePair<TIHabState, string> tag in __state)
+            {
+                // An empty name means that mod could not name the hab; do not make it " (Template)".
+                if (!string.IsNullOrEmpty(tag.Key.displayName))
+                {
+                    tag.Key.SetDisplayName(HabTag.Name(tag.Key, tag.Value));
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Main.mod?.Logger.Error("Could not put back hab template tags - " + e.Message);
         }
     }
 }

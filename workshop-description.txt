@@ -9,7 +9,7 @@ CataTweaks adds its own tab to the game's Settings screen, in the main menu and 
 [h2]Quality of life and UI[/h2]
 [list]
 [*][b]Remember campaign options between sessions.[/b] Customize Campaign remembers your options and custom faction names when you leave the screen.
-[*][b]Hab template naming.[/b] Applying a template renames the hab to Name (Template, Orbit, Body) and uses its icon. Reapplying changes only the brackets. Saving replaces the same-named template.
+[*][b]Hab template naming.[/b] Applying a template renames the hab to Name (Template, Orbit, Body) and uses its icon. Reapplying changes only the brackets. Saving replaces the same-named template. With Systematic Hab Names enabled, the hab name is Name (Template), for example S-MAR-MED-1 (Shipyard). Rename all my habs now keeps the template name of each hab that has a saved template.
 [*][b]Priority presets overwrite in place.[/b] Saving over a custom preset replaces it, moves its control points to the replacement, and retains default status. Built-in presets are unchanged.
 [*][b]Nations keep their preset when priorities change.[/b] When a nation gains or loses a priority, such as a spaceflight program or a military, its preset is applied again within one day. The nation does not change to Custom.
 [*][b]One construction queue per station.[/b] All station yards share one ordered queue. Horizontal cards fill the available height at stock width. Currently Building grows with the slots, with progress bars, native hover/selection and a separate well from Queue. Extra slots and waiting jobs scroll inside the card. Free compatible yards work at their own speed. Current jobs keep progress; Clear Queue removes waiting work. Losing a yard preserves waiting jobs. Hab tooltips show each yard's construction or refit. Surface yards keep individual queues. On by default; mutually exclusive with dividers.
@@ -53,7 +53,7 @@ Both of these options are in the 'Customize Campaign' dialogue, and are lightly 
 
 A save made with this mod still loads without it.
 
-Works alongside Expanded Council (the spy slot option is turned off while it is installed), Alien Threat Analysis and Cooperative Missions. None of them is required.
+Works alongside Expanded Council (the spy slot option is turned off while it is installed), Systematic Hab Names, Alien Threat Analysis and Cooperative Missions. None of them is required.
 
 Source, full documentation and issues: https://github.com/catapultam/CataTweaks
 

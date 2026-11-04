@@ -45,6 +45,32 @@ When you save a hab as a template, the template takes the name in brackets and r
 template that has that name. The Apply button stays enabled when the hab already has the modules
 of the template, so you can apply a template that changes nothing and rename the hab.
 
+When [Systematic Hab Names](https://steamcommunity.com/sharedfiles/filedetails/?id=3814154107) is
+loaded and enabled, CataTweaks renames the hab to Name (Template). For example: M-MAR-1 Tempe Terra
+(Mining) or S-MAR-MED-1 (Shipyard). The short form has no location, because the Systematic Hab
+Names name already gives it. Habs that Systematic Hab Names did not name also get the short form,
+for example a hab that you named yourself. If you switch off Systematic Hab Names in the Unity Mod
+Manager window, CataTweaks uses the long form. CataTweaks also uses the long form if the Systematic
+Hab Names assembly loads but its own load step fails. In these two cases, CataTweaks writes a line
+about it in the Unity Mod Manager log. If the assembly does not load, CataTweaks writes no line.
+
+Text in brackets at the end of a hab name is a template name in two cases. First, all of the text
+can be the name of one of your saved templates. Second, the text can have a comma. Then the
+template name is the text before the first comma, as in 3.4.3. For example, Station (Alpha, Beta)
+has the template name Alpha. Other text in brackets stays part of the custom name. For example,
+Station (Alpha) stays a custom name when you have no template with the name Alpha. When you apply a
+template again, CataTweaks replaces the old template name in both forms. This also occurs after you
+add or remove Systematic Hab Names. If you delete or rename a template, its old name in the short
+form becomes part of the custom name. The next template name then goes after it. CataTweaks cannot
+find a template name that contains brackets in a hab name. Each new template name then goes after
+it.
+
+Rename all my habs now in Systematic Hab Names keeps the name of the saved template of each hab.
+Apply and Rename all my habs now always read the short form (Template). Save reads it only while
+Systematic Hab Names is enabled. With Systematic Hab Names, you can save a hab that has no template
+name in brackets. Then the template keeps the name that the game gives it. Without Systematic Hab
+Names, saving a hab as a template works as in 3.4.3.
+
 **Priority presets overwrite in place.** When you save a preset with the name of an existing
 custom preset, it replaces that preset. The new preset stays the default preset if the old one was
 the default. Control points that use the old preset move to the new one. Built-in presets are not
@@ -306,13 +332,15 @@ rows are duplicated.
 
 - [Expanded Council](https://steamcommunity.com/sharedfiles/filedetails/?id=3810239494): the spy
   slot pool is off while it is installed, as described above. Everything else works with it.
+- [Systematic Hab Names](https://steamcommunity.com/sharedfiles/filedetails/?id=3814154107): hab
+  template naming uses the short form Name (Template) while it is enabled, as described above.
 - [Alien Threat Analysis](https://steamcommunity.com/sharedfiles/filedetails/?id=3810805075) and
   [Cooperative Missions](https://steamcommunity.com/sharedfiles/filedetails/?id=3810950621): no
   overlap. The two mods patch nothing CataTweaks changes.
 
 None of them is required. CataTweaks recognises Expanded Council by the patches it has applied,
-not by its version. If that check fails, CataTweaks behaves as it does without Expanded Council,
-and the spy slot pool stays available.
+and Systematic Hab Names by its own enabled setting, not by their version. If a check fails,
+CataTweaks behaves as it does without that mod.
 
 ---
 
