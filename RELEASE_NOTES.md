@@ -1,3 +1,15 @@
+# CataTweaks 3.4.4
+
+- Updated shipyard rally transfer planning for Terra Invicta 1.0.65. Removed the obsolete
+  request-size argument from `MasterTransferPlanner.RequestTrajectories`.
+- Updated the construction regression suite to use `Trajectory_Microthrust` after Terra Invicta
+  1.0.65 removed `Trajectory_Impulse`.
+
+Validation: Release build, template/localization validation, C# syntax checks, hab namer checks,
+10 notification template checks, and 119 shipyard and rally regression checks passed against
+Terra Invicta 1.0.65. Actual transfers, arrival merging, and UI layout still require an in-game
+smoke test.
+
 # CataTweaks 3.4.3
 
 - Fixed missing fleet detection and ship construction/refit completion notifications.

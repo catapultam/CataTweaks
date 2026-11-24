@@ -1679,7 +1679,7 @@ internal static class StationConstructionRally
         }
         if (!operation.ActorCanPerformOperation(source, target) || !operation.ValidTransferDestinationForFleet(source, target)) return report;
         Trajectory[] choices = null;
-        var result = MasterTransferPlanner.RequestTrajectories(source, target, 64, trajectories => choices = trajectories,
+        var result = MasterTransferPlanner.RequestTrajectories(source, target, trajectories => choices = trajectories,
             out double minimumDV_kps, usePlaceholderTrajectories: false, stopOnFirstSuccess: false);
         var trajectory = LeastTime(choices, source.currentDeltaV_mps);
         if (trajectory == null)

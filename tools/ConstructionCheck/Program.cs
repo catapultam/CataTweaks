@@ -300,7 +300,7 @@ internal static class Program
 
     private static Trajectory Route(int arrivalDays, double dv, int launchDays = 0)
     {
-        var route = Bare<Trajectory_Impulse>();
+        var route = Bare<Trajectory_Microthrust>();
         var start = new DateTime(2112, 1, 1);
         AccessTools.PropertySetter(typeof(Trajectory), "launchTime").Invoke(route, new object[] { new TIDateTime(start.AddDays(launchDays)) });
         AccessTools.PropertySetter(typeof(Trajectory), "arrivalTime").Invoke(route, new object[] { new TIDateTime(start.AddDays(arrivalDays)) });
